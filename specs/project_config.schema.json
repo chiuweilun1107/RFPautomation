@@ -1,0 +1,183 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Configuration",
+  "description": "Schema for project.config.yaml, acting as the Single Source of Truth for project-wide settings.",
+  "type": "object",
+  "required": [
+    "project"
+  ],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": [
+        "meta",
+        "tech_stack",
+        "paths",
+        "conventions"
+      ],
+      "properties": {
+        "meta": {
+          "type": "object",
+          "required": [
+            "name",
+            "version",
+            "description"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        },
+        "tech_stack": {
+          "type": "object",
+          "required": [
+            "frontend",
+            "backend",
+            "database"
+          ],
+          "properties": {
+            "frontend": {
+              "type": "object",
+              "required": [
+                "framework",
+                "language",
+                "package_manager"
+              ],
+              "properties": {
+                "framework": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "typescript",
+                    "javascript"
+                  ]
+                },
+                "package_manager": {
+                  "type": "string",
+                  "enum": [
+                    "npm",
+                    "yarn",
+                    "pnpm"
+                  ]
+                }
+              }
+            },
+            "backend": {
+              "type": "object",
+              "required": [
+                "framework",
+                "language",
+                "runtime"
+              ],
+              "properties": {
+                "framework": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string"
+                },
+                "runtime": {
+                  "type": "string"
+                }
+              }
+            },
+            "database": {
+              "type": "object",
+              "required": [
+                "type",
+                "orm"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "postgresql",
+                    "mysql",
+                    "mongodb",
+                    "sqlite"
+                  ]
+                },
+                "orm": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "paths": {
+          "type": "object",
+          "required": [
+            "root",
+            "docs",
+            "frontend",
+            "backend"
+          ],
+          "properties": {
+            "root": {
+              "type": "string"
+            },
+            "docs": {
+              "type": "string"
+            },
+            "frontend": {
+              "type": "string"
+            },
+            "backend": {
+              "type": "string"
+            }
+          }
+        },
+        "conventions": {
+          "type": "object",
+          "required": [
+            "filenames",
+            "git_branches"
+          ],
+          "properties": {
+            "filenames": {
+              "type": "string",
+              "enum": [
+                "kebab-case",
+                "camelCase",
+                "snake_case"
+              ]
+            },
+            "git_branches": {
+              "type": "string",
+              "description": "Branch naming pattern, e.g., feat/, fix/, chore/"
+            }
+          }
+        },
+        "infrastructure": {
+          "type": "object",
+          "properties": {
+            "supabase": {
+              "type": "object",
+              "required": [
+                "project_ref",
+                "region"
+              ],
+              "properties": {
+                "project_ref": {
+                  "type": "string"
+                },
+                "region": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

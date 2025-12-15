@@ -1,0 +1,277 @@
+{
+    "name": "WF07-Embedding",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                0,
+                0
+            ],
+            "id": "schedule-trigger",
+            "name": "Schedule Trigger"
+        },
+        {
+            "parameters": {
+                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/knowledge_docs?embedding_status=eq.pending&limit=1&select=*",
+                "method": "GET",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                220,
+                0
+            ],
+            "id": "fetch-pending-docs",
+            "name": "Fetch Pending Docs",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "https://goyonrowhfphooryfzif.supabase.co/functions/v1/extract-text",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "contentType": "json",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "bucket",
+                            "value": "documents"
+                        },
+                        {
+                            "name": "path",
+                            "value": "={{ $json.file_path }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                660,
+                -100
+            ],
+            "id": "extract-text",
+            "name": "Extract Text",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Simple text chunking logic\nconst text = $json.text || '';\nconst CHUNK_SIZE = 1000;\nconst chunks = [];\n\nfor (let i = 0; i < text.length; i += CHUNK_SIZE) {\n  chunks.push(text.slice(i, i + CHUNK_SIZE));\n}\n\nreturn chunks.map(chunk => ({ json: { chunk, doc_id: $('Fetch Pending Docs').item.json.id } }));"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                880,
+                -100
+            ],
+            "id": "chunk-text",
+            "name": "Chunk Text"
+        },
+        {
+            "parameters": {
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=AIzaSyCc7Eu51WYvDDuqfUED0SPwfKYI9fkUpWg",
+                "method": "POST",
+                "authentication": "none",
+                "sendBody": true,
+                "contentType": "json",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "models/text-embedding-004"
+                        },
+                        {
+                            "name": "content",
+                            "value": "={{ { parts: [{ text: $json.chunk }] } }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1100,
+                -100
+            ],
+            "id": "generate-embedding",
+            "name": "Generate Embedding"
+        },
+        {
+            "parameters": {
+                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/document_embeddings",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "contentType": "json",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "doc_id",
+                            "value": "={{ $('Chunk Text').item.json.doc_id }}"
+                        },
+                        {
+                            "name": "chunk_text",
+                            "value": "={{ $('Chunk Text').item.json.chunk }}"
+                        },
+                        {
+                            "name": "embedding",
+                            "value": "={{ JSON.stringify($json.embedding.values) }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1320,
+                -100
+            ],
+            "id": "insert-embeddings",
+            "name": "Insert Embeddings",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "=https://goyonrowhfphooryfzif.supabase.co/rest/v1/knowledge_docs?id=eq.{{ $('Fetch Pending Docs').item.json.id }}",
+                "method": "PATCH",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "contentType": "json",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "embedding_status",
+                            "value": "embedded"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1540,
+                -100
+            ],
+            "id": "update-status",
+            "name": "Update Status",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Pending Docs",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Pending Docs": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Text",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Text": {
+            "main": [
+                [
+                    {
+                        "node": "Chunk Text",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Chunk Text": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Embedding",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Embedding": {
+            "main": [
+                [
+                    {
+                        "node": "Insert Embeddings",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Insert Embeddings": {
+            "main": [
+                [
+                    {
+                        "node": "Update Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": {},
+    "tags": []
+}

@@ -1,0 +1,29 @@
+project:
+  meta:
+    name: "Web-based RFP Automation System"
+    version: "1.0.0"
+    description: "AI-driven platform for automating RFP response generation using Next.js, Supabase, and n8n."
+  tech_stack:
+    frontend:
+      framework: "Next.js 16 (App Router)"
+      language: "typescript"
+      package_manager: "npm"
+    backend:
+      framework: "Supabase (Edge Functions) + n8n (Workflow Orchestration)"
+      language: "typescript"
+      runtime: "deno (Edge) / node (n8n)"
+    database:
+      type: "postgresql"
+      orm: "prisma"
+  paths:
+    root: "./"
+    docs: "./docs"
+    frontend: "./frontend"
+    backend: "./backend"
+  conventions:
+    filenames: "kebab-case"
+    git_branches: "type/description (e.g., feat/auth-login, fix/parsing-error)"
+  infrastructure:
+    supabase:
+      project_ref: "goyonrowhfphooryfzif"
+      region: "ap-northeast-1"

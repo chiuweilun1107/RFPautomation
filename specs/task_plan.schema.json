@@ -1,0 +1,84 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Task Implementation Plan",
+    "description": "Schema for AI Agent Implementation Plans, ensuring no critical steps are missed.",
+    "type": "object",
+    "required": [
+        "task_id",
+        "goal",
+        "files_to_modify",
+        "new_files",
+        "dependencies",
+        "verification_steps"
+    ],
+    "properties": {
+        "task_id": {
+            "type": "string",
+            "description": "The unique identifier of the task (e.g., Task-FE-001)"
+        },
+        "goal": {
+            "type": "string",
+            "description": "A concise summary of what this task achieves."
+        },
+        "files_to_modify": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "List of existing file paths that will be edited."
+        },
+        "new_files": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "path",
+                    "description"
+                ],
+                "properties": {
+                    "path": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                }
+            },
+            "description": "List of new files to be created."
+        },
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "List of other Task IDs that must be completed before this one."
+        },
+        "verification_steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": [
+                    "step",
+                    "command",
+                    "expected_output"
+                ],
+                "properties": {
+                    "step": {
+                        "type": "string",
+                        "description": "Description of the verification step"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "The actual terminal command to run (e.g., curl, npm test)"
+                    },
+                    "expected_output": {
+                        "type": "string",
+                        "description": "What standard constitutes success (e.g., 'HTTP 200', 'Tests Passed')"
+                    }
+                }
+            },
+            "description": "MANDATORY list of verification steps. 'Verbal' verification is PROHIBITED."
+        }
+    }
+}

@@ -1,0 +1,222 @@
+{
+    "name": "WF08-RAG-Query",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "rag-chat-webhook-v6",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "id": "e8d69719-7935-430c-99d0-664dc12e0261",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extract data from webhook body\nconst input = $input.first().json;\nconst query = input.body.query;\nconst apiKey = input.body.apiKey;\n\nif (!apiKey) {\n  throw new Error('API Key not found');\n}\nif (!query) {\n  throw new Error('Query not found');\n}\n\nreturn { query, apiKey };"
+            },
+            "id": "extract-data",
+            "name": "Extract Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                400,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={{ $json.apiKey }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"content\": {\n    \"parts\": [\n      {\n        \"text\": {{ JSON.stringify($json.query) }}\n      }\n    ]\n  }\n}",
+                "options": {}
+            },
+            "id": "embed-query",
+            "name": "Embed Query",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                620,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/rpc/match_documents",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"query_embedding\": {{ JSON.stringify($json.embedding.values) }},\n  \"match_threshold\": 0.5,\n  \"match_count\": 5\n}",
+                "options": {}
+            },
+            "id": "vector-search",
+            "name": "Vector Search",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                700,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const docs = $input.all().map(i => i.json.content).join('\\n---\\n');\nreturn { docs };"
+            },
+            "id": "format-context",
+            "name": "Format Context",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 1,
+            "position": [
+                940,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $('Extract Data').first().json.apiKey }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are a helpful AI assistant. Answer the user's question based ONLY on the following context. If the answer is not in the context, say you don't know.\\n\\nContext:\\n{{ $json.docs }}\\n\\nQuestion: {{ $('Extract Data').first().json.query }}\"\n        }\n      ]\n    }\n  ]\n}",
+                "options": {}
+            },
+            "id": "generate-answer",
+            "name": "Generate Answer",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1180,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const answer = $json.candidates[0].content.parts[0].text;\nreturn { answer };"
+            },
+            "id": "format-response",
+            "name": "Format Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 1,
+            "position": [
+                1420,
+                300
+            ]
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Data": {
+            "main": [
+                [
+                    {
+                        "node": "Embed Query",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Embed Query": {
+            "main": [
+                [
+                    {
+                        "node": "Vector Search",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Vector Search": {
+            "main": [
+                [
+                    {
+                        "node": "Format Context",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Context": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Answer",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Answer": {
+            "main": [
+                [
+                    {
+                        "node": "Format Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": true,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": []
+}

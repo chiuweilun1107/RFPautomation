@@ -1,0 +1,92 @@
+Permissions 0644 for n8n settings file /Users/chiuyongren/.n8n/config are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.
+Initializing n8n process
+n8n ready on ::, port 5678
+
+There are deprecations related to your environment variables. Please take the recommended actions to update your configuration:
+ - DB_SQLITE_POOL_SIZE -> Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite
+ - N8N_RUNNERS_ENABLED -> Running n8n without task runners is deprecated. Task runners will be turned on by default in a future version. Please set `N8N_RUNNERS_ENABLED=true` to enable task runners now and avoid potential issues in the future. Learn more: https://docs.n8n.io/hosting/configuration/task-runners/
+ - N8N_BLOCK_ENV_ACCESS_IN_NODE -> The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+ - N8N_GIT_NODE_DISABLE_BARE_REPOS -> Support for bare repositories in the Git Node will be removed in a future version due to security concerns. If you are not using bare repositories in the Git Node, please set N8N_GIT_NODE_DISABLE_BARE_REPOS=true. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/
+
+[license SDK] Skipping renewal on init: license cert is not initialized
+Version: 1.123.5
+
+Editor is now accessible via:
+http://localhost:5678
+Owner was set up successfully
+(node:91341) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+User survey updated successfully
+401 Wrong username or password. Do you have caps lock on?
+401 Wrong username or password. Do you have caps lock on?
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+404 No successful execution found for the workflow
+
+Error: 
+    at WorkflowHistoryService.getVersion (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow-history/workflow-history.service.ts:82:10)
+    at WorkflowService.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow.service.ts:379:20)
+    at WorkflowsController.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflows.controller.ts:428:27)
+    at handler (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/controller.registry.ts:95:12)
+    at /Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/response-helper.ts:161:17
+
+
+Error: 
+    at WorkflowHistoryService.getVersion (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow-history/workflow-history.service.ts:82:10)
+    at WorkflowService.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow.service.ts:379:20)
+    at WorkflowsController.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflows.controller.ts:428:27)
+    at handler (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/controller.registry.ts:95:12)
+    at /Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/response-helper.ts:161:17
+
+
+Error: 
+    at WorkflowHistoryService.getVersion (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow-history/workflow-history.service.ts:82:10)
+    at WorkflowService.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow.service.ts:379:20)
+    at WorkflowsController.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflows.controller.ts:428:27)
+    at handler (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/controller.registry.ts:95:12)
+    at /Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/response-helper.ts:161:17
+
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+404 No successful execution found for the workflow
+
+Error: 
+    at WorkflowHistoryService.getVersion (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow-history/workflow-history.service.ts:82:10)
+    at WorkflowService.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow.service.ts:379:20)
+    at WorkflowsController.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflows.controller.ts:428:27)
+    at handler (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/controller.registry.ts:95:12)
+    at /Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/response-helper.ts:161:17
+
+404 No successful execution found for the workflow
+
+Error: 
+    at WorkflowHistoryService.getVersion (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow-history/workflow-history.service.ts:82:10)
+    at WorkflowService.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow.service.ts:379:20)
+    at WorkflowsController.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflows.controller.ts:428:27)
+    at handler (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/controller.registry.ts:95:12)
+    at /Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/response-helper.ts:161:17
+
+User attempted to access a workflow without permissions
+404 Could not load the workflow - you can only access workflows owned by you
+404 No successful execution found for the workflow
+
+Error: 
+    at WorkflowHistoryService.getVersion (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow-history/workflow-history.service.ts:82:10)
+    at WorkflowService.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflow.service.ts:379:20)
+    at WorkflowsController.update (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/workflows/workflows.controller.ts:428:27)
+    at handler (/Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/controller.registry.ts:95:12)
+    at /Users/chiuyongren/Desktop/AI dev/backend/node_modules/n8n/src/response-helper.ts:161:17
+
+Received SIGTERM. Shutting down...
+
+Stopping n8n...

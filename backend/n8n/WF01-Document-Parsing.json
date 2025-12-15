@@ -1,0 +1,107 @@
+{
+    "name": "WF01-Document-Parsing",
+    "versionId": "fc75e925-c638-4034-9721-36ba9065ab4c",
+    "active": false,
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "parse-rfp",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                0,
+                0
+            ],
+            "id": "webhook-trigger",
+            "name": "Webhook"
+        },
+        {
+            "parameters": {
+                "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/public/rfp_docs/{{ $json.filePath }}",
+                "method": "GET",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {
+                    "responseFormat": "file"
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                250,
+                0
+            ],
+            "id": "download-file",
+            "name": "Download File",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "zpOpVrd0AAHkACns",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "={{ $env.SUPABASE_URL }}/rest/v1/projects?id=eq.{{ $('Webhook').item.json.projectId }}",
+                "method": "PATCH",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "contentType": "json",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "status",
+                            "value": "active"
+                        }
+                    ]
+                },
+                "options": {
+                    "responseCode": "204"
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                500,
+                0
+            ],
+            "id": "update-status",
+            "name": "Update Project Status",
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "zpOpVrd0AAHkACns",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Download File",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download File": {
+            "main": [
+                [
+                    {
+                        "node": "Update Project Status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {}
+}

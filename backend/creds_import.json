@@ -1,0 +1,11 @@
+[
+    {
+        "id": "zpOpVrd0AAHkACns",
+        "name": "Supabase Header Auth",
+        "type": "httpHeaderAuth",
+        "data": {
+            "name": "Authorization",
+            "value": "Bearer sb_secret_i6ul9zHnJ-oQDxrviY6U8Q_iiwSI096"
+        }
+    }
+]
