@@ -50,6 +50,18 @@
     },
     {
       "parameters": {
+        "jsCode": "const items = $input.all();\nconst newItems = [];\n\nfor (const item of items) {\n  const source = item.json;\n  let pages = [];\n  try {\n    const parsed = JSON.parse(source.content);\n    if (parsed.pages && Array.isArray(parsed.pages)) {\n        pages = parsed.pages;\n    } else if (Array.isArray(parsed)) {\n        pages = parsed;\n    } else {\n        pages = [{ page: 1, content: source.content }];\n    }\n  } catch (e) {\n    // Fallback for old content (plain text)\n    pages = [{ page: 1, content: source.content }];\n  }\n  \n  if (pages.length === 0) pages = [{ page: 1, content: source.content }];\n\n  for (const page of pages) {\n    newItems.push({\n      json: {\n        ...source,\n        chunk_content: page.content,\n        page_number: page.page\n      }\n    });\n  }\n}\n\nreturn newItems;"
+      },
+      "name": "Split Pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=AIzaSyAIEWQafKblPqGJNMiRsb2T5L7LbxOUgeU",
         "method": "POST",
         "authentication": "none",
@@ -63,7 +75,7 @@
             },
             {
               "name": "content",
-              "value": "={{ { parts: [{ text: $json.chunk || $json.content || '' }] } }}"
+              "value": "={{ { parts: [{ text: $json.chunk_content || $json.content || '' }] } }}"
             }
           ]
         },
@@ -73,7 +85,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        800,
+        820,
         0
       ]
     },
@@ -89,15 +101,19 @@
           "parameters": [
             {
               "name": "source_id",
-              "value": "={{ $('Fetch Processing Source').item.json.id }}"
+              "value": "={{ $json.id }}"
             },
             {
               "name": "content",
-              "value": "={{ $('Fetch Processing Source').item.json.content }}"
+              "value": "={{ $json.chunk_content }}"
             },
             {
               "name": "embedding",
               "value": "={{ $json.embedding.values }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ { page: $json.page_number } }}"
             }
           ]
         },
@@ -107,7 +123,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1000,
+        1020,
         0
       ],
       "credentials": {
@@ -139,7 +155,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1200,
+        1220,
         0
       ],
       "credentials": {
@@ -167,8 +183,7 @@
                 "operation": "notEmpty"
               }
             }
-          ],
-          "combinator": "and"
+          ]
         },
         "options": {}
       },
@@ -176,7 +191,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1400,
+        1420,
         0
       ]
     },
@@ -221,7 +236,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        1600,
+        1620,
         -100
       ],
       "credentials": {
@@ -246,6 +261,17 @@
       ]
     },
     "Fetch Processing Source": {
+      "main": [
+        [
+          {
+            "node": "Split Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pages": {
       "main": [
         [
           {
@@ -307,10 +333,6 @@
     "executionOrder": "v1"
   },
   "versionId": "1de78f2b-516f-42fe-a3db-d2af2db1603f",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "115a80696d263dc04eee6d2c8cc1c5ab95152f4a4d5cefd1c1e1a778e38472be"
-  },
   "id": "AxIETKBv40B9ZiL5",
   "tags": []
 }

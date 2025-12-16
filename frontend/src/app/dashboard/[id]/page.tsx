@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation"
 import { EditorHeader } from "@/components/editor/EditorHeader"
 import { SectionList } from "@/components/editor/SectionList"
 import { Loader2 } from "lucide-react"
-import { ProjectDashboardLayout } from "@/components/workspace/ProjectDashboardLayout"
+import { ProjectDashboardClient } from "@/components/workspace/ProjectDashboardClient"
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -33,7 +33,7 @@ export default async function ProjectEditorPage({ params }: PageProps) {
     if (project.status === 'processing') {
         return (
             <div className="flex flex-col min-h-screen bg-white dark:bg-black">
-                <EditorHeader title={project.title} status={project.status} projectId={project.id} />
+                <EditorHeader title={project.title} status={project.status} projectId={project.id} onStageSelect={() => { }} />
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4">
                     <Loader2 className="h-12 w-12 animate-spin text-primary text-blue-600" />
                     <h2 className="text-xl font-semibold">AI is analyzing your document</h2>
@@ -106,10 +106,6 @@ export default async function ProjectEditorPage({ params }: PageProps) {
     }
 
     return (
-        <ProjectDashboardLayout project={project}>
-            <div className="max-w-4xl mx-auto pb-20">
-                <SectionList sections={sectionsWithChildren} projectId={project.id} />
-            </div>
-        </ProjectDashboardLayout>
+        <ProjectDashboardClient project={project} sections={sectionsWithChildren} />
     )
 }

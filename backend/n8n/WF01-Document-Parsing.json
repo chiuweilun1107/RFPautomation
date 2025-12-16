@@ -18,7 +18,7 @@
         {
             "parameters": {
                 "method": "POST",
-                "url": "={{ $env.SUPABASE_URL }}/functions/v1/extract-text",
+                "url": "https://goyonrowhfphooryfzif.supabase.co/functions/v1/extract-text",
                 "authentication": "genericCredentialType",
                 "genericAuthType": "httpHeaderAuth",
                 "sendBody": true,
@@ -35,13 +35,15 @@
                         },
                         {
                             "name": "apiKey",
-                            "value": "AIzaSyAIEWQafKblPqGJNMiRsb2T5L7LbxOUgeU"
+                            "value": "={{ $env.GOOGLE_GEMINI_API_KEY }}"
                         }
                     ]
                 },
-                "options": {}
+                "options": {
+                    "timeout": 360000
+                }
             },
-            "name": "Extract Text via Edge Fn",
+            "name": "Call Edge Function",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
             "position": [
@@ -71,13 +73,13 @@
                         },
                         {
                             "name": "content",
-                            "value": "={{ $(\"Extract Text via Edge Fn\").item.json.text }}"
+                            "value": "={{ JSON.stringify($json.pages) }}"
                         }
                     ]
                 },
                 "options": {}
             },
-            "name": "Update Source Status",
+            "name": "Update Source Content",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
             "position": [
@@ -90,64 +92,26 @@
                     "name": "Supabase Header Auth"
                 }
             }
-        },
-        {
-            "parameters": {
-                "method": "POST",
-                "url": "http://localhost:5678/webhook/parse-tender",
-                "sendBody": true,
-                "contentType": "json",
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "source_id",
-                            "value": "={{ $(\"Webhook\").item.json.body.source_id }}"
-                        },
-                        {
-                            "name": "project_id",
-                            "value": "={{ $(\"Webhook\").item.json.body.projectId }}"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "name": "Trigger Criteria Parsing",
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                850,
-                300
-            ]
         }
     ],
+    "pinData": {},
     "connections": {
         "Webhook": {
             "main": [
                 [
                     {
-                        "node": "Extract Text via Edge Fn",
+                        "node": "Call Edge Function",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Extract Text via Edge Fn": {
+        "Call Edge Function": {
             "main": [
                 [
                     {
-                        "node": "Update Source Status",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Update Source Status": {
-            "main": [
-                [
-                    {
-                        "node": "Trigger Criteria Parsing",
+                        "node": "Update Source Content",
                         "type": "main",
                         "index": 0
                     }

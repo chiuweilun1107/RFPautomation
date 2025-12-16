@@ -9,9 +9,10 @@ import { toast } from "sonner";
 interface ProjectDashboardLayoutProps {
     project: any;
     children: React.ReactNode;
+    onStageSelect?: (stage: number) => void;
 }
 
-export function ProjectDashboardLayout({ project, children }: ProjectDashboardLayoutProps) {
+export function ProjectDashboardLayout({ project, children, onStageSelect }: ProjectDashboardLayoutProps) {
     const [selectedSource, setSelectedSource] = useState<any | null>(null);
 
     const handleGenerateSummary = async (sourceId: string) => {
@@ -57,6 +58,8 @@ export function ProjectDashboardLayout({ project, children }: ProjectDashboardLa
                     title={project.title}
                     status={project.status}
                     projectId={project.id}
+                    stage={project.stage || 0}
+                    onStageSelect={onStageSelect || (() => { })}
                 />
 
                 <main className="flex-1 overflow-y-auto bg-white/50 dark:bg-black/50 p-8">

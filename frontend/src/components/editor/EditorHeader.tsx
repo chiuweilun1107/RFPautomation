@@ -6,14 +6,17 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { ProjectWorkflowStepper } from "@/components/workspace/ProjectWorkflowStepper"
 
 interface EditorHeaderProps {
     title: string
     status: string
     projectId: string
+    stage?: number
+    onStageSelect: (stageId: number) => void
 }
 
-export function EditorHeader({ title, status, projectId }: EditorHeaderProps) {
+export function EditorHeader({ title, status, projectId, stage = 0, onStageSelect }: EditorHeaderProps) {
     const [isExporting, setIsExporting] = useState(false)
 
     const handleExport = async () => {
@@ -50,20 +53,19 @@ export function EditorHeader({ title, status, projectId }: EditorHeaderProps) {
 
     return (
         <div className="flex h-16 items-center justify-between border-b px-4 md:px-6 bg-white dark:bg-black border-gray-100 dark:border-zinc-800">
-            <div className="flex items-center gap-4">
-                <Link href="/dashboard">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Back</span>
-                    </Button>
-                </Link>
-                <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-semibold truncate max-w-[200px] md:max-w-md">
+            <div className="flex items-center gap-4 flex-1">
+                <div className="flex items-center gap-2 mr-8">
+                    <h1 className="text-lg font-semibold truncate max-w-[200px] md:max-w-xs">
                         {title}
                     </h1>
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(status)}`}>
                         {status}
                     </span>
+                </div>
+
+                {/* Workflow Stepper */}
+                <div className="flex-1 max-w-3xl hidden md:block">
+                    <ProjectWorkflowStepper currentStage={stage} onStageSelect={onStageSelect} />
                 </div>
             </div>
             <div className="flex items-center gap-2">

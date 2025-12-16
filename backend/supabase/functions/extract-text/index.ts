@@ -43,43 +43,47 @@ serve(async (req) => {
         const contentType = fileData.type;
         console.log(`File downloaded. Type: ${contentType}, Size: ${arrayBuffer.byteLength}`);
 
-        let extractedText = "";
+        let pages: { page: number; content: string }[] = [];
 
-        // 2. Handle DOCX locally using mammoth (Gemini doesn't support DOCX inline)
+        // 2. Handle DOCX locally using mammoth
         if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || path.endsWith('.docx')) {
             console.log("Detected DOCX, processing locally with mammoth...");
             try {
-                // Convert ArrayBuffer to Buffer for mammoth compatibility in Deno
                 const uint8Array = new Uint8Array(arrayBuffer);
-
-                // Debug: Check the first few bytes to verify it's a ZIP (DOCX is a ZIP file)
-                // ZIP files start with PK (0x50, 0x4B)
-                const header = Array.from(uint8Array.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-                console.log(`File header bytes: ${header}`);
-
-                if (uint8Array[0] !== 0x50 || uint8Array[1] !== 0x4B) {
-                    console.error("File does not start with ZIP signature (PK). This may not be a valid DOCX file.");
-                    console.log("First 100 bytes as string:", new TextDecoder().decode(uint8Array.slice(0, 100)));
-                    throw new Error("Invalid DOCX file: missing ZIP signature. File may be corrupted or not a real DOCX.");
-                }
-
                 const result = await mammoth.extractRawText({ buffer: uint8Array });
-                extractedText = result.value;
-                console.log("Mammoth extraction complete. Length:", extractedText.length);
-                if (result.messages.length > 0) {
-                    console.log("Mammoth messages:", result.messages);
-                }
+                // DOCX doesn't support pagination easily, strictly mapping to "Page 1"
+                pages = [{ page: 1, content: result.value }];
+                console.log("Mammoth extraction complete.");
             } catch (err) {
                 console.error("Mammoth conversion failed:", err);
                 throw new Error(`Failed to parse DOCX: ${err.message}`);
             }
         } else {
             // 3. Use Gemini for PDF or Images
-            console.log("Using Gemini for extraction...");
+            console.log("Using Gemini for page-aware extraction...");
             const base64Data = encode(new Uint8Array(arrayBuffer));
 
             const API_KEY = bodyApiKey || Deno.env.get('GOOGLE_GEMINI_API_KEY');
             if (!API_KEY) throw new Error('Missing GOOGLE_GEMINI_API_KEY');
+
+            const prompt = `
+            You are a precise document parser. 
+            Extract the text from this document page by page.
+            
+            **OUTPUT FORMAT:**
+            Return a valid JSON array where each item represents a page.
+            Structure:
+            [
+              { "page": 1, "content": "Markdown text of page 1..." },
+              { "page": 2, "content": "Markdown text of page 2..." }
+            ]
+
+            **RULES:**
+            1. Convert tables to Markdown tables.
+            2. Do NOT summarize. Extract full text.
+            3. Return ONLY the JSON object. Do not wrap in markdown code blocks (e.g. no \`\`\`json).
+            4. If the document is an image, treat it as Page 1.
+            `;
 
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${API_KEY}`,
@@ -89,9 +93,7 @@ serve(async (req) => {
                     body: JSON.stringify({
                         contents: [{
                             parts: [
-                                {
-                                    text: "Please extract all text from this document. **CRITICAL: Convert any tables you see into structured Markdown tables.** Do not summarize. Return the full content in Markdown format."
-                                },
+                                { text: prompt },
                                 {
                                     inline_data: {
                                         mime_type: contentType,
@@ -110,12 +112,26 @@ serve(async (req) => {
             }
 
             const result = await response.json();
-            extractedText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            console.log("Gemini extraction complete. Length:", extractedText.length);
+            const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+
+            // Allow for some flexibility if model wraps in code blocks despite instructions
+            const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            try {
+                pages = JSON.parse(cleanJson);
+                // Validate structure
+                if (!Array.isArray(pages)) throw new Error("Output is not an array");
+            } catch (e) {
+                console.error("Failed to parse Gemini JSON output:", rawText);
+                // Fallback: treat entire text as page 1
+                pages = [{ page: 1, content: rawText }];
+            }
+
+            console.log(`Gemini extraction complete. Extracted ${pages.length} pages.`);
         }
 
         return new Response(
-            JSON.stringify({ text: extractedText }),
+            JSON.stringify({ pages }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 

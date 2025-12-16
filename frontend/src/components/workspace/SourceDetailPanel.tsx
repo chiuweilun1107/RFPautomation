@@ -1,174 +1,66 @@
-"use client";
 
-import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Globe, Sparkles, Loader2, X } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import { Button } from '@/components/ui/button';
-
-interface Source {
-    id: string;
-    title: string;
-    type: string;
-    status: string;
-    content?: string;
-    summary?: string;
-    topics?: string[];
-    source_type?: string;
-    created_at: string;
-    origin_url?: string;
-}
+import { Evidence } from "./CitationBadge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { X, ExternalLink } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface SourceDetailPanelProps {
-    source: Source | null;
+    evidence: Evidence | null;
     onClose: () => void;
-    onGenerateSummary?: (sourceId: string) => Promise<void>;
 }
 
-export function SourceDetailPanel({
-    source,
-    onClose,
-    onGenerateSummary
-}: SourceDetailPanelProps) {
-    const [isGenerating, setIsGenerating] = useState(false);
-
-    if (!source) return null;
-
-    const handleGenerateSummary = async () => {
-        if (!onGenerateSummary) return;
-        setIsGenerating(true);
-        try {
-            await onGenerateSummary(source.id);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const getSourceTypeLabel = (type?: string) => {
-        switch (type) {
-            case 'upload': return '上傳文件';
-            case 'url': return '網頁連結';
-            case 'search': return '網路搜尋';
-            case 'rfp': return 'RFP 原始文件';
-            default: return '上傳文件';
-        }
-    };
-
-    const getSourceTypeIcon = () => {
-        if (source.type === 'web' || source.source_type === 'url') {
-            return <Globe className="w-5 h-5 text-blue-500" />;
-        }
-        return <FileText className="w-5 h-5 text-orange-500" />;
-    };
+export function SourceDetailPanel({ evidence, onClose }: SourceDetailPanelProps) {
+    if (!evidence) return null;
 
     return (
-        <div className="flex flex-col h-full bg-background rounded-xl overflow-hidden">
-            {/* Header */}
-            <div className="p-4 border-b flex items-center justify-between gap-3 shrink-0 bg-muted/5">
-                <div className="flex items-center gap-3 overflow-hidden flex-1">
-                    <div className="p-2 bg-background rounded-lg border shadow-sm shrink-0">
-                        {getSourceTypeIcon()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <h2 className="text-lg font-semibold truncate leading-none">
-                            {source.title}
-                        </h2>
-                        <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs font-normal">
-                                {source.type.toUpperCase()}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                                {getSourceTypeLabel(source.source_type)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">•</span>
-                            <span className="text-xs text-muted-foreground">
-                                {new Date(source.created_at).toLocaleDateString('zh-TW')}
-                            </span>
-                        </div>
-                    </div>
+        <Card className="h-full border-l rounded-none border-y-0 border-r-0 shadow-xl w-[400px] flex flex-col animate-in slide-in-from-right duration-300 bg-background text-foreground">
+            <CardHeader className="flex flex-row items-center justify-between py-4 border-b">
+                <div className="space-y-1">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        來源詳細資料
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground line-clamp-1" title={evidence.source_title}>
+                        {evidence.source_title} • 第 {evidence.page} 頁
+                    </p>
                 </div>
-
-                {/* Actions Area */}
-                <div className="flex items-center gap-2 shrink-0">
-                    {onGenerateSummary && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleGenerateSummary}
-                            disabled={isGenerating}
-                            className="h-9 gap-2"
-                        >
-                            {isGenerating ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <Sparkles className="w-4 h-4 text-yellow-500" />
-                            )}
-                            <span className="hidden sm:inline">
-                                {isGenerating ? '生成中...' : (source.summary ? '重新生成摘要' : '生成摘要')}
-                            </span>
-                        </Button>
-                    )}
-
-                    <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9">
-                        <X className="w-5 h-5" />
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+                        <X className="w-4 h-4" />
                     </Button>
                 </div>
-            </div>
+            </CardHeader>
 
-            {/* Content Area */}
-            <ScrollArea className="flex-1">
-                <div className="p-6 max-w-5xl mx-auto w-full space-y-8">
-                    {/* 1. AI Summary Section */}
-                    <section>
-                        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2 text-primary">
-                            <Sparkles className="w-4 h-4 text-yellow-500" />
-                            來源導覽 (AI Summary)
-                        </h3>
-
-                        {source.summary ? (
-                            <div className="bg-muted/30 rounded-xl p-5 border">
-                                <p className="text-sm leading-7 text-foreground/90">{source.summary}</p>
-                                {/* Topics */}
-                                {source.topics && source.topics.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-dashed">
-                                        {source.topics.map((topic, idx) => (
-                                            <Badge key={idx} variant="secondary" className="px-2 py-0.5 text-xs font-normal bg-background/50 hover:bg-background">
-                                                #{topic}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="py-8 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center justify-center text-muted-foreground">
-                                <Sparkles className="w-8 h-8 opacity-20 mb-2" />
-                                <p className="text-sm">尚未生成 AI 摘要</p>
-                                <p className="text-xs opacity-70 mt-1">點擊右上方按鈕開始分析</p>
-                            </div>
-                        )}
-                    </section>
-
-                    {/* 2. Original Content Section */}
-                    <section>
-                        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2 text-primary">
-                            <FileText className="w-4 h-4 text-muted-foreground" />
-                            原始內容 (Original Content)
-                        </h3>
-                        <div className="bg-background border rounded-xl overflow-hidden w-full">
-                            {source.content ? (
-                                <div className="prose prose-sm dark:prose-invert max-w-none p-8 break-words break-all">
-                                    <ReactMarkdown>{source.content}</ReactMarkdown>
-                                </div>
-                            ) : (
-                                <div className="py-12 text-center text-muted-foreground">
-                                    無法載入原始內容
-                                </div>
-                            )}
+            <ScrollArea className="flex-1 p-4 bg-muted/5">
+                <div className="space-y-6">
+                    {/* Highlighted Quote */}
+                    {evidence.quote && (
+                        <div className="bg-muted/40 border-l-4 border-primary p-4 rounded-r-md">
+                            <p className="text-sm font-medium leading-relaxed text-foreground">
+                                "{evidence.quote}"
+                            </p>
                         </div>
-                    </section>
+                    )}
+
+                    {/* Context / Segment Content */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            原始內容片段
+                        </h4>
+                        <div className="p-4 bg-background border rounded-md text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                            {/* In a real app, we would fetch the full chunk content here. For now, we simulate it or re-use quote */}
+                            {evidence.quote
+                                ? `...${evidence.quote}...\n\n(此處將顯示該頁面的完整 AI 拆解段落，方便您對照上下文。)`
+                                : "(無法存取原始內容)"}
+                        </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        開啟原始文件 PDF
+                    </Button>
                 </div>
             </ScrollArea>
-        </div>
+        </Card>
     );
 }
