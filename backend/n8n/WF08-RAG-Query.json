@@ -1,87 +1,62 @@
 {
-    "name": "WF08-RAG-Query",
+    "name": "WF08-RAG-Query-Gemini",
     "nodes": [
         {
             "parameters": {
                 "httpMethod": "POST",
-                "path": "rag-chat-webhook-v6",
-                "responseMode": "lastNode",
+                "path": "rag-query",
+                "responseMode": "responseNode",
                 "options": {}
             },
-            "id": "e8d69719-7935-430c-99d0-664dc12e0261",
+            "id": "webhook-1",
             "name": "Webhook",
             "type": "n8n-nodes-base.webhook",
             "typeVersion": 2,
             "position": [
-                220,
+                250,
                 300
             ]
         },
         {
             "parameters": {
-                "jsCode": "// Extract data from webhook body\nconst input = $input.first().json;\nconst query = input.body.query;\nconst apiKey = input.body.apiKey;\n\nif (!apiKey) {\n  throw new Error('API Key not found');\n}\nif (!query) {\n  throw new Error('Query not found');\n}\n\nreturn { query, apiKey };"
-            },
-            "id": "extract-data",
-            "name": "Extract Data",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                400,
-                300
-            ]
-        },
-        {
-            "parameters": {
-                "url": "=https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={{ $json.apiKey }}",
-                "authentication": "none",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ]
-                },
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=AIzaSyAIEWQafKblPqGJNMiRsb2T5L7LbxOUgeU",
+                "method": "POST",
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={\n  \"content\": {\n    \"parts\": [\n      {\n        \"text\": {{ JSON.stringify($json.query) }}\n      }\n    ]\n  }\n}",
-                "options": {}
+                "jsonBody": "={{ JSON.stringify({ model: 'models/text-embedding-004', content: { parts: [{ text: $json.body.query }] } }) }}"
             },
-            "id": "embed-query",
-            "name": "Embed Query",
+            "id": "embed-1",
+            "name": "Gemini Embed Query",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
             "position": [
-                620,
+                450,
                 300
             ]
         },
         {
             "parameters": {
-                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/rpc/match_documents",
+                "method": "POST",
+                "url": "=https://goyonrowhfphooryfzif.supabase.co/rest/v1/rpc/match_chunks_by_project",
                 "authentication": "genericCredentialType",
                 "genericAuthType": "httpHeaderAuth",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ]
-                },
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={\n  \"query_embedding\": {{ JSON.stringify($json.embedding.values) }},\n  \"match_threshold\": 0.5,\n  \"match_count\": 5\n}",
-                "options": {}
+                "jsonBody": "={{ JSON.stringify({ query_embedding: $json.embedding.values, match_threshold: 0.0, match_count: 5, filter_project_id: $('Webhook').item.json.body.project_id }) }}",
+                "options": {
+                    "response": {
+                        "response": {
+                            "neverError": true
+                        }
+                    }
+                }
             },
-            "id": "vector-search",
-            "name": "Vector Search",
+            "id": "vector-1",
+            "name": "Supabase Vector Search",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
             "position": [
-                700,
+                650,
                 300
             ],
             "credentials": {
@@ -93,130 +68,104 @@
         },
         {
             "parameters": {
-                "jsCode": "const docs = $input.all().map(i => i.json.content).join('\\n---\\n');\nreturn { docs };"
+                "jsCode": "// 處理 Vector Search 結果\nconst chunks = $input.first().json;\nconst query = $('Webhook').first().json.body.query;\n\n// 如果沒有找到相關內容，使用預設訊息\nlet context = '（無匹配的參考資料，請基於專業知識生成）';\nlet sources = [];\n\nif (Array.isArray(chunks) && chunks.length > 0) {\n  context = chunks.map(c => c.content).join('\\n---\\n');\n  sources = chunks.map(c => ({ id: c.id, title: c.source_title, similarity: c.similarity }));\n}\n\nreturn [{\n  json: {\n    context,\n    query,\n    sources\n  }\n}];"
             },
-            "id": "format-context",
-            "name": "Format Context",
+            "id": "code-1",
+            "name": "Process Results",
             "type": "n8n-nodes-base.code",
-            "typeVersion": 1,
+            "typeVersion": 2,
             "position": [
-                940,
+                850,
                 300
             ]
         },
         {
             "parameters": {
-                "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $('Extract Data').first().json.apiKey }}",
-                "authentication": "none",
-                "sendHeaders": true,
-                "headerParameters": {
-                    "parameters": [
-                        {
-                            "name": "Content-Type",
-                            "value": "application/json"
-                        }
-                    ]
-                },
+                "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=AIzaSyAIEWQafKblPqGJNMiRsb2T5L7LbxOUgeU",
+                "method": "POST",
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are a helpful AI assistant. Answer the user's question based ONLY on the following context. If the answer is not in the context, say you don't know.\\n\\nContext:\\n{{ $json.docs }}\\n\\nQuestion: {{ $('Extract Data').first().json.query }}\"\n        }\n      ]\n    }\n  ]\n}",
-                "options": {}
+                "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [{ text: '你是一位專業的標案撰寫專家。請根據以下參考資料，為標案章節撰寫專業、詳細的內容草稿。\\n\\n參考資料：\\n' + $json.context + '\\n\\n請撰寫：' + $json.query + '\\n\\n要求：\\n1. 內容要專業、具體\\n2. 使用正式的標案用語\\n3. 結構清晰，分段落說明\\n4. 字數約500-800字' }] }] }) }}"
             },
-            "id": "generate-answer",
-            "name": "Generate Answer",
+            "id": "generate-1",
+            "name": "Gemini Generate",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
             "position": [
-                1180,
+                1050,
                 300
             ]
         },
         {
             "parameters": {
-                "jsCode": "const answer = $json.candidates[0].content.parts[0].text;\nreturn { answer };"
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ answer: $json.candidates[0].content.parts[0].text, sources: $('Process Results').first().json.sources }) }}"
             },
-            "id": "format-response",
-            "name": "Format Response",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 1,
+            "id": "respond-1",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
             "position": [
-                1420,
+                1250,
                 300
             ]
         }
     ],
-    "pinData": {},
     "connections": {
         "Webhook": {
             "main": [
                 [
                     {
-                        "node": "Extract Data",
+                        "node": "Gemini Embed Query",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Extract Data": {
+        "Gemini Embed Query": {
             "main": [
                 [
                     {
-                        "node": "Embed Query",
+                        "node": "Supabase Vector Search",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Embed Query": {
+        "Supabase Vector Search": {
             "main": [
                 [
                     {
-                        "node": "Vector Search",
+                        "node": "Process Results",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Vector Search": {
+        "Process Results": {
             "main": [
                 [
                     {
-                        "node": "Format Context",
+                        "node": "Gemini Generate",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Format Context": {
+        "Gemini Generate": {
             "main": [
                 [
                     {
-                        "node": "Generate Answer",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Generate Answer": {
-            "main": [
-                [
-                    {
-                        "node": "Format Response",
+                        "node": "Respond to Webhook",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         }
-    },
-    "active": true,
-    "settings": {
-        "executionOrder": "v1"
-    },
-    "tags": []
+    }
 }

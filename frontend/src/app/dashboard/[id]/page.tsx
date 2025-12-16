@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation"
 import { EditorHeader } from "@/components/editor/EditorHeader"
 import { SectionList } from "@/components/editor/SectionList"
 import { Loader2 } from "lucide-react"
+import { ProjectDashboardLayout } from "@/components/workspace/ProjectDashboardLayout"
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -44,50 +45,56 @@ export default async function ProjectEditorPage({ params }: PageProps) {
         )
     }
 
-    // Fetch Sections and Tasks
-    // Note: This is a simplified fetch. Real-world would be recursive or use a view.
-    // For MVP, lets assume a flat fetch and client-side tree build, or just fetch top level.
-    // Actually, let's fetch all sections for this project.
-    const { data: sectionsData } = await supabase
+    // Fetch Sections (without nested tasks - no FK relationship exists)
+    const { data: sectionsData, error: sectionsError } = await supabase
         .from('sections')
-        .select(`
-            *,
-            tasks (*)
-        `)
+        .select('*')
         .eq('project_id', id)
         .order('order_index', { ascending: true })
 
-    // Fetch orphan tasks (direct project children)
-    const { data: orphanTasks } = await supabase
+    // Debug logging
+    console.log('[DEBUG] Project ID:', id)
+    console.log('[DEBUG] Sections query error:', sectionsError)
+    console.log('[DEBUG] Sections count:', sectionsData?.length || 0)
+
+    // Fetch tasks separately (if tasks table has section_id column)
+    const { data: tasksData } = await supabase
         .from('tasks')
         .select('*')
         .eq('project_id', id)
-        .is('section_id', null)
 
-    // We need to build the tree if we have parent_id logic, 
-    // but for now let's just pass the flat list if SectionList handles it, 
-    // OR assuming we only have 1 level for MVP.
-    // Let's pass the raw data and let's map it to the Section interface.
-    // Ideally we'd organize this into a tree in a utility function.
+    // Group tasks by section_id
+    const tasksBySection: Record<string, any[]> = {}
+    const orphanTasks: any[] = []
 
-    // For now, simple mapping of top-level sections (where parent_id is null)
-    // If the DB schema is strict text/tree, handling it here might be complex without a helper.
-    // I'll filter for root sections first.
+    tasksData?.forEach((task: any) => {
+        if (task.section_id) {
+            if (!tasksBySection[task.section_id]) {
+                tasksBySection[task.section_id] = []
+            }
+            tasksBySection[task.section_id].push(task)
+        } else {
+            orphanTasks.push(task)
+        }
+    })
 
+    // Filter for root sections (where parent_id is null)
     const rootSections = sectionsData?.filter((s: any) => !s.parent_id) || []
 
-    // Quick hack to attach children (1 level deep)
+    // Build sections tree with tasks attached
     const sectionsWithChildren = rootSections.map((section: any) => ({
         ...section,
+        content: section.title, // Map title to content for SectionList component
         children: sectionsData?.filter((s: any) => s.parent_id === section.id).map((child: any) => ({
             ...child,
-            tasks: child.tasks || []
+            content: child.title,
+            tasks: tasksBySection[child.id] || []
         })),
-        tasks: section.tasks || []
+        tasks: tasksBySection[section.id] || []
     }))
 
     // If we have orphan tasks, add a virtual "General" section at the top
-    if (orphanTasks && orphanTasks.length > 0) {
+    if (orphanTasks.length > 0) {
         sectionsWithChildren.unshift({
             id: 'virtual-root',
             title: 'General Requirements',
@@ -99,11 +106,10 @@ export default async function ProjectEditorPage({ params }: PageProps) {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-white dark:bg-black font-sans">
-            <EditorHeader title={project.title} status={project.status} projectId={project.id} />
-            <main className="flex-1 overflow-y-auto">
-                <SectionList sections={sectionsWithChildren} />
-            </main>
-        </div>
+        <ProjectDashboardLayout project={project}>
+            <div className="max-w-4xl mx-auto pb-20">
+                <SectionList sections={sectionsWithChildren} projectId={project.id} />
+            </div>
+        </ProjectDashboardLayout>
     )
 }

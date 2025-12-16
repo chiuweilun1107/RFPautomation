@@ -114,6 +114,13 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+@theme inline {
+    --animate-source-pulse: source-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    --keyframes-source-pulse: {
+        0%, 100% { opacity: 1; }
+        50% { opacity: .5; }
+    };
+}
 
 @layer base {
   * {

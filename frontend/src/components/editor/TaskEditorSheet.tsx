@@ -4,7 +4,7 @@
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { TiptapEditor } from "@/components/editor/TiptapEditor"
 import {
     Sheet,
     SheetContent,
@@ -78,15 +78,15 @@ export function TaskEditorSheet({ task, open, onOpenChange, onTaskUpdated }: Tas
                 body: JSON.stringify({
                     taskId: task?.id,
                     requirement: task?.requirement_text || task?.title,
-                    projectId: "current-project-id" // Ideally passed in props, but task ID is enough for context lookup if smart
+                    query: "Draft a section for this task based on available documents.",
+                    project_id: null // TODO: Pass actual project ID
                 })
-            })
-
-            const data = await response.json()
-            if (data.draft) {
-                setDraft(prev => (prev ? prev + "\n\n" : "") + data.draft)
-            } else if (data.error) {
-                console.error("Draft generation failed:", data.error)
+            });
+            const data = await response.json();
+            if (data.answer) {
+                // Determine if we append or replace. For now, append.
+                const newContent = draft + `\n\n${data.answer}`;
+                setDraft(newContent);
             }
         } catch (e) {
             console.error("Magic Draft API call failed", e)
@@ -135,11 +135,10 @@ export function TaskEditorSheet({ task, open, onOpenChange, onTaskUpdated }: Tas
                                 Auto-Generate
                             </Button>
                         </div>
-                        <Textarea
-                            className="min-h-[400px] font-mono text-sm leading-relaxed p-4 resize-none focus-visible:ring-purple-500"
-                            placeholder="Type your response here..."
-                            value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
+                        <TiptapEditor
+                            content={draft}
+                            onChange={setDraft}
+                            className="bg-background"
                         />
                     </div>
                 </div>

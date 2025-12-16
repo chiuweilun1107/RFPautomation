@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -90,8 +91,12 @@ export default function ChatInterface() {
                                                 <Bot className="h-3 w-3 text-blue-600" />
                                             </div>
                                         )}
-                                        <div className={`rounded-lg px-3 py-2 max-w-[80%] text-sm ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                                            {m.content}
+                                        <div className={`rounded-lg px-3 py-2 max-w-[80%] text-sm ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800 prose prose-sm prose-gray'}`}>
+                                            {m.role === 'assistant' ? (
+                                                <ReactMarkdown>{m.content}</ReactMarkdown>
+                                            ) : (
+                                                m.content
+                                            )}
                                         </div>
                                     </div>
                                 ))}

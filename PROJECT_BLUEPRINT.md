@@ -4,135 +4,119 @@
 
 ## 1. 系統架構設計 (System Architecture)
 
-本系統採用 **「現代化 JAMstack + 本地 AI 編排」** 的混合架構，確保前端操作流暢性與後端資料隱私安全性。
+採用 **「RAG-First Knowledge Assistant」** 架構，核心在於多源知識庫的整合與高精準度的引用生成。
 
 ### 1.1 核心元件 (Core Components)
-*   **Frontend (操作層)**: 
-    *   **Framework**: Next.js 16 (App Router)
-    *   **Styling**: Tailwind CSS + Shadcn/ui (提供高品質協作 UI)
-    *   **State**: React Query (Server State) + Zustand (Client State)
-*   **Backend (資料層)**:
-    *   **Platform**: Supabase
-    *   **Auth**: Supabase Auth (Email/Password, SSO)
-    *   **Database**: PostgreSQL
-    *   **Vector Store**: pgvector extension (存儲知識庫 Embedding)
-    *   **Realtime**: Supabase Realtime (用於多人協作鎖定狀態同步)
-*   **AI Brain (邏輯層)**:
-    *   **Engine**: n8n (Self-hosted via Docker)
-    *   **LLM Providers**: OpenAI (GPT-4o), Anthropic (Claude 3.5 Sonnet) - 透過 n8n 統一呼叫
-    *   **Document Processing**: Python libs (in n8n custom nodes) 或是 AWS Textract (若本地 OCR 不足)
+*   **Frontend (Next.js 16)**:
+    *   **Editor**: Tiptap (Headless rich text editor)，需客製化 `CitationNode` 來顯示引用來源。
+    *   **State Management**: Zustand (Client) + React Query (Server)。
+    *   **UI Library**: Shadcn/ui (Tailwind)。
+*   **Backend (NestJS / Node.js)**:
+    *   **API Layer**: 處理複雜的業務邏輯 (如構面關聯、權限控制)。
+    *   **Orchestration**: n8n (負責長流程：爬蟲、檔案解析、批量生成)。
+*   **Data Layer (Supabase)**:
+    *   **PostgreSQL**: 關聯式資料 (Projects, Sections, Criteria)。
+    *   **pgvector**: 向量檢索 (Chunks embedding)。
+    *   **Storage**: 原始檔案存儲 (PDF, DOCX)。
 
-### 1.2 部署架構 (Deployment)
-*   **Frontend**: Vercel (Production/Preview)
-*   **Backend**: Supabase Cloud (或 Self-hosted for strict privacy)
-*   **n8n**: Docker Container (部署於內網 Server 或 AWS EC2，需確保與 Supabase 連線暢通)
+### 1.2 部署架構
+*   **App**: Vercel
+*   **DB**: Supabase (Cloud/Self-hosted)
+*   **Workers**: n8n (Docker)
 
 ---
 
 ## 2. 資料庫設計 (Database Schema)
 
-### 2.1 核心表結構 (Core Tables)
+### 2.1 知識庫與來源 (Knowledge & Sources)
 
-#### `projects` (標案專案)
+#### `sources` (知識來源)
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | id | uuid | PK |
-| title | text | 標案名稱 |
-| owner_id | uuid | FK -> auth.users |
-| original_file_url | text | 原始上傳檔案路徑 (Storage) |
-| status | text | 'draft', 'processing', 'active', 'completed' |
-| created_at | timestamp | |
+| project_id | uuid | FK (Optional, if null means 'Global/Internal KB') |
+| type | text | 'markdown', 'pdf', 'docx', 'web_crawl' |
+| title | text | 檔案名稱或網頁標題 |
+| origin_url | text | 原始 URL (for web) or Storage Path (for file) |
+| status | text | 'processing', 'ready', 'error' |
 
-#### `sections` (章節 - 樹狀結構)
+#### `chunks` (切塊內容)
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| id | uuid | PK |
+| source_id | uuid | FK -> sources.id |
+| content | text | 切分後的文字片段 |
+| embedding | vector(1536) | OpenAI/Cohere embedding |
+| metadata | jsonb | `{ page: 1, section: "2.1" }` |
+
+#### `project_sources` (專案-來源關聯)
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| project_id | uuid | FK -> projects.id |
+| source_id | uuid | FK -> sources.id |
+| created_at | timestamp | 加入時間 |
+
+### 2.2 標案與評分 (Tender & Criteria)
+
+#### `criteria` (評分構面)
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | id | uuid | PK |
 | project_id | uuid | FK -> projects.id |
-| parent_id | uuid | FK -> sections.id (Self-reference for hierarchy) |
-| type | text | 'chapter', 'table_row', 'requirement' |
-| content | text | 原始章節標題或內文 |
-| order_index | int | 排序用 |
+| group_name | text | e.g. "技術能力", "價格" |
+| title | text | e.g. "系統安全性" |
+| weight | float | 配分權重 |
+| description | text | 詳細說明 |
 
-#### `tasks` (填寫任務 - 最小單元)
+#### `sections` (章節結構)
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | id | uuid | PK |
-| section_id | uuid | FK -> sections.id |
-| requirement_text | text | 需回答的問題/需求描述 |
-| response_draft | text | AI 生成的初稿 |
-| response_final | text | 人工確認的完稿 |
-| assigned_to | uuid | FK -> auth.users |
-| status | text | 'pending', 'drafted', 'reviewing', 'approved', 'locked' |
-| lock_token | text | 用於即時協作鎖定 (存 session_id) |
-| ai_confidence | float | AI 信心分數 (0.0-1.0) |
-| generated_mode | text | 'rag', 'creative' (標記來源) |
-
-#### `knowledge_docs` (知識庫文件)
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| id | uuid | PK |
-| content | text | 切塊後的純文字 |
-| source_filename | text | 來源檔名 |
-| tags | text[] | 標籤 (e.g., '資安', '實績') |
-| embedding | vector(1536) | pgvector 向量資料 |
-| is_archived_answer | boolean | 是否來自過往標案的正式回答 (高權重) |
+| project_id | uuid | FK -> projects.id |
+| title | text | 章節標題 |
+| content_draft | text | AI 生成的草稿 (HTML) |
+| criteria_ids | uuid[] | 關聯的 Criteria IDs (Array) |
 
 ---
 
-## 3. n8n 自動化流程設計 (n8n Workflow Design)
+## 3. n8n 自動化流程 (Workflows)
 
-### WF-01: Document Parsing Strategy (核心亮點)
-*   **Trigger**: Webhook (from App when file uploaded)
-*   **Logic**:
-    1.  **Format Check**: 判斷 `.docx`, `.pdf`, `.xlsx`.
-    2.  **Route - DOCX**:
-        *   使用 `unzip` 解開 xml 結構。
-        *   **Table Extraction**: 定位所有 `w:tbl`，將第一欄視為「項目」，第二/三欄視為「需求」。
-        *   **Heading Hierarchy**: 建立章節樹 (Section Tree)。
-    3.  **Route - Excel (Security Queue)**:
-        *   尋找含有 "Yes/No" 或 "Desc" 的 Column Index。
-        *   Mapping 為 Q&A Pair。
-    4.  **Route - PDF**:
-        *   OCR -> Text -> LLM JSON Extraction (Expensive but necessary).
-*   **Output**: 呼叫 Supabase API 批量寫入 `sections` 與 `tasks`。
+### WF-01: Ingestion Pipeline (檔案入庫)
+*   **Trigger**: File Uploaded to Storage bucket `raw-files`.
+*   **Steps**:
+    1.  **Identify Type**: PDF (Textract/OCR) vs DOCX (mammoth/unzip).
+    2.  **Text Extraction**: 轉為純文字。
+    3.  **Chunking**: Recursive Character Splitter (size: 1000, overlap: 200).
+    4.  **Embedding**: OpenAI `text-embedding-3-small`.
+    5.  **Upsert**: 寫入 `sources` 與 `chunks` 表。
 
-### WF-02: Hybrid Generation (混合生成)
-*   **Trigger**: Webhook (User clicks "Generate" or "Auto-fill")
-*   **Logic**:
-    1.  **Search**: 用 Task 題目去做 Embedding Search。
-    2.  **Decision**:
-        *   If `similarity > 0.8`: **RAG Path** (直接引用 + 微調)。
-        *   If `similarity < 0.8`: **Creative Path** (Input: 產品白皮書 context + Prompt "Create 3 options").
-    3.  **Update**: 寫回 `tasks.response_draft`。
+### WF-02: Tender Parsing (標案解析)
+*   **Trigger**: User clicks "Parse Tender".
+*   **Steps**:
+    1.  **Load Source**: 讀取代解析的 Tender Source。
+    2.  **LLM Criteria Extraction**: 
+        *   Prompt: "Extract grading criteria table into JSON: { group, title, weight, desc }".
+    3.  **Save**: 批量寫入 `criteria` 表。
+    4.  **LLM Outline Suggestion**:
+        *   Prompt: "Based on these criteria, suggest a table of contents".
+    5.  **Save**: 寫入 `sections` 表 (Initial structure).
 
-### WF-03: Knowledge Feedback Loop (自適應循環)
-*   **Trigger**: Project marked as `Completed`.
-*   **Logic**:
-    1.  Select all `tasks` where `status = approved`.
-    2.  **PII Scrubbing**: 透過 LLM 去除人名、電話、金額。
-    3.  **Upsert**: 存入 `knowledge_docs` 並標記 `is_archived_answer = true`。
+### WF-03: Draft Generation (RAG 草稿)
+*   **Trigger**: API call `POST /generate-draft`.
+*   **Input**: `section_id`, `criteria_ids`.
+*   **Steps**:
+    1.  **Retrieve Context**: 
+        *   用 Criteria Title + Desc 去搜尋 `chunks` (scoped to current `project_sources`).
+    2.  **Generate**: 
+        *   System Prompt: "You are a proposal writer. Use ONLY the provided chunks. Cite sources as [SourceID]."
+    3.  **Post-process**: 解析引用標記，轉換為 Frontend 格式。
+    4.  **Update**: 更新 `sections.content_draft`。
 
 ---
 
-## 4. 目錄結構 (Directory Structure)
+## 4. API 介面設計 (API Stubs)
 
-```
-/
-├── backend/                # Supabase Edge Functions & Migrations
-│   ├── supabase/
-│   │   ├── functions/      # Deno-based Edge Functions
-│   │   └── migrations/     # SQL Schema (pgvector setup)
-│   └── n8n/                # n8n Workflow JSON exports (Backup)
-├── frontend/               # Next.js App
-│   ├── app/                # App Router
-│   ├── components/         # Shadcn UI Components
-│   ├── lib/
-│   │   ├── supabase/       # Supabase Client
-│   │   └── api/            # n8n Webhook Triggers
-│   └── types/              # TypeScript Interfaces
-├── specs/                  # JSON Schemas
-├── docs/                   # Documentation
-├── PROJECT_REQUIREMENTS.md
-├── PROJECT_BLUEPRINT.md    # This file
-└── project.config.yaml     # Machine readable config
-```
+*   `POST /api/projects/:id/sources` - 加入來源 (Upload/Crawl)
+*   `GET /api/projects/:id/criteria` - 取得評分構面
+*   `POST /api/projects/:id/generate/:sectionId` - 觸發生成
+*   `POST /api/chat/inline-edit` - 編輯器內 AI 指令

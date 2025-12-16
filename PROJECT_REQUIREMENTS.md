@@ -1,117 +1,145 @@
-# 專案需求規格書：Web-based RFP 自動化標案系統 (RFP Automation System)
+# AI 標案助手系統設計說明書 (System Design Document)
+（RFP / 需求服務建議書自動化＋專案知識庫）
 
 ---
 
-## 1. 專案總覽 (Project Overview)
+## 1. 背景與目標
 
-*   **專案名稱 (Project Name):** Web-based RFP Automation System (智慧標案自動化填寫系統)
-*   **專案背景 (Background):**
-    *   投標工作（政府標案、企業 RFP）通常涉及大量繁瑣的文件處理與重複性回答。
-    *   現有知識散落在各處（舊文件、PM 腦中），導致每次填寫標單都要「重造輪子」。
-    *   台灣政府標案格式複雜（DOCX 表格、公文架構），通用型 AI 工具難以精準拆解。
-*   **核心目標 (Goals / Objectives):**
-    *   **目標一：全格式支援 (Multi-Format Support)** - 支援 DOCX/PDF/Excel (XLSX) 標案文件，自動拆解為「原子化」的待辦任務清單。
-    *   **目標二：智慧生成 (Smart Generation)** - 運用 RAG (檢索增強生成) 技術，自動從過往實績中填寫擬答；若無資料則啟動「創作模式」。
-    *   **目標三：自適應知識庫 (Adaptive Knowledge Loop)** - 經由人類審修後的最終答案，必須自動回饋至知識庫 (Auto-Learning)，形成數據飛輪。
-    *   **目標四：無損匯出 (Perfect Replication)** - 確保填寫完成後，能匯出與原標案格式完全一致的文件 (DOCX/XLSX)。
-*   **範圍定義 (Scope Definition):**
-    *   **範圍內 (In-Scope):**
-        *   React/Next.js 前端平台 (Dashboard, Editor, Admin)。
-        *   Supabase 後端 (Auth, DB, Realtime, Vector Store)。
-        *   n8n 本地化自動化流程 (ETL, Parsing, Generation, Feedback Loop)。
-        *   **Parser 模組**: 支援 DOCX (公文表格)、PDF (文字層/OCR)、XLSX (資安問卷) 解析。
-        *   **Library 模組**: 知識庫管理介面 (審核、分類、標籤)。
+### 1.1 問題背景（以台灣標案為主）
+*   **常見標案文件類型**：需求服務建議書、實施計畫書、系統建置規劃書、各種企劃書＋評選構面表。
+*   **常見痛點**：
+    *   每一案的章節結構不同，沒有固定模板。
+    *   每份標案都有自己的評選構面與配分，要一一對應。
+    *   團隊有很多「舊標案、產品簡介、系統文件」，但人工重複拼接耗時。
+*   **現有 AI 工具侷限**：直接用 GPT 生文件常胡亂編造（幻覺）、無法追溯來源、難以控管內容。
 
-## 2. 使用者角色 (User Personas)
+### 1.2 本系統目標
+打造一套「可追溯、可控、可擴充」的 AI 標案撰寫系統：
+*   **支援台灣標案結構**：自由章節結構，不套死模板。
+*   **評分構面核心 (Criteria-Centric)**：內部邏輯以「評分項目」為中心產生內容。
+*   **混合知識庫 (Hybrid KB)**：結合 內部＋外部知識，但由使用者決定引用範圍。
+*   **可追溯 (Traceable)**：每一段文字都可以追溯來源（內部檔案 / 外部網站 / 標案原文）。
+*   **NotebookLM 式流程**：選知識來源 → 自動生成 → 使用者審閱 → 可重寫/補充/加外部資料。
 
-*   **角色一：標案經理 (Proposal Manager - PM)**
-    *   描述: 專案負責人，負責上傳標案、分派任務、審核內容與最終匯出。
-    *   權限: 專案建立、成員指派、全域編輯、匯出。
-*   **角色二：業務/技術寫手 (Contributor)**
-    *   描述: 負責填寫特定章節的專業人員（如 Sales 填寫資格證明，Engineer 填寫技術規格）。
-    *   權限: 被指派區塊的編輯與 AI 協作功能。
-*   **角色三：系統管理員 (Admin)**
-    *   描述: 負責維護知識庫、監控 n8n 流程與系統設定。
+---
 
-## 3. 資訊架構與頁面規劃 (Information Architecture)
+## 2. 核心設計理念
 
-*   **網站地圖 (Sitemap):**
-    *   **登入/註冊頁 (Login/Register)**
-    *   **儀表板 (Dashboard)**
-        *   進行中標案列表
-        *   待辦任務概覽
-    *   **標案工作區 (Project Workspace)**
-        *   **任務清單視圖 (List View)**: 顯示拆解後的章節與進度。
-        *   **編輯器視圖 (Editor View)**: 雙欄式 (左側原文/右側編輯 + AI Assist)。
-        *   **文件預覽 (Preview)**
-    *   **知識庫中心 (Knowledge Hub)**
-        *   過往實績上傳 (Upload)
-        *   資料清洗預覽 (Clean & Chunk)
-    *   **設定 (Settings)**
-        *   成員管理
-        *   API Key 設定 (OpenAI, Anthropic)
+### 2.1 章節不是固定模板，評分構面才是核心
+*   **動態章節**：因為每個標案章節要求不同（如原民文化融入、資安要求），系統不應預設固定目錄。
+*   **構面導向**：內部模型以「criteria（評分項目）」產生內容，外層將 content 組裝成「章節」。
 
-## 4. 功能史詩與使用者故事 (Epics & User Stories)
+### 2.2 三類知識來源 ＋ 專案知識庫（Project KB）
+系統中所有文字來源分為三類：
 
-### Epic 1: 智慧文件處理 (Intelligent Document Processing)
-*   **Feature 1.1: 多格式結構化拆解 (Multi-Format Parsing)**
-    *   **Story:** 身為 PM，我上傳標案文件 (DOCX/PDF/Excel)，系統能自動識別章節結構與題目，並拆解為獨立任務。
-    *   **詳細邏輯 (Detailed Logic):**
-        *   **DOCX**: 識別 Heading 樣式與表格 (Table) 邊界，提取關鍵欄位 ( Requirement)。
-        *   **Excel (Security Questionnaire)**: 自動偵測 "Question" 與 "Answer" 欄位索引，處理下拉選單驗證，並將每一列視為獨立 Record。
-        *   **PDF**: 使用 OCR (如 AWS Tesseract 或本地方案) 轉換為純文字，再進行 LLM 結構化提取，需特別處裡跨頁表格問題。
-    *   **驗收標準:**
-        *   Given 上傳 `security_questionnaire.xlsx`
-        *   When 解析完成
-        *   Then 系統應識別出 200 個獨立問題，並正確對應到 "Response" 欄位。
-*   **Feature 1.2: 原檔與填答回填 (In-Place Export)**
-    *   **Story:** 身為 PM，我希望匯出的檔案格式與原檔完全一致。
-    *   **驗收標準:**
-        *   Given 所有任務已完成
-        *   When 點擊匯出
-        *   Then 下載的文件 (DOCX/XLSX) 格式跑版率應 < 1%，所有答案應填入正確儲存格。
+1.  **標案來源（Tender Source）**
+    *   來源：標案 PDF/Word、需求說明書、評選構面。
+    *   功能：決定要有哪些章節、作為評分對照檢查依據。
 
-### Epic 2: AI 混合生成引擎 (Hybrid Generation Engine)
-*   **Feature 2.1: RAG 知識檢索**
-    *   **Story:** 當我點擊「自動填寫」時，AI 應優先從「過往實績」中搜尋高信心度的答案。
-*   **Feature 2.2: 創作模式 (Creative Mode Fallback)**
-    *   **Story:** 若知識庫無相關資料，AI 應自動切換至創作模式，根據公司技術棧 (Supabase/Next.js) 生成 3 種不同策略的草稿供我選擇。
-    *   **驗收標準:**
-        *   Given 知識庫無"語音客服"資料
-        *   When 請求生成
-        *   Then AI 標示 `⚠️ Creative Mode` 並提供 [保守/創新/低成本] 三個選項。
-*   **Feature 2.3: 自適應知識循環 (Adaptive Knowledge Loop)**
-    *   **Story:** 當標案結束並歸檔後 (Project Archived)，系統應自動將「最終版本回答」清洗並存回知識庫。
-    *   **詳細邏輯:**
-        *   Trigger: 專案狀態變更為 `Completed`。
-        *   Process: 提取所有 `Approved` 狀態的 Task 回答 -> 去除 PII -> 生成 Embedding -> 存入 `knowledge_vectors` 表。
-        *   Effect: 下一次遇到類似題目，這些答案即成為 RAG 的來源 (Flywheel Effect)。
+2.  **內部知識庫（Internal KB）**
+    *   來源：產品文件、技術文件、過去標案、SOP。
+    *   功能：寫出「本公司方案與能力」的主體內容。
 
-### Epic 3: 互動式編輯與協作 (Interactive Editing)
-*   **Feature 3.1: AI 迭代修飾 (AI Assist)**
-    *   **Story:** 我可以反白一段文字，要求 AI「更正式一點」或「縮短內容」，且能無限次迭代。
-*   **Feature 3.2: 區塊級鎖定 (Block-level Locking)**
-    *   **Story:** 當我正在編輯「2.1 需求」時，其他成員看到該區塊呈現「鎖定狀態」，無法同時編輯，避免衝突。
+3.  **外部知識（External KB）**
+    *   來源：政府政策、統計報告、白皮書。
+    *   功能：撐論述、提背景。需經使用者勾選才進入專案。
 
-## 5. 非功能性需求 (Non-Functional Requirements)
+### 2.3 專案知識庫（Project KB）
+每個標案專案有自己的「可用知識池」，由以下組成：
+*   使用者勾選的 **Internal sources subset**。
+*   使用者同意匯入的 **External sources**。
+*   **Tender chunks**。
+*   **規則**：預設只能使用 Project KB 內容，不得自行聯網瞎掰。
 
-*   **部署架構:**
-    *   **AI Orchestration:** 必須使用 **n8n 自託管版本 (Self-hosted)**，確保標案機密不外流至第三方 SaaS 平台。
-    *   **Vector DB:** 使用 Supabase `pgvector`，與主資料庫同源。
-*   **資安隱私:**
-    *   **ETL 清洗:** 上傳至知識庫的文件，必須經過 PII (個資) 去識別化處理流程。
-*   **相容性:**
-    *   必須完整支援 Microsoft Word `.docx` 格式 (Office 2013+)。
+### 2.4 NotebookLM 式互動流程
+*   使用者決定 Knowledge Sources。
+*   LLM 僅根據這些資料生成。
+*   若內容不足 → 使用者啟動「外部搜尋」→ 勾選匯入 → 成為 Project KB 一部分 → 重寫。
 
-## 6. 資料模型 (Preliminary Data Model)
+---
 
-*   **Projects (標案專案)**: `id`, `title`, `original_file_url`, `status`
-*   **Sections (章節)**: `id`, `project_id`, `parent_id`, `title`, `content` (原文)
-*   **Tasks (填寫任務)**: `id`, `section_id`, `requirement_text`, `response_content`, `assigned_to`, `status`
-*   **KnowledgeDocs (知識文件)**: `id`, `title`, `vector_id` (關聯至 embeddings)
-*   **Embeddings (向量)**: 存於 `pgvector` 擴充表。
+## 3. 整體系統架構概觀
 
-## 7. 系統流程參考 (System Workflow)
-*   **Ingest**: User Upload -> n8n Parser -> Supabase DB (Tasks)
-*   **Generate**: User Trigger -> n8n (RAG/LLM) -> Supabase DB (Drafts)
-*   **Export**: User Export -> n8n (re-assembler) -> DOCX Download
+### 3.1 高階架構
+*   **Frontend (Web App)**: React + Tailwind + Tiptap Editor (Rich Text).
+*   **Backend (API)**: Node.js (NestJS/Express).
+*   **Data Layer**: 
+    *   **PostgreSQL**: Project/Section/Criteria 關聯資料。
+    *   **pgvector**: 向量檢索。
+    *   **Supabase Storage**: 檔案存儲。
+*   **AI Layer**: 
+    *   LLM: OpenAI GPT-4o / Gemini.
+    *   Embedding: text-embedding-3-large / Gemini Embedding.
+*   **Orchestration**: n8n (負責爬蟲、解析、批量生成流程)。
+*   **Connector**: Google Drive, Local Upload, Web Crawler.
+
+---
+
+## 4. 功能模組與流程設計
+
+### 4.1 專案與標案管理 (Projects & Tender)
+*   建立專案、上傳標案文件 (PDF)。
+*   **Tender Parsing Job**: 解析 PDF → Chunks → 透過 LLM 分析出「評選構面 (Criteria)」與「需求重點」。
+
+### 4.2 知識來源與 Connector
+*   **通用匯入流程**: 無論來源 (Local/Drive/Web)，統一轉為 Document -> Chunk -> Embedding -> 寫入 DB。
+*   **WebCrawler**: 支援網址爬取、去雜訊、存入 System KB。
+
+### 4.3 專案知識庫管理 (Project KB)
+*   **引用關係**: Project KB 表只記錄關聯 (Project <-> Source)，不複製資料。
+*   使用者可從全域庫中「勾選」加入此專案。
+
+### 4.4 章節大綱生成 (Section Outline)
+*   輸入：Tender 解析後的 Criteria 與需求。
+*   輸出：建議的章節列表 JSON (含 section_type, title, linked_criteria_ids)。
+*   前端：支援拖拉排序、改名、增刪。
+
+### 4.5 章節內容生成 (Draft Generation with RAG)
+*   使用 Project KB 進行 RAG 檢索。
+*   Prompt 限制：僅能依據檢索到的 chunks 撰寫。
+*   回傳：Content + Citations (引用來源 ID)。
+
+### 4.6 外部搜尋與候選匯入
+*   UI 提供「搜尋外部輔助資料」。
+*   Agent 搜尋並列出摘要 (Snippet)。
+*   使用者勾選 -> 匯入 Project KB -> 重新生成草稿。
+
+### 4.7 Inline AI 修正
+*   針對選取文字進行：重寫、擴寫、縮寫、風格調整。
+*   Context 包含該章節上下文與 Project KB。
+
+---
+
+## 5. 資料模型設計 (Schema 簡化版)
+
+### Core Entities
+*   **Projects**: `id`, `name`
+*   **Sources**: `id`, `type` (internal/external/tender), `connector_type`, `origin_detail`
+*   **Chunks**: `id`, `source_id`, `text`, `embedding`, `metadata`
+*   **ProjectKB**: `project_id`, `source_id` (關聯表)
+
+### Logic Entities
+*   **Criteria**: `id`, `project_id`, `group`, `title`, `weight`, `tender_chunks`
+*   **Sections**: `id`, `project_id`, `title`, `criteria_ids`
+*   **Drafts**: `id`, `section_id`, `content`, `citations`
+
+---
+
+## 6. 開發 Roadmap (Phase 1: MVP)
+
+### Phase 1: 基礎 MVP (內部知識 + 標案解析)
+1.  **專案管理**: 建立 Project。
+2.  **Tender 上傳解析**: WF01 (Ingestion) + WF02 (Criteria Parsing)。
+3.  **Section Suggestion**: 依據 Criteria 產生大綱。
+4.  **Internal KB**: 支援 Local 文件上傳與向量化。
+5.  **Project KB**: 建立 Project 與 Source 關聯。
+6.  **Draft Generation**: 基礎 RAG 生成與 Citation 顯示。
+
+### Phase 2: 外部資料擴充
+*   WebCrawler Connector。
+*   External Candidates UI。
+
+### Phase 3: 進階體驗
+*   Google Drive Connector。
+*   Inline AI Rewrite。
+*   NotebookLM 式引用追溯介面。

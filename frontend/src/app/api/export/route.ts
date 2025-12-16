@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
                                 spacing: { before: 400, after: 200 },
                             }),
                             // Draft Content (Split by newlines to create paragraphs)
-                            ...(task.response_draft?.split('\n').map(line =>
+                            ...(task.response_draft?.split('\n').map((line: string) =>
                                 new Paragraph({
                                     children: [new TextRun(line)],
                                     spacing: { after: 100 }
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         // 5. Return Response
         const filename = `${project.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_proposal.docx`;
 
-        return new NextResponse(buffer, {
+        return new NextResponse(new Uint8Array(buffer), {
             status: 200,
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

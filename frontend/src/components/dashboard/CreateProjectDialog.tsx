@@ -37,46 +37,54 @@ export function CreateProjectDialog() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            // 1. Upload File
+            // 1. Upload File (to raw-files)
             const fileExt = file.name.split('.').pop()
             const fileName = `${user.id}/${Date.now()}.${fileExt}`
             const { error: uploadError } = await supabase.storage
-                .from('rfp_docs')
+                .from('raw-files')
                 .upload(fileName, file)
 
             if (uploadError) throw uploadError
 
-            // 2. Create Project Record
+            // 2. Create Project Record (New Schema)
             const { data: project, error: dbError } = await supabase
                 .from('projects')
                 .insert({
                     title,
                     owner_id: user.id,
-                    status: 'processing', // Initial status
-                    original_file_url: fileName
+                    status: 'processing',
                 })
                 .select()
                 .single()
 
             if (dbError) throw dbError
 
-            // 3. Trigger n8n Parsing (Fire and Forget)
-            fetch('/api/n8n/parse', {
+            // 3. Create Source & Trigger n8n (via API)
+            const sourceResponse = await fetch('/api/sources/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    projectId: project.id,
-                    filePath: fileName,
-                    fileType: fileExt
+                    title: file.name,
+                    origin_url: fileName,
+                    type: fileExt === 'pdf' ? 'pdf' : 'docx',
+                    status: 'processing',
+                    project_id: project.id
                 })
-            }).catch(err => console.error("Failed to trigger parsing:", err));
+            })
 
-            toast.success("Project created! Parsing started in background.")
+            if (!sourceResponse.ok) {
+                console.error("Failed to create source record via API")
+                // Non-blocking but good to log
+            }
+
+            toast.success("Project created! Document is being processed.")
 
             setOpen(false)
             setTitle("")
             setFile(null)
             router.refresh()
+            // Optional: Redirect to the new project immediately
+            // router.push(`/dashboard/${project.id}`)
 
         } catch (error) {
             console.error("Error creating project:", error)

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Upload, X, FileText, Loader2 } from "lucide-react"
+import { Upload, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -45,44 +45,37 @@ export function UploadZone() {
 
         for (const file of files) {
             try {
-                // 1. Upload to Storage
+                // 1. Upload to Storage (raw-files)
                 const fileExt = file.name.split('.').pop()
-                // Sanitize filename to strict alphanumeric + underscore
-                const sanitizedName = file.name.replace(/[^a-zA-Z0-9]/g, '_')
                 const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt || 'bin'}`
                 const filePath = `${fileName}`
 
                 console.log(`Attempting upload: ${filePath}, Size: ${file.size}`)
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('documents')
-                    .upload(filePath, file, {
-                        upsert: false
+                const { error: uploadError } = await supabase.storage
+                    .from('raw-files')
+                    .upload(filePath, file)
+
+                if (uploadError) throw new Error(`Storage Error: ${uploadError.message}`)
+
+                // 2. Create Source & Trigger n8n (via API)
+                const response = await fetch('/api/sources/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: file.name,
+                        origin_url: filePath,
+                        type: fileExt === 'pdf' ? 'pdf' : 'docx',
+                        status: 'processing',
+                        project_id: null
                     })
+                })
 
-                if (uploadError) {
-                    console.error('Storage Upload Error Raw:', uploadError)
-                    throw new Error(`Storage Error: ${uploadError.message} (Status: ${(uploadError as any).statusCode})`)
-                }
-
-                console.log('Upload success, inserting into DB...')
-
-                // 2. Insert into DB
-                const { error: dbError } = await supabase
-                    .from('knowledge_docs')
-                    .insert({
-                        filename: file.name,
-                        file_path: filePath,
-                        size_bytes: file.size,
-                        content_type: file.type,
-                        embedding_status: 'pending'
-                    })
-
-                if (dbError) {
-                    console.error('DB Insert Error Raw:', dbError)
-                    // Clean up storage if DB failed
-                    await supabase.storage.from('documents').remove([filePath])
-                    throw new Error(`Database Error: ${dbError.message} (Code: ${dbError.code})`)
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}))
+                    // Clean up storage if DB/API failed
+                    await supabase.storage.from('raw-files').remove([filePath])
+                    throw new Error(errData.error || `API Error: ${response.statusText}`)
                 }
 
                 successCount++
@@ -98,7 +91,6 @@ export function UploadZone() {
             router.refresh()
         }
 
-        // Reset input
         if (fileInputRef.current) {
             fileInputRef.current.value = ''
         }

@@ -1,6 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts"
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import mammoth from "npm:mammoth@1.6.0";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -13,7 +15,7 @@ serve(async (req) => {
     }
 
     try {
-        const { bucket, path } = await req.json()
+        const { bucket, path, apiKey: bodyApiKey } = await req.json()
         console.log(`Processing file: ${bucket}/${path}`);
 
         if (!bucket || !path) {
@@ -38,47 +40,79 @@ serve(async (req) => {
         }
 
         const arrayBuffer = await fileData.arrayBuffer();
-        const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
         const contentType = fileData.type;
-
         console.log(`File downloaded. Type: ${contentType}, Size: ${arrayBuffer.byteLength}`);
 
-        // 2. Call Gemini API for Multimodal Parsing
-        const API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
-        if (!API_KEY) throw new Error('Missing GOOGLE_GEMINI_API_KEY');
+        let extractedText = "";
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            {
-                                text: "Please extract all text from this document. **CRITICAL: Convert any tables you see into structured Markdown tables.** Do not summarize. Return the full content in Markdown format."
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: contentType,
-                                    data: base64Data
-                                }
-                            }
-                        ]
-                    }]
-                })
+        // 2. Handle DOCX locally using mammoth (Gemini doesn't support DOCX inline)
+        if (contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || path.endsWith('.docx')) {
+            console.log("Detected DOCX, processing locally with mammoth...");
+            try {
+                // Convert ArrayBuffer to Buffer for mammoth compatibility in Deno
+                const uint8Array = new Uint8Array(arrayBuffer);
+
+                // Debug: Check the first few bytes to verify it's a ZIP (DOCX is a ZIP file)
+                // ZIP files start with PK (0x50, 0x4B)
+                const header = Array.from(uint8Array.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                console.log(`File header bytes: ${header}`);
+
+                if (uint8Array[0] !== 0x50 || uint8Array[1] !== 0x4B) {
+                    console.error("File does not start with ZIP signature (PK). This may not be a valid DOCX file.");
+                    console.log("First 100 bytes as string:", new TextDecoder().decode(uint8Array.slice(0, 100)));
+                    throw new Error("Invalid DOCX file: missing ZIP signature. File may be corrupted or not a real DOCX.");
+                }
+
+                const result = await mammoth.extractRawText({ buffer: uint8Array });
+                extractedText = result.value;
+                console.log("Mammoth extraction complete. Length:", extractedText.length);
+                if (result.messages.length > 0) {
+                    console.log("Mammoth messages:", result.messages);
+                }
+            } catch (err) {
+                console.error("Mammoth conversion failed:", err);
+                throw new Error(`Failed to parse DOCX: ${err.message}`);
             }
-        );
+        } else {
+            // 3. Use Gemini for PDF or Images
+            console.log("Using Gemini for extraction...");
+            const base64Data = encode(new Uint8Array(arrayBuffer));
 
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
+            const API_KEY = bodyApiKey || Deno.env.get('GOOGLE_GEMINI_API_KEY');
+            if (!API_KEY) throw new Error('Missing GOOGLE_GEMINI_API_KEY');
+
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${API_KEY}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                {
+                                    text: "Please extract all text from this document. **CRITICAL: Convert any tables you see into structured Markdown tables.** Do not summarize. Return the full content in Markdown format."
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type: contentType,
+                                        data: base64Data
+                                    }
+                                }
+                            ]
+                        }]
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Gemini API Error: ${response.status} - ${errText}`);
+            }
+
+            const result = await response.json();
+            extractedText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            console.log("Gemini extraction complete. Length:", extractedText.length);
         }
-
-        const result = await response.json();
-        const extractedText = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-        console.log("Gemini extraction complete. Length:", extractedText.length);
 
         return new Response(
             JSON.stringify({ text: extractedText }),

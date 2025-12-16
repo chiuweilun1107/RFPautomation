@@ -23,7 +23,10 @@
     "n8n": {
       "command": "npx",
       "args": ["-y", "n8n-mcp"],
-      "env": {}
+      "env": {
+        "N8N_API_URL": "http://localhost:5678/api/v1",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxOThkZGNhNi1kMTA5LTQyMTgtODFlOC0xNWMzNDA4NDNjYjMiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6ImU0ZGE3MzJlLWVkNGQtNDAxNC04Yzk1LWRiYTYyZTc4ZWE4ZiIsImlhdCI6MTc2NTYzMTM1Nn0.9dZBfp7yh902oNp2oKZidmy-aFr5Uqp3DCajXNmh15k"
+      }
     },
     "docker": {
       "command": "uvx",

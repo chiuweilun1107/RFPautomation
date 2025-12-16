@@ -1,277 +1,316 @@
 {
-    "name": "WF07-Embedding",
-    "nodes": [
-        {
-            "parameters": {
-                "rule": {
-                    "interval": [
-                        {
-                            "field": "minutes",
-                            "minutesInterval": 1
-                        }
-                    ]
-                }
-            },
-            "type": "n8n-nodes-base.scheduleTrigger",
-            "typeVersion": 1.2,
-            "position": [
-                0,
-                0
-            ],
-            "id": "schedule-trigger",
-            "name": "Schedule Trigger"
-        },
-        {
-            "parameters": {
-                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/knowledge_docs?embedding_status=eq.pending&limit=1&select=*",
-                "method": "GET",
-                "authentication": "genericCredentialType",
-                "genericAuthType": "httpHeaderAuth",
-                "options": {}
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                220,
-                0
-            ],
-            "id": "fetch-pending-docs",
-            "name": "Fetch Pending Docs",
-            "credentials": {
-                "httpHeaderAuth": {
-                    "id": "Ku7I5ahwnWdwj5SM",
-                    "name": "Supabase Header Auth"
-                }
+  "name": "WF07-Embedding-Gemini",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
             }
-        },
-        {
-            "parameters": {
-                "url": "https://goyonrowhfphooryfzif.supabase.co/functions/v1/extract-text",
-                "method": "POST",
-                "authentication": "genericCredentialType",
-                "genericAuthType": "httpHeaderAuth",
-                "sendBody": true,
-                "contentType": "json",
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "bucket",
-                            "value": "documents"
-                        },
-                        {
-                            "name": "path",
-                            "value": "={{ $json.file_path }}"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                660,
-                -100
-            ],
-            "id": "extract-text",
-            "name": "Extract Text",
-            "credentials": {
-                "httpHeaderAuth": {
-                    "id": "Ku7I5ahwnWdwj5SM",
-                    "name": "Supabase Header Auth"
-                }
-            }
-        },
-        {
-            "parameters": {
-                "jsCode": "// Simple text chunking logic\nconst text = $json.text || '';\nconst CHUNK_SIZE = 1000;\nconst chunks = [];\n\nfor (let i = 0; i < text.length; i += CHUNK_SIZE) {\n  chunks.push(text.slice(i, i + CHUNK_SIZE));\n}\n\nreturn chunks.map(chunk => ({ json: { chunk, doc_id: $('Fetch Pending Docs').item.json.id } }));"
-            },
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 2,
-            "position": [
-                880,
-                -100
-            ],
-            "id": "chunk-text",
-            "name": "Chunk Text"
-        },
-        {
-            "parameters": {
-                "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=AIzaSyCc7Eu51WYvDDuqfUED0SPwfKYI9fkUpWg",
-                "method": "POST",
-                "authentication": "none",
-                "sendBody": true,
-                "contentType": "json",
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "model",
-                            "value": "models/text-embedding-004"
-                        },
-                        {
-                            "name": "content",
-                            "value": "={{ { parts: [{ text: $json.chunk }] } }}"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                1100,
-                -100
-            ],
-            "id": "generate-embedding",
-            "name": "Generate Embedding"
-        },
-        {
-            "parameters": {
-                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/document_embeddings",
-                "method": "POST",
-                "authentication": "genericCredentialType",
-                "genericAuthType": "httpHeaderAuth",
-                "sendBody": true,
-                "contentType": "json",
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "doc_id",
-                            "value": "={{ $('Chunk Text').item.json.doc_id }}"
-                        },
-                        {
-                            "name": "chunk_text",
-                            "value": "={{ $('Chunk Text').item.json.chunk }}"
-                        },
-                        {
-                            "name": "embedding",
-                            "value": "={{ JSON.stringify($json.embedding.values) }}"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                1320,
-                -100
-            ],
-            "id": "insert-embeddings",
-            "name": "Insert Embeddings",
-            "credentials": {
-                "httpHeaderAuth": {
-                    "id": "Ku7I5ahwnWdwj5SM",
-                    "name": "Supabase Header Auth"
-                }
-            }
-        },
-        {
-            "parameters": {
-                "url": "=https://goyonrowhfphooryfzif.supabase.co/rest/v1/knowledge_docs?id=eq.{{ $('Fetch Pending Docs').item.json.id }}",
-                "method": "PATCH",
-                "authentication": "genericCredentialType",
-                "genericAuthType": "httpHeaderAuth",
-                "sendBody": true,
-                "contentType": "json",
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "embedding_status",
-                            "value": "embedded"
-                        }
-                    ]
-                },
-                "options": {}
-            },
-            "type": "n8n-nodes-base.httpRequest",
-            "typeVersion": 4.1,
-            "position": [
-                1540,
-                -100
-            ],
-            "id": "update-status",
-            "name": "Update Status",
-            "credentials": {
-                "httpHeaderAuth": {
-                    "id": "Ku7I5ahwnWdwj5SM",
-                    "name": "Supabase Header Auth"
-                }
-            }
+          ]
         }
-    ],
-    "connections": {
-        "Schedule Trigger": {
-            "main": [
-                [
-                    {
-                        "node": "Fetch Pending Docs",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Fetch Pending Docs": {
-            "main": [
-                [
-                    {
-                        "node": "Extract Text",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Extract Text": {
-            "main": [
-                [
-                    {
-                        "node": "Chunk Text",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Chunk Text": {
-            "main": [
-                [
-                    {
-                        "node": "Generate Embedding",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Generate Embedding": {
-            "main": [
-                [
-                    {
-                        "node": "Insert Embeddings",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Insert Embeddings": {
-            "main": [
-                [
-                    {
-                        "node": "Update Status",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sources?status=eq.processing&content=not.is.null&select=id,title,content,project_id,source_type&limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
+      },
+      "name": "Fetch Processing Source",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        420,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ku7I5ahwnWdwj5SM",
+          "name": "Supabase Header Auth"
+        }
+      }
     },
-    "settings": {
-        "executionOrder": "v1"
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=AIzaSyAIEWQafKblPqGJNMiRsb2T5L7LbxOUgeU",
+        "method": "POST",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "models/text-embedding-004"
+            },
+            {
+              "name": "content",
+              "value": "={{ { parts: [{ text: $json.chunk || $json.content || '' }] } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Gemini Embed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        800,
+        0
+      ]
     },
-    "staticData": null,
-    "meta": null,
-    "pinData": {},
-    "tags": []
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/chunks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source_id",
+              "value": "={{ $('Fetch Processing Source').item.json.id }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Fetch Processing Source').item.json.content }}"
+            },
+            {
+              "name": "embedding",
+              "value": "={{ $json.embedding.values }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Save Chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ku7I5ahwnWdwj5SM",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sources?id=eq.{{ $('Fetch Processing Source').item.json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "ready"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Mark Source Ready",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ku7I5ahwnWdwj5SM",
+          "name": "Supabase Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "project-id-check",
+              "leftValue": "={{ $('Fetch Processing Source').item.json.project_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has Project ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/project_sources",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal,resolution=ignore-duplicates"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "project_id",
+              "value": "={{ $('Fetch Processing Source').item.json.project_id }}"
+            },
+            {
+              "name": "source_id",
+              "value": "={{ $('Fetch Processing Source').item.json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Link to Project KB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1600,
+        -100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ku7I5ahwnWdwj5SM",
+          "name": "Supabase Header Auth"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Processing Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Processing Source": {
+      "main": [
+        [
+          {
+            "node": "Gemini Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Embed": {
+      "main": [
+        [
+          {
+            "node": "Save Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Chunks": {
+      "main": [
+        [
+          {
+            "node": "Mark Source Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Source Ready": {
+      "main": [
+        [
+          {
+            "node": "Has Project ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Project ID?": {
+      "main": [
+        [
+          {
+            "node": "Link to Project KB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1de78f2b-516f-42fe-a3db-d2af2db1603f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "115a80696d263dc04eee6d2c8cc1c5ab95152f4a4d5cefd1c1e1a778e38472be"
+  },
+  "id": "AxIETKBv40B9ZiL5",
+  "tags": []
 }

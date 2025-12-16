@@ -7,8 +7,9 @@ export default async function KnowledgePage() {
     const supabase = await createClient()
 
     const { data: docs } = await supabase
-        .from('knowledge_docs')
+        .from('sources')
         .select('*')
+        .is('project_id', null) // Filter for global knowledge only (no specific project)
         .order('created_at', { ascending: false })
 
     return (

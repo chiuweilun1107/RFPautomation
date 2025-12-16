@@ -1,0 +1,48 @@
+# 環境變數 (敏感資料)
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+
+# API Keys / Secrets
+*.pem
+*.key
+secrets/
+
+# N8N Workflows (含有 Hardcoded Keys，絕對不可上傳)
+backend/n8n/*.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# n8n 備份
+*.bak
+
+# 日誌
+*.log
+logs/
+
+# 暫存文件
+tmp/
+temp/
+*.tmp

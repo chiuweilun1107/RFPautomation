@@ -1,6 +1,7 @@
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
@@ -46,11 +47,10 @@ async function AuthButtons() {
         Dashboard
       </Link>
     ) : (
-      <Link
-        href="/login"
-        className="text-sm font-medium transition-colors hover:text-black dark:hover:text-white text-gray-500"
-      >
-        Log in
+      <Link href="/login">
+        <Button variant="default" size="lg" className="!text-base h-12 px-6">
+          登入
+        </Button>
       </Link>
     )
   )
