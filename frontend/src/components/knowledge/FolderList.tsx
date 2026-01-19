@@ -350,6 +350,7 @@ export function FolderList({ folders, onFolderSelect, selectedFolderId, onFolder
                                 onFolderUpdate()
                             }
                         }}
+                        onCloseDialog={() => setIsUploadDialogOpen(false)}
                     />
                 </DialogContent>
             </Dialog>

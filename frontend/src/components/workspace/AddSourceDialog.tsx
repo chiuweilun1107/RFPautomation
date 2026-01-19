@@ -208,8 +208,10 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
     };
 
     const handleOpenChange = (newOpen: boolean) => {
+        console.log('[AddSourceDialog] handleOpenChange called, newOpen:', newOpen);
         if (!newOpen) resetToMain();
         onOpenChange(newOpen);
+        console.log('[AddSourceDialog] onOpenChange called with:', newOpen);
     };
 
     return (
@@ -388,11 +390,22 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onClick={() => openPicker()}
+                                    onClick={() => {
+                                        console.log('[AddSourceDialog] Google Drive clicked, closing dialog...');
+                                        // Close dialog immediately (animation is now only 75ms)
+                                        handleOpenChange(false);
+                                        console.log('[AddSourceDialog] Dialog close triggered, opening picker...');
+                                        // Open picker immediately
+                                        openPicker();
+                                    }}
                                     disabled={isLoading || isConnecting || isImporting}
                                     className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
-                                    <HardDrive className="w-3 h-3 mr-2" />
+                                    {(isConnecting || isImporting) ? (
+                                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                    ) : (
+                                        <HardDrive className="w-3 h-3 mr-2" />
+                                    )}
                                     {isConnecting ? 'Connecting...' : isImporting ? 'Importing...' : 'Google Drive'}
                                 </Button>
                                 <Button

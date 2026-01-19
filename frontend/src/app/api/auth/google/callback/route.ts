@@ -183,10 +183,10 @@ export async function GET(request: NextRequest) {
         success: true
       }, window.location.origin);
 
-      // Close window after a short delay
+      // Close window immediately after postMessage
       setTimeout(() => {
         window.close();
-      }, 1000);
+      }, 100);
     } else {
       // If no opener (opened in new tab instead of popup), redirect
       setTimeout(() => {

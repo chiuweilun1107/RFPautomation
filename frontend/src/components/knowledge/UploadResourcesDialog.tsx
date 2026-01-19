@@ -39,7 +39,7 @@ export function UploadResourcesDialog({ onUploadComplete }: { onUploadComplete?:
                 }
             >
                 <div className="border-[1.5px] border-black dark:border-white p-2">
-                    <UploadZone />
+                    <UploadZone onCloseDialog={() => setOpen(false)} />
                 </div>
             </BaseDialog>
         </>

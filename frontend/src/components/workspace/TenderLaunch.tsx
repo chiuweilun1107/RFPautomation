@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { DownloadCloud, FileSignature, ShieldCheck, ArrowRight, ArrowLeft, FileText, AlertTriangle, Users, AlertOctagon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface TenderLaunchProps {
     projectId: string;
@@ -43,8 +42,7 @@ export function TenderLaunch({ projectId, onNextStage, onPrevStage }: TenderLaun
         fetchData();
     }, [projectId]);
 
-    if (loading) return <LoadingSpinner size="lg" text="Loading tender safeguards..." />;
-
+    // Loading state is handled by page-level loading.tsx
     return (
         <ScrollArea className="h-full w-full rounded-none [&_[data-orientation=vertical]]:hidden">
             <div className="flex w-full min-h-full gap-8 relative font-mono text-black dark:text-white pb-20">

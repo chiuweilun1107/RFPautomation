@@ -1,14 +1,16 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Save, ArrowRight, ArrowLeft, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
+import { Save, Loader2, Plus, Trash2, GripVertical } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AddChapterMethodDialog } from "./dialogs/AddChapterMethodDialog";
+import { TemplateUploadDialog } from "@/components/templates/TemplateUploadDialog";
+import { getErrorMessage } from "@/lib/errorUtils";
 
 interface TenderPlanningProps {
     projectId: string;
@@ -36,38 +38,42 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
     const [outline, setOutline] = useState<Chapter[]>([]);
     const [originalRequirements, setOriginalRequirements] = useState<any>(null); // Keep full object to avoid overwriting other fields
 
+    // New Dialog States
+    const [isMethodDialogOpen, setIsMethodDialogOpen] = useState(false);
+    const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+    const [generating, setGenerating] = useState(false);
+
     const supabase = createClient();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('project_assessments')
-                    .select('requirements')
-                    .eq('project_id', projectId)
-                    .single();
+    const fetchData = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('project_assessments')
+                .select('requirements')
+                .eq('project_id', projectId)
+                .single();
 
-                if (data?.requirements) {
-                    setOriginalRequirements(data.requirements);
-                    if (data.requirements.proposal_outline && Array.isArray(data.requirements.proposal_outline) && data.requirements.proposal_outline.length > 0) {
-                        setOutline(data.requirements.proposal_outline);
-                    } else {
-                        // Use default if nothing found in DB
-                        setOutline(DEFAULT_OUTLINE);
-                    }
+            if (data?.requirements) {
+                setOriginalRequirements(data.requirements);
+                if (data.requirements.proposal_outline && Array.isArray(data.requirements.proposal_outline) && data.requirements.proposal_outline.length > 0) {
+                    setOutline(data.requirements.proposal_outline);
                 } else {
                     setOutline(DEFAULT_OUTLINE);
                 }
-            } catch (error) {
-                console.error("Error fetching assessment data:", error);
-                toast.error("Failed to load proposal outline");
-            } finally {
-                setLoading(false);
+            } else {
+                setOutline(DEFAULT_OUTLINE);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching assessment data:", error);
+            toast.error("Failed to load proposal outline");
+        } finally {
+            setLoading(false);
+        }
+    }, [projectId, supabase]);
 
+    useEffect(() => {
         fetchData();
-    }, [projectId]);
+    }, [fetchData]);
 
     const handleSave = async () => {
         setSaving(true);
@@ -135,8 +141,58 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setOutline(newOutline);
     };
 
-    if (loading) return <LoadingSpinner size="lg" text="Loading proposal structure..." />;
+    // --- Advanced Chapter Addition Logic ---
 
+    const handleAddChapterClick = () => {
+        setIsMethodDialogOpen(true);
+    };
+
+    const handleMethodSelect = async (method: 'manual' | 'ai' | 'template') => {
+        setIsMethodDialogOpen(false);
+        if (method === 'manual') {
+            addChapter();
+        } else if (method === 'template') {
+            setIsTemplateDialogOpen(true);
+        } else if (method === 'ai') {
+            await executeAIGeneration();
+        }
+    };
+
+    const executeAIGeneration = async () => {
+        setGenerating(true);
+        try {
+            // Call n8n Webhook: "append" mode to generate based on requirements
+            const res = await fetch('/webhook/generate-structure-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId, action: 'append' })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                if (res.status === 422 && err.error === 'MISSING_DATA') {
+                    // If AI fails due to missing data, suggest template
+                    toast.error("AI Generation needs document data. Please upload a template instead.");
+                    setIsTemplateDialogOpen(true);
+                    return;
+                }
+                throw new Error(err.error || 'Generation failed');
+            }
+
+            const data = await res.json();
+            toast.success(data.message || "Structure generated successfully!");
+
+            // Reload data to reflect changes
+            fetchData();
+
+        } catch (error) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    // Loading state is handled by page-level loading.tsx
     return (
         <ScrollArea className="h-full w-full rounded-none [&_[data-orientation=vertical]]:hidden">
             <div className="flex w-full min-h-full gap-8 relative font-mono text-black dark:text-white pb-20">
@@ -288,20 +344,44 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                                     </div>
                                 ))}
 
-                                {/* Add Chapter Button */}
+                                {/* Add Chapter Button (Updated) */}
                                 <Button
                                     variant="outline"
-                                    onClick={addChapter}
+                                    onClick={handleAddChapterClick}
+                                    disabled={generating}
                                     className="w-full py-6 border-dashed border-2 border-black/20 hover:border-[#FA4028] hover:text-[#FA4028] rounded-none uppercase tracking-widest font-bold"
                                 >
-                                    <Plus className="h-5 w-5 mr-2" />
-                                    Add New Chapter
+                                    {generating ? (
+                                        <>
+                                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                            GENERATING_STRUCTURE...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="h-5 w-5 mr-2" />
+                                            ADD_NEW_CHAPTER
+                                        </>
+                                    )}
                                 </Button>
                             </CardContent>
                         </Card>
                     </div>
                 </div>
             </div>
+
+            {/* Dialogs */}
+            <AddChapterMethodDialog
+                open={isMethodDialogOpen}
+                onOpenChange={setIsMethodDialogOpen}
+                onSelectMethod={handleMethodSelect}
+            />
+
+            <TemplateUploadDialog
+                open={isTemplateDialogOpen}
+                onClose={() => setIsTemplateDialogOpen(false)}
+                projectId={projectId}
+                onSuccess={fetchData}
+            />
         </ScrollArea>
     );
 }

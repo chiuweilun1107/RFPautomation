@@ -1,5 +1,9 @@
+"use client"
+
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export enum ProjectStage {
     Assessment = 0,    // 標案初評
@@ -11,21 +15,30 @@ export enum ProjectStage {
 }
 
 interface ProjectWorkflowStepperProps {
-    currentStage: number;
+    projectId: string;
     className?: string;
-    onStageSelect: (stageId: number) => void;
 }
 
 const STAGES = [
-    { id: 0, label: "Assessment" },
-    { id: 1, label: "Tender_Launch" },
-    { id: 2, label: "Planning" },
-    { id: 3, label: "Writing" },
-    { id: 4, label: "Review" },
-    { id: 5, label: "Handover" },
+    { id: 0, label: "Assessment", path: "assessment" },
+    { id: 1, label: "Tender_Launch", path: "launch" },
+    { id: 2, label: "Planning", path: "planning" },
+    { id: 3, label: "Writing", path: "writing" },
+    { id: 4, label: "Review", path: "presentation" },
+    { id: 5, label: "Handover", path: "handover" },
 ];
 
-export function ProjectWorkflowStepper({ currentStage, className, onStageSelect }: ProjectWorkflowStepperProps) {
+export function ProjectWorkflowStepper({ projectId, className }: ProjectWorkflowStepperProps) {
+    const pathname = usePathname();
+
+    // Determine current stage from pathname
+    let currentStage = 0;
+    if (pathname.includes('/launch')) currentStage = 1;
+    else if (pathname.includes('/planning')) currentStage = 2;
+    else if (pathname.includes('/writing')) currentStage = 3;
+    else if (pathname.includes('/presentation')) currentStage = 4;
+    else if (pathname.includes('/handover')) currentStage = 5;
+
     return (
         <div className={cn("w-full py-4", className)}>
             <div className="flex items-start w-full font-mono">
@@ -35,10 +48,10 @@ export function ProjectWorkflowStepper({ currentStage, className, onStageSelect 
                     const isLast = index === STAGES.length - 1;
 
                     return (
-                        <div
+                        <Link
                             key={stage.id}
+                            href={`/dashboard/${projectId}/${stage.path}`}
                             className="flex-1 relative flex flex-col items-center group cursor-pointer"
-                            onClick={() => onStageSelect(stage.id)}
                         >
                             {/* Connecting Line (To the right) */}
                             {!isLast && (
@@ -83,7 +96,7 @@ export function ProjectWorkflowStepper({ currentStage, className, onStageSelect 
                             >
                                 {stage.label}
                             </span>
-                        </div>
+                        </Link>
                     );
                 })}
             </div>

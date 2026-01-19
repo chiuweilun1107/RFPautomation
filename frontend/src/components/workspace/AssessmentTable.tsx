@@ -188,15 +188,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
         setPosition({ x: 40, y: 150 });
     };
 
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4 font-mono">
-                <Loader2 className="h-8 w-8 animate-spin text-[#FA4028]" />
-                <p className="text-[10px] uppercase tracking-widest font-black">Retrieving_Analysis_Payload...</p>
-            </div>
-        );
-    }
-
+    // Loading state is handled by page-level loading.tsx
     if (error) {
         return (
             <div className="border border-red-600 p-8 flex flex-col items-center justify-center space-y-4 bg-red-50 dark:bg-red-950/20 font-mono">
