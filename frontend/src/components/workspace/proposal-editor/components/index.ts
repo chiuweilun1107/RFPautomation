@@ -1,10 +1,9 @@
-/**
- * Components Export Index
- *
- * Centralized exports for all proposal editor components
- */
+// Re-export all proposal editor components
 
-export { ProposalHeader } from './ProposalHeader';
-export { ProposalTree } from './ProposalTree';
-export { ProposalDialogs } from './ProposalDialogs';
-export { FloatingContentPanels } from './FloatingContentPanels';
+export { ProposalTreeView } from "./ProposalTreeView";
+export { TaskList } from "./TaskList";
+export { TaskItem } from "./TaskItem";
+export { AIGenerationPanel } from "./AIGenerationPanel";
+export { SourceSelector } from "./SourceSelector";
+export { ContentPanel } from "./ContentPanel";
+export { ControlPanel } from "./ControlPanel";
