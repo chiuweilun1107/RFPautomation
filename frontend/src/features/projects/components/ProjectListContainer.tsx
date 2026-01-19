@@ -22,6 +22,7 @@ import { ProjectListView } from './ProjectListView';
 import { ProjectPagination } from './ProjectPagination';
 import { ProjectEmptyState } from './ProjectEmptyState';
 import { ProjectCalendarView } from './ProjectCalendarView';
+import { ProjectListSkeleton } from '@/components/ui/skeletons/ProjectListSkeleton';
 
 export function ProjectListContainer({ externalSearchQuery = "" }: { externalSearchQuery?: string }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
@@ -93,6 +94,11 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
       console.error('Delete error:', error);
     }
   };
+
+  // Loading state
+  if (loading) {
+    return <ProjectListSkeleton />;
+  }
 
   // Empty state
   if (projects.length === 0) {

@@ -5,8 +5,6 @@ import type { Template } from "@/types"
 import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/client"
 import { Search, LayoutGrid, List as ListIcon } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { SwissPagination } from "@/components/ui/SwissPagination"
@@ -14,18 +12,12 @@ import { SwissPagination } from "@/components/ui/SwissPagination"
 // Lazy load heavy components
 const TemplateFolderList = dynamic(
     () => import("@/components/templates/TemplateFolderList").then((mod) => ({ default: mod.TemplateFolderList })),
-    {
-        loading: () => <div className="h-24"><Skeleton className="h-24 rounded-lg" /></div>,
-        ssr: false
-    }
+    { ssr: false }
 )
 
 const TemplateList = dynamic(
     () => import("@/components/templates/TemplateList").then((mod) => ({ default: mod.TemplateList })),
-    {
-        loading: () => <LoadingSpinner text="載入範本列表..." />,
-        ssr: false
-    }
+    { ssr: false }
 )
 
 const CreateTemplateFolderDialog = dynamic(
