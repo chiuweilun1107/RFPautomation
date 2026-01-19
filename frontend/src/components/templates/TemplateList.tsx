@@ -5,7 +5,7 @@ import { getErrorMessage } from '@/lib/errorUtils';
 import type { Template } from "@/types"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { FileText, Download, Trash2, Edit2, Clock, Palette, RotateCcw, Loader2 } from "lucide-react"
+import { FileText, Download, Trash2, Edit2, Clock, Palette, RotateCcw, Loader2, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import {
@@ -29,7 +29,23 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import {
+    Card,
+    CardContent,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card"
 import { TemplatePreviewSheet } from "./TemplatePreviewSheet"
+import { cn } from "@/lib/utils"
 
 
 
@@ -130,11 +146,11 @@ export function TemplateList({ templates, folders, onTemplateUpdate }: TemplateL
         try {
             // 1. Delete from storage
             if (templateToDelete.file_path) {
-              const { error: storageError } = await supabase.storage
-                  .from('raw-files')
-                  .remove([templateToDelete.file_path])
+                const { error: storageError } = await supabase.storage
+                    .from('raw-files')
+                    .remove([templateToDelete.file_path])
 
-              if (storageError) console.error("Storage delete error:", storageError)
+                if (storageError) console.error("Storage delete error:", storageError)
             }
 
             // 2. Delete from database
@@ -162,8 +178,8 @@ export function TemplateList({ templates, folders, onTemplateUpdate }: TemplateL
     const handleDownload = async (template: Template) => {
         try {
             if (!template.file_path) {
-              toast.error('文件路徑不存在')
-              return
+                toast.error('文件路徑不存在')
+                return
             }
 
             const { data, error } = await supabase.storage
@@ -210,180 +226,157 @@ export function TemplateList({ templates, folders, onTemplateUpdate }: TemplateL
 
     return (
         <>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {templates.map((template) => (
-                    <div
+                    <Card
                         key={template.id}
                         onClick={() => handleTemplateClick(template)}
-                        className="group cursor-pointer block h-full transition-all duration-300 hover:-translate-y-1 rounded-[4px] border border-gray-200 dark:border-white/10 hover:border-[#FA4028]/50 bg-white dark:bg-white/5 hover:shadow-xl hover:shadow-[#FA4028]/5"
+                        className="group relative flex flex-col overflow-hidden border-[1.5px] border-black dark:border-white rounded-none bg-background transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] cursor-pointer"
                     >
-                        <div className="relative h-full flex flex-col overflow-hidden">
-                            <div className="flex flex-row items-start justify-between space-y-0 pb-2 p-4">
-                                <div className="flex flex-col gap-2 w-full pr-8">
-                                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                                        <FileText className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <h3 className="font-bold text-base text-[#00063D] dark:text-white line-clamp-1">
-                                            {template.name}
-                                        </h3>
-                                        {template.category && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                                {template.category}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
+                        <div className="h-1.5 w-full bg-black/40" />
 
-                                {/* Action Buttons */}
-                                <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleReparse(template)
-                                        }}
-                                        disabled={reparsingId === template.id}
-                                    >
-                                        {reparsingId === template.id ? (
-                                            <Loader2 className="h-4 w-4 text-orange-600 animate-spin" />
-                                        ) : (
-                                            <RotateCcw className="h-4 w-4 text-orange-600" />
-                                        )}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            router.push(`/dashboard/templates/${template.id}/design`)
-                                        }}
-                                    >
-                                        <Palette className="h-4 w-4 text-purple-600" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleEdit(template)
-                                        }}
-                                    >
-                                        <Edit2 className="h-4 w-4 text-blue-600" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-green-50 dark:hover:bg-green-900/20"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleDownload(template)
-                                        }}
-                                    >
-                                        <Download className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setTemplateToDelete(template)
-                                        }}
-                                        disabled={deletingId === template.id}
-                                    >
-                                        <Trash2 className="h-4 w-4 text-red-600" />
-                                    </Button>
+                        <CardHeader className="p-5 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div className="w-12 h-12 rounded-none bg-black flex items-center justify-center border border-black shadow-[2px_2px_0_0_#FA4028]">
+                                    <FileText className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="flex flex-col gap-1 items-end">
+                                    <Badge className="rounded-none border-black dark:border-white font-mono text-[9px] uppercase font-black px-2 py-0.5 bg-black text-white">
+                                        DOCX_TEMPLATE
+                                    </Badge>
+
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenuItem onClick={() => handleTemplateClick(template)}>PREVIEW</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => router.push(`/dashboard/templates/${template.id}/design`)}>DESIGN</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleEdit(template)}>EDIT_INFO</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDownload(template)}>DOWNLOAD</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleReparse(template)} disabled={reparsingId === template.id}>
+                                                {reparsingId === template.id ? 'REPARSING...' : 'REPARSE_V2'}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator className="bg-black/10" />
+                                            <DropdownMenuItem
+                                                className="text-red-600 focus:bg-red-600 focus:text-white rounded-none cursor-pointer"
+                                                onClick={() => setTemplateToDelete(template)}
+                                            >
+                                                DELETE
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
 
-                            <div className="px-4 pb-4 flex-1 flex flex-col justify-between">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
-                                    {template.description || "無描述"}
-                                </p>
+                            <div className="space-y-1">
+                                <CardTitle className="text-xl font-black leading-[1.1] font-mono tracking-tighter uppercase group-hover:text-[#FA4028] transition-colors line-clamp-1">
+                                    {template.name}
+                                </CardTitle>
+                            </div>
 
-                                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-white/5">
-                                    <Clock className="w-3 h-3" />
-                                    <span>{formatDate(template.created_at)}</span>
+                            <div className="grid grid-cols-1 gap-2 pt-2">
+                                <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-black dark:border-white space-y-1">
+                                    <div className="text-[9px] font-black text-[#FA4028] uppercase tracking-[0.2em]">CATEGORY</div>
+                                    <div className="text-sm font-black font-mono uppercase truncate">
+                                        {template.category || "SYSTEM_DEFAULT"}
+                                    </div>
+                                </div>
+
+                                <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-black/20 dark:border-white/20 space-y-1">
+                                    <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">STRUCTURE_NOTE</div>
+                                    <div className="text-[11px] font-mono font-bold leading-tight uppercase opacity-70 line-clamp-2 h-[2.2em]">
+                                        {template.description || "NO_STRUCTURE_DETECTION_LOG"}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+                        </CardHeader>
+
+                        <CardFooter className="px-5 py-3 flex items-center justify-between border-t border-black/5 dark:border-white/5 mt-auto bg-black/5">
+                            <div className="text-[9px] font-mono uppercase font-bold italic opacity-40">
+                                CRE: {formatDate(template.created_at)}
+                            </div>
+                            <Palette className="h-3.5 w-3.5 opacity-20 hover:opacity-100 hover:text-[#FA4028] transition-all" />
+                        </CardFooter>
+                    </Card>
                 ))}
             </div>
 
+
             {/* Edit Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="font-serif text-xl">編輯範本資訊</DialogTitle>
-                        <DialogDescription>
-                            更新範本的名稱、分類和描述。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-name" className="font-bold">範本名稱</Label>
-                            <Input
-                                id="edit-name"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="font-medium"
-                            />
+                <DialogContent className="sm:max-w-[425px] rounded-none border-4 border-black p-0">
+                    <div className="p-6">
+                        <DialogHeader className="mb-6">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">編輯範本資訊</DialogTitle>
+                            <DialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-1">
+                                UPDATE TEMPLATE NAME, CATEGORY AND DESCRIPTION.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-6 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-name" className="text-sm font-black uppercase tracking-widest">範本名稱</Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-category" className="text-sm font-black uppercase tracking-widest">分類</Label>
+                                <Input
+                                    id="edit-category"
+                                    value={editCategory}
+                                    onChange={(e) => setEditCategory(e.target.value)}
+                                    className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-description" className="text-sm font-black uppercase tracking-widest">描述</Label>
+                                <Textarea
+                                    id="edit-description"
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                    className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
+                                    rows={3}
+                                />
+                            </div>
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-category" className="font-bold">分類</Label>
-                            <Input
-                                id="edit-category"
-                                value={editCategory}
-                                onChange={(e) => setEditCategory(e.target.value)}
-                                className="font-medium"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-description" className="font-bold">描述</Label>
-                            <Textarea
-                                id="edit-description"
-                                value={editDescription}
-                                onChange={(e) => setEditDescription(e.target.value)}
-                                className="font-medium"
-                                rows={3}
-                            />
-                        </div>
+                        <DialogFooter className="mt-8 flex flex-col sm:flex-row gap-3">
+                            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-none border-black border-2 font-black uppercase tracking-widest hover:bg-gray-100">
+                                取消
+                            </Button>
+                            <Button onClick={confirmEdit} className="rounded-none border-black border-2 bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]">
+                                確認更新
+                            </Button>
+                        </DialogFooter>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                            取消
-                        </Button>
-                        <Button onClick={confirmEdit} className="bg-[#FA4028] hover:bg-[#D93620] text-white font-bold">
-                            確認更新
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!templateToDelete} onOpenChange={() => setTemplateToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="font-serif text-xl">確認刪除範本</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            確定要刪除範本「{templateToDelete?.name}」嗎？此操作無法復原。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmDelete}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                            確認刪除
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
+                <AlertDialogContent className="rounded-none border-4 border-black p-0">
+                    <div className="p-6">
+                        <AlertDialogHeader className="mb-6">
+                            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">確認刪除範本</AlertDialogTitle>
+                            <AlertDialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-2">
+                                確定要刪除範本「{templateToDelete?.name}」嗎？此操作無法復原。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="mt-8 flex flex-col sm:flex-row gap-3">
+                            <AlertDialogCancel className="rounded-none border-black border-2 font-black uppercase tracking-widest hover:bg-gray-100">取消</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={confirmDelete}
+                                className="rounded-none border-black border-2 bg-red-600 hover:bg-black text-white font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                            >
+                                確認刪除
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </div>
                 </AlertDialogContent>
             </AlertDialog>
 

@@ -51,15 +51,15 @@
   /* Sharp, High Contrast, No "Softness" */
   --radius: 0rem;
 
-  --background: oklch(1 0 0);
-  /* Pure White */
+  --background: oklch(0.99 0 0);
+  /* #fdfdfd - Architectural Ice */
   --foreground: oklch(0 0 0);
   /* Pure Black */
 
-  --card: oklch(1 0 0);
+  --card: oklch(0.99 0 0);
   --card-foreground: oklch(0 0 0);
 
-  --popover: oklch(1 0 0);
+  --popover: oklch(0.99 0 0);
   --popover-foreground: oklch(0 0 0);
 
   --primary: oklch(0 0 0);
@@ -67,87 +67,83 @@
   --primary-foreground: oklch(1 0 0);
 
   --secondary: oklch(0.96 0 0);
-  /* Very Light Grey for structural separation */
+  /* #f5f5f5 for structural separation */
   --secondary-foreground: oklch(0 0 0);
 
   --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.4 0 0);
-  /* Mid Grey for meta text */
 
-  --accent: oklch(0.94 0 0);
-  --accent-foreground: oklch(0 0 0);
-
-  --destructive: oklch(0.4 0.15 30);
-  /* Muted Red */
-  --destructive-foreground: oklch(1 0 0);
-
-  --border: oklch(0.9 0 0);
-  /* Light Grey Border (high contrast enough to see) */
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0 0 0);
-
-  /* Chart colors - Bauhaus / Swiss Palette */
-  --chart-1: oklch(0.4 0.15 30);
-  /* Red */
-  --chart-2: oklch(0.45 0.15 250);
-  /* Blue */
-  --chart-3: oklch(0.85 0.14 85);
-  /* Yellow */
-  --chart-4: oklch(0 0 0);
-  /* Black */
-  --chart-5: oklch(0.6 0 0);
-  /* Grey */
-
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0 0 0);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0 0 0);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0 0 0);
-}
-
-.dark {
-  /* Strict Dark Mode */
-  --background: oklch(0.05 0 0);
-  /* Almost Black */
-  --foreground: oklch(1 0 0);
-  /* Pure White */
-
-  --card: oklch(0.05 0 0);
-  --card-foreground: oklch(1 0 0);
-
-  --popover: oklch(0.05 0 0);
-  --popover-foreground: oklch(1 0 0);
-
-  --primary: oklch(1 0 0);
-  --primary-foreground: oklch(0 0 0);
-
-  --secondary: oklch(0.12 0 0);
-  --secondary-foreground: oklch(1 0 0);
-
-  --muted: oklch(0.12 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-
-  --accent: oklch(0.12 0 0);
+  --accent: oklch(0.58 0.23 27.5);
+  /* #FA4028 - Swiss Red */
   --accent-foreground: oklch(1 0 0);
 
   --destructive: oklch(0.4 0.15 30);
   --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.2 0 0);
-  /* Dark Grey */
-  --input: oklch(0.2 0 0);
+  --border: oklch(0 0 0);
+  /* Force Black borders by default for Brutalist feel */
+  --input: oklch(0 0 0);
+  --ring: oklch(0 0 0);
+
+  /* Chart colors - Bauhaus / Swiss Palette */
+  --chart-1: oklch(0.58 0.23 27.5);
+  /* Swiss Red */
+  --chart-2: oklch(0.45 0.15 250);
+  --chart-3: oklch(0.85 0.14 85);
+  --chart-4: oklch(0 0 0);
+  --chart-5: oklch(0.6 0 0);
+
+  --sidebar: oklch(0.99 0 0);
+  --sidebar-foreground: oklch(0 0 0);
+  --sidebar-primary: oklch(0 0 0);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0 0 0);
+  --sidebar-ring: oklch(0 0 0);
+}
+
+.dark {
+  /* Strict Dark Mode - ABYSS CHROME */
+  --background: oklch(0.14 0.04 257);
+  /* #020617 - Slate 950 */
+  --foreground: oklch(1 0 0);
+  /* Pure White */
+
+  --card: oklch(0.14 0.04 257);
+  --card-foreground: oklch(1 0 0);
+
+  --popover: oklch(0.14 0.04 257);
+  --popover-foreground: oklch(1 0 0);
+
+  --primary: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
+
+  --secondary: oklch(0.2 0.04 257);
+  --secondary-foreground: oklch(1 0 0);
+
+  --muted: oklch(0.2 0.04 257);
+  --muted-foreground: oklch(0.65 0 0);
+
+  --accent: oklch(0.58 0.23 27.5);
+  /* Swiss Red */
+  --accent-foreground: oklch(1 0 0);
+
+  --destructive: oklch(0.4 0.15 30);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(1 0 0);
+  /* White borders for dark mode brutalism */
+  --input: oklch(1 0 0);
   --ring: oklch(1 0 0);
 
-  --sidebar: oklch(0.05 0 0);
+  --sidebar: oklch(0.14 0.04 257);
   --sidebar-foreground: oklch(1 0 0);
   --sidebar-primary: oklch(1 0 0);
   --sidebar-primary-foreground: oklch(0 0 0);
-  --sidebar-accent: oklch(0.12 0 0);
+  --sidebar-accent: oklch(0.2 0.04 257);
   --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.2 0 0);
+  --sidebar-border: oklch(1 0 0);
   --sidebar-ring: oklch(1 0 0);
 }
 
@@ -176,5 +172,26 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0px !important;
+    height: 0px !important;
+    background: transparent !important;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    /* IE and Edge */
+    scrollbar-width: none !important;
+    /* Firefox */
+
+    /* Ensure no visual scrollbar specifically for webkit */
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
   }
 }

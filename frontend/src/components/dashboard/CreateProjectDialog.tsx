@@ -99,13 +99,15 @@ export function CreateProjectDialog() {
                 if (uploadError) throw uploadError
 
                 // Create Source & Trigger n8n
+                const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'unknown';
+
                 const sourceResponse = await fetch('/api/sources/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: file.name, // Keep original Chinese name for display
                         origin_url: storagePath, // Use safe path for retrieval
-                        type: fileExt ? fileExt.toLowerCase() : 'unknown',
+                        type: fileExtension, // Use mapped safe type
                         status: 'processing',
                         project_id: project.id,
                         // NEW: Auto-assign as Tender Data
@@ -171,32 +173,7 @@ export function CreateProjectDialog() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="agency" className="font-bold text-xs uppercase">
-                                    Agency
-                                </Label>
-                                <Input
-                                    id="agency"
-                                    value={agency}
-                                    onChange={(e) => setAgency(e.target.value)}
-                                    placeholder="Agency Name"
-                                    className="font-mono rounded-none border-black dark:border-white focus-visible:ring-0 focus:bg-muted"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="deadline" className="font-bold text-xs uppercase">
-                                    Deadline
-                                </Label>
-                                <Input
-                                    id="deadline"
-                                    type="date"
-                                    value={deadline}
-                                    onChange={(e) => setDeadline(e.target.value)}
-                                    className="font-mono rounded-none border-black dark:border-white focus-visible:ring-0 focus:bg-muted"
-                                />
-                            </div>
-                        </div>
+
 
                         <div className="grid gap-2">
                             <Label htmlFor="file" className="font-bold text-xs uppercase">

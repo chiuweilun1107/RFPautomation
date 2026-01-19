@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client"
 import { Search } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 // Lazy load heavy components
 const TemplateFolderList = dynamic(
@@ -120,64 +122,54 @@ export default function TemplatesPage() {
 
     if (loading) {
         return (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-pulse">
                 {/* Header Skeleton */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b border-gray-200/50 dark:border-white/5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-black dark:border-white">
                     <div className="space-y-2">
-                        <Skeleton className="h-9 w-32" />
-                        <Skeleton className="h-5 w-96" />
+                        <div className="h-6 w-32 bg-black/10" />
+                        <div className="h-4 w-96 bg-black/5" />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Skeleton className="h-10 w-64 rounded-[4px]" />
-                        <Skeleton className="h-10 w-28 rounded-[4px]" />
-                    </div>
+                    <div className="h-10 w-64 bg-black/5" />
                 </div>
 
-                {/* Folders Skeleton */}
-                <div className="space-y-4">
-                    <Skeleton className="h-6 w-20" />
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                        {[...Array(6)].map((_, i) => (
-                            <Skeleton key={i} className="h-24 rounded-lg" />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Templates Skeleton */}
-                <div className="space-y-4">
-                    <Skeleton className="h-6 w-24" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[...Array(6)].map((_, i) => (
-                            <Skeleton key={i} className="h-32 rounded-lg" />
-                        ))}
-                    </div>
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-[300px] border border-black dark:border-white bg-black/5" />
+                    ))}
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="space-y-8">
+        <div className="container mx-auto space-y-8 pb-12">
+            {/* Breadcrumbs - Swiss Style */}
+            <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-2">
+                <Link href="/" className="hover:text-[#FA4028] transition-colors">HOME</Link>
+                <span>/</span>
+                <Link href="/dashboard" className="hover:text-[#FA4028] transition-colors">DASHBOARD</Link>
+                <span>/</span>
+                <span className="text-[#FA4028]">TEMPLATES_POOL</span>
+            </nav>
+
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b border-gray-200/50 dark:border-white/5">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-serif font-bold text-[#00063D] dark:text-white tracking-tight">
-                        範本庫
-                    </h1>
-                    <p className="text-base text-gray-500 dark:text-gray-400 max-w-2xl font-medium">
-                        管理 Word 範本檔案，用於生成格式一致的投標文件。
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-black dark:border-white pb-4">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tighter font-mono uppercase">Templates Library</h2>
+                    <p className="text-xs font-mono text-muted-foreground mt-1">
+                        Workspace_ID: 104-92-3 // RESOURCE_TYPE: .DOCX
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-4">
+                    <div className="relative w-full md:w-[320px] group">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         <input
                             type="text"
-                            placeholder="搜尋範本..."
+                            placeholder="SEARCH_RESOURCES..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4 py-2 w-64 border border-gray-300 dark:border-zinc-700 rounded-[4px] bg-white dark:bg-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#FA4028] focus:border-transparent"
+                            className="w-full pl-9 bg-background border border-black dark:border-white rounded-none font-mono text-xs focus:outline-none focus:border-[#FA4028] focus:bg-black/5 transition-colors h-10"
                         />
                     </div>
                     <CreateTemplateFolderDialog
@@ -189,10 +181,12 @@ export default function TemplatesPage() {
             </div>
 
             {/* Folders Section */}
-            <div className="space-y-4">
-                <h2 className="text-lg font-bold text-[#00063D] dark:text-white">
-                    資料夾
-                </h2>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between border-b-2 border-black dark:border-white pb-2">
+                    <h2 className="text-sm font-black uppercase tracking-widest font-mono">
+                        [ 01 ] Directories
+                    </h2>
+                </div>
                 <TemplateFolderList
                     folders={folders}
                     onFolderSelect={handleFolderSelect}
@@ -203,16 +197,15 @@ export default function TemplatesPage() {
             </div>
 
             {/* Templates Section */}
-            <div className="space-y-4">
-                <h2 className="text-lg font-bold text-[#00063D] dark:text-white">
-                    {selectedFolderId === "all"
-                        ? '所有範本'
-                        : selectedFolderId
-                        ? folders.find(f => f.id === selectedFolderId)?.name || '資料夾範本'
-                        : '所有範本'
-                    }
-                    {searchQuery && ` (${filteredTemplates.length} 個結果)`}
-                </h2>
+            <div className="space-y-6 mt-12">
+                <div className="flex items-center justify-between border-b-2 border-black dark:border-white pb-2">
+                    <h2 className="text-sm font-black uppercase tracking-widest font-mono">
+                        [ 02 ] {selectedFolderId === "all"
+                            ? 'Global_Resources'
+                            : folders.find(f => f.id === selectedFolderId)?.name || 'Folder_Content'
+                        }
+                    </h2>
+                </div>
                 <TemplateList
                     templates={filteredTemplates}
                     folders={folders}

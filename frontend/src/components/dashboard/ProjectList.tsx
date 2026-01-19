@@ -48,6 +48,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
 
 type Project = {
     id: string
@@ -58,9 +66,12 @@ type Project = {
     owner_id: string
     agency?: string
     deadline?: string
+    project_assessments?: any | any[]
 }
 
-const ITEMS_PER_PAGE = 6
+
+const PAGE_SIZE_OPTIONS = [6, 12, 24, 48]
+
 
 export function ProjectList() {
     const router = useRouter()
@@ -69,6 +80,7 @@ export function ProjectList() {
     const [loading, setLoading] = React.useState(true)
     const [searchQuery, setSearchQuery] = React.useState("")
     const [currentPage, setCurrentPage] = React.useState(1)
+    const [itemsPerPage, setItemsPerPage] = React.useState(6)
     const [projectToDelete, setProjectToDelete] = React.useState<Project | null>(null)
     const supabase = createClient()
 
@@ -87,6 +99,27 @@ export function ProjectList() {
         }
     }, [])
 
+    // Helper to parse dates including ROC years (e.g. 115年)
+    const parseFlexibleDate = (dateStr: string | undefined | null): string => {
+        if (!dateStr) return "PENDING";
+
+        // 1. Try standard date parse
+        const stdDate = new Date(dateStr);
+        if (!isNaN(stdDate.getTime())) return stdDate.toLocaleDateString();
+
+        // 2. Try ROC Year format: 115年1月27日 -> 2026/1/27
+        const rocMatch = dateStr.match(/(\d{2,3})年(\d{1,2})月(\d{1,2})日/);
+        if (rocMatch) {
+            const year = parseInt(rocMatch[1]) + 1911;
+            const month = parseInt(rocMatch[2]);
+            const day = parseInt(rocMatch[3]);
+            return new Date(year, month - 1, day).toLocaleDateString();
+        }
+
+        // 3. Fallback to raw string
+        return dateStr;
+    }
+
     async function fetchProjects() {
         try {
             const { data: { user } } = await supabase.auth.getUser()
@@ -94,12 +127,30 @@ export function ProjectList() {
 
             const { data, error } = await supabase
                 .from('projects')
-                .select('*')
+                .select('*, project_assessments(basic_info, dates)')
                 .eq('owner_id', user.id)
                 .order('updated_at', { ascending: false })
 
             if (error) throw error
-            if (data) setProjects(data)
+
+            // Map assessment data to project fields if missing
+            const mappedData = data?.map(p => {
+                // Support both array (one-to-many) and object (one-to-one) returns specific to Supabase client config
+                const assessment = Array.isArray(p.project_assessments)
+                    ? p.project_assessments[0]
+                    : p.project_assessments;
+
+                const assessedAgency = assessment?.basic_info?.content?.['主辦機關']?.text
+                const assessedDeadline = assessment?.dates?.content?.['投標截止']?.text
+
+                return {
+                    ...p,
+                    agency: p.agency || assessedAgency,
+                    deadline: p.deadline || assessedDeadline
+                }
+            })
+
+            if (mappedData) setProjects(mappedData)
         } catch (error) {
             console.error('Error fetching projects:', error)
         } finally {
@@ -144,10 +195,10 @@ export function ProjectList() {
     )
 
     // Pagination Logic
-    const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE)
+    const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
     const paginatedProjects = filteredProjects.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     )
 
     // Reset pagination on search
@@ -315,7 +366,7 @@ export function ProjectList() {
                                             Deadline_Sequence
                                         </div>
                                         <div className="text-xl font-black font-mono text-foreground leading-tight">
-                                            {project.deadline ? new Date(project.deadline).toLocaleDateString() : "PENDING_STAMP"}
+                                            {parseFlexibleDate(project.deadline) !== "PENDING" ? parseFlexibleDate(project.deadline) : "PENDING_STAMP"}
                                         </div>
                                     </div>
                                 </div>
@@ -334,11 +385,12 @@ export function ProjectList() {
             ) : (
                 /* List View */
                 <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden">
-                    <div className="hidden md:grid grid-cols-[80px_1fr_200px_150px_50px] gap-4 p-4 bg-muted border-b border-black dark:border-white text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">
+                    <div className="hidden md:grid grid-cols-[80px_1fr_150px_120px_150px_50px] gap-4 p-4 bg-muted border-b border-black dark:border-white text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">
                         <div>Status</div>
                         <div>Project_Title</div>
                         <div>Agency_Entity</div>
                         <div>Deadline</div>
+                        <div>Time_Metrics</div>
                         <div className="text-right">Ops</div>
                     </div>
                     <div className="divide-y divide-black/10 dark:divide-white/10">
@@ -346,7 +398,7 @@ export function ProjectList() {
                             <div
                                 key={project.id}
                                 onClick={() => router.push(`/dashboard/${project.id}`)}
-                                className="grid grid-cols-1 md:grid-cols-[80px_1fr_200px_150px_50px] gap-4 p-4 items-center hover:bg-[#FA4028]/5 transition-colors cursor-pointer group"
+                                className="grid grid-cols-1 md:grid-cols-[80px_1fr_150px_120px_150px_50px] gap-4 p-4 items-center hover:bg-[#FA4028]/5 transition-colors cursor-pointer group"
                             >
                                 <div className="flex justify-start">
                                     <Badge
@@ -370,7 +422,17 @@ export function ProjectList() {
                                     {project.agency || "UNDEFINED"}
                                 </div>
                                 <div className={`font-mono text-xs font-black border-l border-black/5 pl-4 hidden md:block ${project.deadline ? 'text-[#FA4028]' : 'opacity-30'}`}>
-                                    {project.deadline ? new Date(project.deadline).toLocaleDateString() : "PENDING"}
+                                    {parseFlexibleDate(project.deadline)}
+                                </div>
+                                <div className="font-mono text-[9px] font-bold uppercase border-l border-black/5 pl-4 hidden md:flex flex-col justify-center opacity-60 gap-0.5">
+                                    <div className="flex justify-between gap-2">
+                                        <span className="opacity-40">UPD:</span>
+                                        <span>{new Date(project.updated_at).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-2 border-t border-black/5 dark:border-white/5 pt-0.5">
+                                        <span className="opacity-40">CRE:</span>
+                                        <span>{new Date(project.created_at).toLocaleDateString()}</span>
+                                    </div>
                                 </div>
                                 <div className="flex justify-end">
                                     <DropdownMenu>
@@ -404,12 +466,37 @@ export function ProjectList() {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-8 border-t border-black dark:border-white mt-12">
-                    <div className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">
-                        PAGE_IDENTIFIER: {currentPage} / {totalPages}
+            {filteredProjects.length > 0 && (
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-8 border-t border-black dark:border-white mt-12">
+                    <div className="flex items-center gap-6 order-2 md:order-1">
+                        <div className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">
+                            PAGE_IDENTIFIER: {currentPage} / {totalPages}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-tighter opacity-40">Display:</span>
+                            <Select
+                                value={itemsPerPage.toString()}
+                                onValueChange={(val) => {
+                                    setItemsPerPage(parseInt(val))
+                                    setCurrentPage(1)
+                                }}
+                            >
+                                <SelectTrigger className="h-7 w-16 rounded-none border-black dark:border-white bg-transparent font-mono text-[10px] font-black focus:ring-0 focus:ring-offset-0">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-none border-black dark:border-white font-mono text-[10px] font-black">
+                                    {PAGE_SIZE_OPTIONS.map(opt => (
+                                        <SelectItem key={opt} value={opt.toString()} className="rounded-none focus:bg-[#FA4028] focus:text-white">
+                                            {String(opt).padStart(2, '0')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex gap-2 order-1 md:order-2">
                         <Button
                             variant="outline"
                             size="sm"

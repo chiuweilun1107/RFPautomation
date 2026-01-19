@@ -159,48 +159,59 @@ export function TenderList() {
     return (
         <div className="space-y-4">
             {/* Toolbar Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b-2 border-black dark:border-white">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-black uppercase tracking-tight text-[#00063D] dark:text-white">
+                        Tender_AGGREGATION (標案彙整)
+                    </h1>
+                    <p className="text-sm font-mono font-bold text-gray-500 dark:text-gray-400 max-w-2xl italic">
+                        AUTOMATED_TRACKING: // 不錯過任何商機
+                    </p>
+                </div>
+            </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h3 className="text-lg font-semibold text-[#00063D] dark:text-white">
-                        彙整標案列表
+                    <h3 className="text-sm font-black uppercase tracking-widest text-[#00063D] dark:text-white flex items-center gap-2">
+                        <span className="w-2 h-2 bg-[#FA4028]"></span>
+                        AGGREGATED_TENDERS
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        目前共有 {totalCount} 筆標案資料
+                    <p className="text-[10px] font-mono font-bold text-gray-500 dark:text-gray-400">
+                        TOTAL_RECORDS: {totalCount}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                     <div className="relative flex-1 sm:flex-none">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                         <Input
-                            placeholder="搜尋標案名稱或機關..."
+                            placeholder="SEARCH_TENDERS..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 w-full sm:w-[250px] h-9 bg-white dark:bg-black/20"
+                            className="pl-9 w-full sm:w-[250px] h-9 rounded-none border-black dark:border-white bg-white dark:bg-black font-mono text-xs font-bold focus:ring-[#FA4028] focus:ring-offset-0"
                         />
                     </div>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 gap-2"
+                        className="h-9 rounded-none border-black dark:border-white bg-white dark:bg-black hover:bg-[#FA4028] hover:text-white font-mono text-xs font-bold transition-colors"
                         onClick={handleRunNow}
                         disabled={isSyncing}
                     >
-                        <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-                        <span className="hidden sm:inline">立即彙整</span>
+                        <RefreshCw className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
+                        <span className="hidden sm:inline uppercase tracking-wider">SYNC_NOW</span>
                     </Button>
                 </div>
             </div>
 
             {/* Table Section */}
-            <div className="rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-transparent">
+            <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden rounded-none">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-gray-50/50 dark:bg-white/5 hover:bg-gray-50/50 dark:hover:bg-white/5">
-                            <TableHead className="w-[120px]">發布日期</TableHead>
-                            <TableHead>標案名稱</TableHead>
-                            <TableHead className="w-[180px]">機關名稱</TableHead>
-                            <TableHead className="w-[100px]">關鍵字</TableHead>
-                            <TableHead className="w-[100px] text-right">操作</TableHead>
+                        <TableRow className="bg-muted border-b border-black dark:border-white hover:bg-muted font-mono">
+                            <TableHead className="w-[120px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Publish_Date</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Tender_Title</TableHead>
+                            <TableHead className="w-[180px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Agency_Entity</TableHead>
+                            <TableHead className="w-[100px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Keyword</TableHead>
+                            <TableHead className="w-[80px] text-right text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Ops</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -218,44 +229,41 @@ export function TenderList() {
                             </TableRow>
                         ) : (
                             tenders.map((tender) => (
-                                <TableRow key={tender.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
-                                    <TableCell className="font-medium whitespace-nowrap text-gray-600 dark:text-gray-400">
+                                <TableRow key={tender.id} className="hover:bg-[#FA4028]/5 transition-colors group cursor-default">
+                                    <TableCell className="font-mono text-[11px] font-black whitespace-nowrap text-black/60 dark:text-white/60">
                                         {tender.publish_date}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            <span className="font-medium text-[#00063D] dark:text-gray-200 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="font-mono text-xs font-black uppercase group-hover:text-[#FA4028] transition-colors line-clamp-1">
                                                 {tender.title}
                                             </span>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                <span className="px-1.5 py-0.5 rounded-sm bg-gray-100 dark:bg-white/10">
+                                            <div className="flex items-center gap-2">
+                                                <Badge className="rounded-none border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-[9px] font-bold text-black/40 dark:text-white/40 px-1 py-0">
                                                     {tender.source}
-                                                </span>
+                                                </Badge>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-gray-600 dark:text-gray-400">
-                                        <div className="flex items-center gap-2">
-                                            <span className="line-clamp-1" title={tender.org_name}>
-                                                {tender.org_name}
-                                            </span>
-                                        </div>
+                                    <TableCell className="font-mono text-[11px] font-bold text-black/60 dark:text-white/60 border-l border-black/5 dark:border-white/5">
+                                        <span className="line-clamp-1" title={tender.org_name}>
+                                            {tender.org_name}
+                                        </span>
                                     </TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 font-normal">
+                                    <TableCell className="border-l border-black/5 dark:border-white/5">
+                                        <Badge className="rounded-none bg-[#FA4028] text-white text-[9px] font-black uppercase px-1.5 py-0.5">
                                             {tender.keyword_tag}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right border-l border-black/5 dark:border-white/5">
                                         <Button
                                             variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 text-gray-400 hover:text-[#FA4028] hover:bg-[#FA4028]/10"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-none text-gray-400 hover:text-white hover:bg-black dark:hover:bg-white dark:hover:text-black transition-colors"
                                             asChild
                                         >
                                             <a href={tender.url} target="_blank" rel="noopener noreferrer">
                                                 <ExternalLink className="h-4 w-4" />
-                                                <span className="sr-only">View</span>
                                             </a>
                                         </Button>
                                     </TableCell>
@@ -267,60 +275,74 @@ export function TenderList() {
             </div>
 
             {/* Pagination Section */}
-            {totalPages > 1 && (
-                <div className="flex justify-center py-4">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="gap-1 pl-2.5"
-                                >
-                                    <span className="h-4 w-4 rotate-180">➜</span>
-                                    <span>上一頁</span>
-                                </Button>
-                            </PaginationItem>
-
-                            {/* Simple Logic: Show current page, maybe prev/next, simplified for now */}
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                // Logic to center the current page
-                                let p = page - 2 + i;
-                                if (page < 3) p = 1 + i;
-                                if (page > totalPages - 2) p = totalPages - 4 + i;
-                                if (p < 1 || p > totalPages) return null;
-
-                                return (
-                                    <PaginationItem key={p}>
-                                        <PaginationLink
-                                            isActive={page === p}
-                                            onClick={() => setPage(p)}
-                                            className="cursor-pointer"
-                                        >
-                                            {p}
-                                        </PaginationLink>
-                                    </PaginationItem>
-                                )
-                            })}
-
-                            <PaginationItem>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="gap-1 pr-2.5"
-                                >
-                                    <span>下一頁</span>
-                                    <span className="h-4 w-4">➜</span>
-                                </Button>
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
+            {/* Pagination Section */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-black/10 dark:border-white/10">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Results_Per_Page</span>
+                        <select
+                            className="bg-transparent border-b-2 border-black dark:border-white font-mono text-[10px] font-black focus:outline-none focus:border-[#FA4028] transition-colors"
+                            value={pageSize}
+                            disabled
+                        >
+                            <option value={pageSize}>{pageSize}</option>
+                        </select>
+                    </div>
+                    <div className="text-[10px] font-mono font-bold opacity-40 uppercase tracking-widest">
+                        Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount}
+                    </div>
                 </div>
-            )}
+
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="h-8 rounded-none border-black dark:border-white bg-white dark:bg-black font-mono text-[10px] font-black uppercase hover:bg-[#FA4028] hover:text-white disabled:opacity-30 transition-all group"
+                    >
+                        <span className="mr-1 group-hover:-translate-x-1 transition-transform">←</span>
+                        PREV
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                            let p = page;
+                            if (page === 1) p = i + 1;
+                            else if (page === totalPages) p = totalPages - 2 + i;
+                            else p = page - 1 + i;
+
+                            if (p < 1 || p > totalPages) return null;
+
+                            return (
+                                <Button
+                                    key={p}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setPage(p)}
+                                    className={`h-8 w-8 rounded-none border-black dark:border-white font-mono text-[10px] font-black transition-all ${page === p
+                                            ? 'bg-black text-white dark:bg-white dark:text-black'
+                                            : 'bg-white text-black dark:bg-black dark:text-white hover:bg-[#FA4028]/10'
+                                        }`}
+                                >
+                                    {String(p).padStart(2, '0')}
+                                </Button>
+                            )
+                        })}
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="h-8 rounded-none border-black dark:border-white bg-white dark:bg-black font-mono text-[10px] font-black uppercase hover:bg-[#FA4028] hover:text-white disabled:opacity-30 transition-all group"
+                    >
+                        NEXT
+                        <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                    </Button>
+                </div>
+            </div>
         </div>
     )
 }

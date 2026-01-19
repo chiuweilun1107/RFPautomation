@@ -15,7 +15,14 @@ from supabase import create_client, Client
 import json
 
 # Docling Imports
-from docling.document_converter import DocumentConverter, PdfFormatOption, WordFormatOption, InputFormat
+from docling.document_converter import (
+    DocumentConverter,
+    PdfFormatOption,
+    WordFormatOption,
+    ImageFormatOption,
+    FormatOption,
+    InputFormat,
+)
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, TableStructureOptions
 
 def get_converter():
@@ -31,7 +38,9 @@ def get_converter():
     
     return DocumentConverter(
         format_options={
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+            InputFormat.DOCX: WordFormatOption(),
+            InputFormat.IMAGE: ImageFormatOption(),
         }
     )
 
@@ -139,29 +148,64 @@ TMP_DIR.mkdir(exist_ok=True)
 
 # --- ODT Conversion Helper ---
 
-def convert_odt_to_docx(odt_path: Path) -> Path:
+# --- Office Conversion Helper ---
+
+def convert_legacy_format(file_path: Path) -> Path:
     """
-    Converts an ODT file to DOCX using pandoc.
-    Returns the path to the converted DOCX file.
+    Converts legacy Office files (.doc, .xls, .ppt) and ODT to their modern XML counterparts
+    (.docx, .xlsx, .pptx) using LibreOffice (soffice).
+    Returns the path to the converted file.
     """
-    docx_path = odt_path.with_suffix(".docx")
-    print(f"DEBUG: Converting {odt_path} to {docx_path} using pandoc...")
+    ext = file_path.suffix.lower()
+    conversion_map = {
+        ".doc": "docx",
+        ".odt": "docx",
+        ".xls": "xlsx",
+        ".ppt": "pptx"
+    }
+    
+    if ext not in conversion_map:
+        return file_path
+
+    target_fmt = conversion_map[ext]
+    print(f"DEBUG: Converting {file_path} (format: {ext}) to {target_fmt} using LibreOffice...")
     
     try:
-        # pandoc input.odt -o output.docx
-        subprocess.run(
-            ["pandoc", str(odt_path), "-o", str(docx_path)],
-            check=True,
-            capture_output=True
-        )
-        print(f"DEBUG: Conversion successful. Created {docx_path}")
-        return docx_path
+        # libreoffice --headless --convert-to docx --outdir /tmp/dir file.doc
+        # Note: --outdir is required to control where it goes
+        out_dir = file_path.parent
+        
+        cmd = [
+            "libreoffice", "--headless",
+            "--convert-to", target_fmt,
+            "--outdir", str(out_dir),
+            str(file_path)
+        ]
+        
+        subprocess.run(cmd, check=True, capture_output=True)
+        
+        # Determine new filename
+        new_path = file_path.with_suffix(f".{target_fmt}")
+        
+        if new_path.exists():
+            print(f"DEBUG: Conversion successful. Created {new_path}")
+            return new_path
+        else:
+             print(f"ERROR: LibreOffice finished but {new_path} not found.")
+             # Fallback check for weird LibreOffice naming behavior? Usually robust.
+             return file_path
+             
     except subprocess.CalledProcessError as e:
-        print(f"ERROR: Pandoc conversion failed: {e.stderr.decode()}")
-        raise HTTPException(500, f"Failed to convert ODT file: {e.stderr.decode()}")
+        print(f"ERROR: LibreOffice conversion failed: {e.stderr.decode() if e.stderr else e}")
+        # Identify if tool is missing
+        if e.stderr and "not found" in e.stderr.decode():
+             raise HTTPException(500, "LibreOffice not installed on server")
+        # Warn but return original (maybe docling can try?)
+        return file_path
     except FileNotFoundError:
-        print("ERROR: Pandoc not found. Please install pandoc.")
-        raise HTTPException(500, "Pandoc not installed on server")
+        print("ERROR: LibreOffice (soffice) command not found.")
+        # Fallback to verify if pandoc can help? No, pandoc sucks for doc.
+        return file_path
 
 # --- TOC Detection Helper ---
 
@@ -688,8 +732,8 @@ async def parse_from_storage(request: Request):
         with open(temp_path, 'wb') as f: f.write(res)
         
         # ODT Conversion
-        if temp_path.suffix.lower() == ".odt":
-            temp_path = convert_odt_to_docx(temp_path)
+        # Office Conversion (doc/xls/odt -> docx/xlsx)
+        temp_path = convert_legacy_format(temp_path)
 
         doc = converter.convert(temp_path).document
         return await process_conversion_result(doc)
@@ -717,8 +761,8 @@ async def parse_direct(file: UploadFile = File(...)):
         print(f"Converting {safe_name}...")
         
         # ODT Conversion
-        if temp_path.suffix.lower() == ".odt":
-            temp_path = convert_odt_to_docx(temp_path)
+        # Office Conversion (doc/xls/odt -> docx/xlsx)
+        temp_path = convert_legacy_format(temp_path)
 
         doc = converter.convert(temp_path).document
         

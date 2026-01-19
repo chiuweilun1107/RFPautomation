@@ -115,83 +115,93 @@ export function SelectTemplateDialog({ open, onOpenChange, projectId, sections }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold">選擇範本生成文件</DialogTitle>
-                    <DialogDescription>
-                        選擇一個 Word 範本,系統將自動填入章節內容並生成完整文件
-                    </DialogDescription>
-                </DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-none border-4 border-black p-0">
+                <div className="p-8">
+                    <DialogHeader className="mb-8">
+                        <DialogTitle className="text-3xl font-black uppercase tracking-tight">選擇範本生成文件 // GENERATE_DOC</DialogTitle>
+                        <DialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-2 italic font-bold">
+                            // SELECT WORD TEMPLATE TO AUTO-FILL CHAPTERS.
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <div className="space-y-4 mt-4">
-                    {loading ? (
-                        <div className="flex items-center justify-center p-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-[#FA4028]" />
-                        </div>
-                    ) : templates.length === 0 ? (
-                        <div className="text-center p-12 border-2 border-dashed rounded-lg">
-                            <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                            <p className="text-gray-500">尚無範本</p>
-                            <p className="text-sm text-gray-400 mt-2">請先到範本庫上傳範本</p>
-                        </div>
-                    ) : (
-                        <div className="grid gap-3">
-                            {templates.map((template) => (
-                                <button
-                                    key={template.id}
-                                    onClick={() => setSelectedTemplateId(template.id)}
-                                    className={`p-4 border-2 rounded-lg text-left transition-all ${
-                                        selectedTemplateId === template.id
-                                            ? 'border-[#FA4028] bg-[#FA4028]/5'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <FileText className="w-5 h-5 text-[#FA4028]" />
-                                                <h3 className="font-semibold">{template.name}</h3>
-                                                {selectedTemplateId === template.id && (
-                                                    <CheckCircle2 className="w-5 h-5 text-[#FA4028]" />
+                    <div className="space-y-6">
+                        {loading ? (
+                            <div className="flex items-center justify-center p-12">
+                                <Loader2 className="w-12 h-12 animate-spin text-[#FA4028]" />
+                            </div>
+                        ) : templates.length === 0 ? (
+                            <div className="text-center p-12 border-4 border-dashed border-black rounded-none bg-gray-50">
+                                <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                                <p className="font-mono font-black uppercase">尚無範本 // NO_TEMPLATES</p>
+                                <p className="text-sm font-mono text-gray-400 mt-2 uppercase">請先到範本庫上傳範本</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                {templates.map((template) => (
+                                    <button
+                                        key={template.id}
+                                        onClick={() => setSelectedTemplateId(template.id)}
+                                        className={`p-4 border-2 transition-all rounded-none ${selectedTemplateId === template.id
+                                                ? 'border-black bg-[#FA4028] text-white shadow-[4px_4px_0_0_#000]'
+                                                : 'border-black bg-white hover:bg-gray-100 text-black'
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3">
+                                                    <FileText className={`w-5 h-5 ${selectedTemplateId === template.id ? 'text-white' : 'text-[#FA4028]'}`} />
+                                                    <h3 className="font-black uppercase tracking-widest">{template.name}</h3>
+                                                    {selectedTemplateId === template.id && (
+                                                        <CheckCircle2 className="w-5 h-5 text-white" />
+                                                    )}
+                                                </div>
+                                                {template.description && (
+                                                    <p className={`text-xs font-mono mt-2 uppercase ${selectedTemplateId === template.id ? 'text-white/80' : 'text-gray-500'}`}>
+                                                        {template.description}
+                                                    </p>
+                                                )}
+                                                {template.category && (
+                                                    <span className={`inline-block mt-3 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter italic border ${selectedTemplateId === template.id
+                                                            ? 'bg-white text-black border-white'
+                                                            : 'bg-black text-white border-black'
+                                                        }`}>
+                                                        {template.category}
+                                                    </span>
                                                 )}
                                             </div>
-                                            {template.description && (
-                                                <p className="text-sm text-gray-500 mt-1">{template.description}</p>
-                                            )}
-                                            {template.category && (
-                                                <span className="inline-block mt-2 px-2 py-1 text-xs bg-gray-100 rounded">
-                                                    {template.category}
-                                                </span>
-                                            )}
                                         </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        取消
-                    </Button>
-                    <Button
-                        onClick={handleGenerateDocument}
-                        disabled={!selectedTemplateId || generating}
-                        className="bg-[#FA4028] hover:bg-[#FA4028]/90"
-                    >
-                        {generating ? (
-                            <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                生成中...
-                            </>
-                        ) : (
-                            <>
-                                <Download className="w-4 h-4 mr-2" />
-                                生成文件
-                            </>
+                                    </button>
+                                ))}
+                            </div>
                         )}
-                    </Button>
+                    </div>
+
+                    <div className="flex justify-end gap-4 mt-10 pt-6 border-t-2 border-black flex-col sm:flex-row">
+                        <Button
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            className="rounded-none border-2 border-black font-black uppercase tracking-widest flex-1 sm:flex-none"
+                        >
+                            CANCEL
+                        </Button>
+                        <Button
+                            onClick={handleGenerateDocument}
+                            disabled={!selectedTemplateId || generating}
+                            className="rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest flex-1 sm:flex-none shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                        >
+                            {generating ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    GENERATING...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="w-4 h-4 mr-2" />
+                                    GENERATE_DOCUMENT
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

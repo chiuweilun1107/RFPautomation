@@ -14,6 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -88,62 +89,53 @@ export function KnowledgeList({ initialDocs }: { initialDocs: any[] }) {
     }
 
     return (
-        <div className="rounded-md border border-gray-200 dark:border-zinc-800 bg-white dark:bg-black overflow-hidden mt-6">
+        <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden rounded-none">
             <Table>
                 <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-zinc-900 hover:bg-gray-50">
-                        <TableHead>Document Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                    <TableRow className="bg-muted border-b border-black dark:border-white hover:bg-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">
+                        <TableHead className="text-black dark:text-white py-3">STATUS</TableHead>
+                        <TableHead className="text-black dark:text-white py-3">DOCUMENT_IDENTIFIER</TableHead>
+                        <TableHead className="text-black dark:text-white py-3">DATA_TYPE</TableHead>
+                        <TableHead className="text-black dark:text-white py-3">CREATED_AT</TableHead>
+                        <TableHead className="text-right text-black dark:text-white py-3">OPS</TableHead>
                     </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="divide-y divide-black/10 dark:divide-white/10">
                     {docs.map((doc) => (
-                        <TableRow key={doc.id}>
-                            <TableCell className="font-medium">
+                        <TableRow key={doc.id} className="hover:bg-[#FA4028]/5 transition-colors group border-b-0">
+                            <TableCell>
+                                {doc.status === 'ready' ? (
+                                    <Badge className="rounded-none bg-emerald-500 text-white text-[8px] font-black uppercase px-1.5 py-0">READY</Badge>
+                                ) : doc.status === 'error' ? (
+                                    <Badge className="rounded-none bg-[#FA4028] text-white text-[8px] font-black uppercase px-1.5 py-0">FAIL</Badge>
+                                ) : (
+                                    <Badge className="rounded-none bg-amber-400 text-black text-[8px] font-black uppercase px-1.5 py-0">PROC</Badge>
+                                )}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm font-black uppercase group-hover:text-[#FA4028] transition-colors truncate max-w-[300px]">
                                 <div className="flex items-center">
-                                    <FileText className="w-4 h-4 mr-2 text-blue-500" />
+                                    <FileText className="w-3.5 h-3.5 mr-3 text-[#FA4028] opacity-0 group-hover:opacity-100 transition-opacity" />
                                     {doc.title}
                                 </div>
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground uppercase">
+                            <TableCell className="font-mono text-[11px] font-bold text-foreground/60 uppercase border-l border-black/5 pl-4">
                                 {doc.type}
                             </TableCell>
-                            <TableCell>
-                                {doc.status === 'ready' ? (
-                                    <div className="flex items-center text-green-600 text-xs font-medium">
-                                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                                        Ready
-                                    </div>
-                                ) : doc.status === 'error' ? (
-                                    <div className="flex items-center text-red-600 text-xs font-medium">
-                                        <AlertCircle className="h-3 w-3 mr-1" />
-                                        Failed
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center text-yellow-600 text-xs font-medium">
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        Processing
-                                    </div>
-                                )}
+                            <TableCell className="font-mono text-[11px] font-bold text-foreground/60 border-l border-black/5 pl-4">
+                                {new Date(doc.created_at).toLocaleDateString()}
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                                {new Date(doc.created_at).toISOString().split('T')[0]}
-                            </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right border-l border-black/5">
                                 <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-none hover:bg-black hover:text-white transition-colors"
                                     onClick={() => handleDelete(doc)}
                                     disabled={deletingId === doc.id}
-                                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                 >
                                     {deletingId === doc.id ? (
-                                        <Clock className="h-4 w-4 animate-spin" />
+                                        <Clock className="h-3.5 w-3.5 animate-spin" />
                                     ) : (
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     )}
                                 </Button>
                             </TableCell>
@@ -153,20 +145,20 @@ export function KnowledgeList({ initialDocs }: { initialDocs: any[] }) {
             </Table>
 
             <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-none border-2 border-black dark:border-white font-mono">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete &quot;{docToDelete?.title}&quot;.
+                        <AlertDialogTitle className="font-black uppercase tracking-tight">CONFIRM_DELETE</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs font-bold">
+                            // This will permanently delete &quot;{docToDelete?.title}&quot;.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-none border-black border-2 font-black uppercase text-xs">CANCEL</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={confirmDelete}
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+                            className="rounded-none bg-[#FA4028] hover:bg-black text-white font-black uppercase text-xs transition-colors"
                         >
-                            Delete
+                            DELETE_RECORD
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -99,15 +99,16 @@ export function UploadZone() {
     return (
         <div
             className={`
-                relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ease-in-out
+                relative border-2 border-dashed rounded-none p-8 text-center transition-all duration-300 ease-in-out cursor-pointer
                 ${isDragging
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                    : "border-gray-300 dark:border-zinc-700 hover:border-gray-400 dark:hover:border-zinc-600"
+                    ? "border-black bg-black/5 scale-[1.01]"
+                    : "border-black dark:border-white hover:border-black dark:hover:border-white hover:bg-black/5"
                 }
             `}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
         >
             <input
                 type="file"
@@ -119,20 +120,20 @@ export function UploadZone() {
             />
 
             <div className="flex flex-col items-center justify-center space-y-4">
-                <div className={`p-4 rounded-full bg-gray-100 dark:bg-zinc-800 ${isUploading ? 'animate-pulse' : ''}`}>
+                <div className={`w-12 h-12 rounded-none border-2 border-black dark:border-white flex items-center justify-center transition-colors group-hover:bg-black group-hover:text-white ${isUploading ? 'animate-pulse bg-black/10' : 'bg-background'}`}>
                     {isUploading ? (
-                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
-                        <Upload className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+                        <Upload className="w-6 h-6" />
                     )}
                 </div>
 
-                <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {isUploading ? "Uploading..." : "Click or drag files to upload"}
+                <div className="space-y-2">
+                    <p className="text-sm font-black font-mono uppercase tracking-tighter">
+                        {isUploading ? "PROCESS_UPLOADING..." : "CLICK_OR_DRAG_TO_INGEST"}
                     </p>
-                    <p className="text-xs text-muted-foreground text-gray-500">
-                        PDF, DOCX, TXT (Max 10MB)
+                    <p className="text-[10px] font-mono text-muted-foreground uppercase opacity-60">
+                        FORMAT_TYPES: PDF, DOCX, TXT // MAX_SIZE: 10MB
                     </p>
                 </div>
 
@@ -140,9 +141,9 @@ export function UploadZone() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-none border-2 border-black dark:border-white font-mono font-bold uppercase text-[10px] tracking-[0.2em] hover:bg-black hover:text-white transition-all"
                     >
-                        Select Files
+                        SELECT_FILES
                     </Button>
                 )}
             </div>

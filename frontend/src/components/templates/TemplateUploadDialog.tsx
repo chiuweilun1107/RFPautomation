@@ -90,81 +90,87 @@ export function TemplateUploadDialog({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>上傳標書範本</DialogTitle>
-                    <DialogDescription>
-                        系統未偵測到評分標準或必要章節。您可以上傳一份既有的標書 Word (.docx) 檔，系統將自動分析其目錄結構並為您建立章節。
-                    </DialogDescription>
-                </DialogHeader>
+            <DialogContent className="sm:max-w-[500px] rounded-none border-4 border-black p-0">
+                <div className="p-8">
+                    <DialogHeader className="mb-8">
+                        <DialogTitle className="text-3xl font-black uppercase tracking-tight">上傳標書範本</DialogTitle>
+                        <DialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-2 italic font-bold">
+                            // NO STRUCTURE DETECTED. UPLOAD DOCX TO AUTO-GENERATE CHAPTERS.
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <div className="grid gap-4 py-4">
-                    <div className="grid w-full max-w-sm items-center gap-1.5">
-                        <Label htmlFor="template-file">選擇檔案 (.docx)</Label>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                className="w-full justify-start text-left font-normal"
-                                onClick={() => document.getElementById("template-file")?.click()}
-                            >
-                                {file ? (
-                                    <>
-                                        <FileText className="mr-2 h-4 w-4" />
-                                        {file.name}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        選擇檔案
-                                    </>
-                                )}
-                            </Button>
-                            <input
-                                id="template-file"
-                                type="file"
-                                accept=".docx"
-                                className="hidden"
-                                onChange={handleFileChange}
-                            />
+                    <div className="grid gap-8 py-4">
+                        <div className="grid w-full items-center gap-3">
+                            <Label htmlFor="template-file" className="text-sm font-black uppercase tracking-widest text-[#FA4028]">選擇檔案 (.DOCX)</Label>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-left font-mono font-bold rounded-none border-2 border-black hover:bg-gray-100 uppercase"
+                                    onClick={() => document.getElementById("template-file")?.click()}
+                                >
+                                    {file ? (
+                                        <>
+                                            <FileText className="mr-2 h-4 w-4" />
+                                            {file.name}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="mr-2 h-4 w-4" />
+                                            CLICK TO SELECT FILE
+                                        </>
+                                    )}
+                                </Button>
+                                <input
+                                    id="template-file"
+                                    type="file"
+                                    accept=".docx"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
+                            </div>
+                            {file && (
+                                <p className="text-[10px] font-mono font-black text-emerald-600 flex items-center mt-1 uppercase italic bg-emerald-50 p-1 border border-emerald-200">
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    {file.name} ({(file.size / 1024).toFixed(0)} KB) // READY_FOR_UPLOAD
+                                </p>
+                            )}
                         </div>
-                        {file && (
-                            <p className="text-xs text-green-600 flex items-center mt-1">
-                                <FileText className="h-3 w-3 mr-1" />
-                                {file.name} ({(file.size / 1024).toFixed(0)} KB)
-                            </p>
-                        )}
+
+                        <div className="grid gap-4 bg-gray-50 dark:bg-zinc-900 p-4 border-2 border-dashed border-black">
+                            <Label className="text-sm font-black uppercase tracking-widest">生成模式 // MODE</Label>
+                            <RadioGroup defaultValue="replace" onValueChange={(v) => setMode(v as any)} className="gap-4">
+                                <div className="flex items-center space-x-3 cursor-pointer group">
+                                    <RadioGroupItem value="replace" id="r1" className="rounded-none border-2 border-black data-[state=checked]:bg-[#FA4028] data-[state=checked]:text-white" />
+                                    <Label htmlFor="r1" className="font-mono text-xs font-bold cursor-pointer group-hover:text-[#FA4028] uppercase">覆蓋現有章節 (REPLACE_ALL)</Label>
+                                </div>
+                                <div className="flex items-center space-x-3 cursor-pointer group">
+                                    <RadioGroupItem value="append" id="r2" className="rounded-none border-2 border-black data-[state=checked]:bg-[#FA4028] data-[state=checked]:text-white" />
+                                    <Label htmlFor="r2" className="font-mono text-xs font-bold cursor-pointer group-hover:text-[#FA4028] uppercase">加在現有章節後 (APPEND_ONLY)</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label>生成模式</Label>
-                        <RadioGroup defaultValue="replace" onValueChange={(v) => setMode(v as any)}>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="replace" id="r1" />
-                                <Label htmlFor="r1">覆蓋現有章節 (Replace)</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="append" id="r2" />
-                                <Label htmlFor="r2">加在現有章節後 (Append)</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
+                    <DialogFooter className="mt-8 flex gap-3">
+                        <Button variant="outline" onClick={onClose} disabled={isUploading} className="rounded-none border-2 border-black font-black uppercase tracking-widest flex-1">
+                            CANCEL
+                        </Button>
+                        <Button
+                            onClick={handleUpload}
+                            disabled={!file || isUploading}
+                            className="rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest flex-1 shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                        >
+                            {isUploading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ANALYZING...
+                                </>
+                            ) : (
+                                "START_GENERATION"
+                            )}
+                        </Button>
+                    </DialogFooter>
                 </div>
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={isUploading}>
-                        取消
-                    </Button>
-                    <Button onClick={handleUpload} disabled={!file || isUploading}>
-                        {isUploading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                分析中...
-                            </>
-                        ) : (
-                            "開始生成"
-                        )}
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

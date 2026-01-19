@@ -4,6 +4,7 @@ import { useState } from "react";
 import { KnowledgeSidebar } from "@/components/workspace/KnowledgeSidebar";
 import { EditorHeader } from "@/components/editor/EditorHeader";
 import { SourceDetailPanel } from "@/components/workspace/SourceDetailPanel";
+import { ProjectWorkflowStepper } from "@/components/workspace/ProjectWorkflowStepper";
 import { toast } from "sonner";
 
 interface ProjectDashboardLayoutProps {
@@ -45,7 +46,7 @@ export function ProjectDashboardLayout({ project, children, onStageSelect }: Pro
     };
 
     return (
-        <div className="flex h-screen bg-background overflow-hidden relative">
+        <div className="flex h-screen bg-gray-50 dark:bg-zinc-900 overflow-hidden relative font-mono text-black dark:text-white p-4 gap-4">
             {/* Left Sidebar: Knowledge Base */}
             <KnowledgeSidebar
                 projectId={project.id}
@@ -53,7 +54,7 @@ export function ProjectDashboardLayout({ project, children, onStageSelect }: Pro
             />
 
             {/* Main Content: Document Editor or Source Detail */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-black border border-black dark:border-white">
                 <EditorHeader
                     title={project.title}
                     status={project.status}
@@ -62,9 +63,17 @@ export function ProjectDashboardLayout({ project, children, onStageSelect }: Pro
                     onStageSelect={onStageSelect || (() => { })}
                 />
 
-                <main className="flex-1 overflow-y-auto bg-white/50 dark:bg-black/50 p-8">
+                {/* Workflow Ribbon (Separated from Header) */}
+                <div className="border-b border-black/10 dark:border-white/10 bg-white dark:bg-black px-4 py-2">
+                    <ProjectWorkflowStepper
+                        currentStage={project.stage || 0}
+                        onStageSelect={onStageSelect || (() => { })}
+                    />
+                </div>
+
+                <main className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-black p-0">
                     {selectedSource ? (
-                        <div className="max-w-5xl mx-auto pb-20 h-full">
+                        <div className="max-w-5xl mx-auto pb-20 h-full p-8 border-l border-black dark:border-white">
                             <SourceDetailPanel
                                 source={selectedSource}
                                 onClose={() => setSelectedSource(null)}
@@ -72,7 +81,9 @@ export function ProjectDashboardLayout({ project, children, onStageSelect }: Pro
                             />
                         </div>
                     ) : (
-                        children
+                        <div className="h-full">
+                            {children}
+                        </div>
                     )}
                 </main>
             </div>

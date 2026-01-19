@@ -51,14 +51,16 @@ export function DashboardClientLayout({ children, userEmail }: DashboardClientLa
                 {/* Content Area */}
                 <main
                     className={cn(
-                        "flex-1 overflow-y-auto custom-scrollbar",
-                        isFullScreenPage ? "p-0 overflow-hidden text-clip scrollbar-hide" : "p-4 md:p-8 pt-16 lg:pt-8"
+                        "flex-1",
+                        isFullScreenPage
+                            ? "p-0 overflow-hidden no-scrollbar"
+                            : "p-4 md:p-8 pt-16 lg:pt-8 overflow-y-auto custom-scrollbar"
                     )}
                 >
                     <div
                         className={cn(
                             "mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500",
-                            isFullScreenPage ? "max-w-full h-full scrollbar-hide" : "max-w-7xl"
+                            isFullScreenPage ? "max-w-full h-full" : "max-w-7xl"
                         )}
                     >
                         {children}

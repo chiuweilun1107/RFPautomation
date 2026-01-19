@@ -72,25 +72,25 @@ export function SourceDetailSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-[90vw] sm:max-w-[90vw] overflow-hidden flex flex-col">
-                <SheetHeader className="shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-muted rounded-lg">
+            <SheetContent side="right" className="w-[90vw] sm:max-w-[45vw] overflow-hidden flex flex-col border-l border-black dark:border-white p-0 rounded-none bg-white dark:bg-black">
+                <SheetHeader className="shrink-0 p-6 border-b border-black dark:border-white bg-white dark:bg-black text-black dark:text-white">
+                    <div className="flex items-start gap-4">
+                        <div className="p-2 border border-black dark:border-white shrink-0">
                             {getSourceTypeIcon()}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <SheetTitle className="truncate text-left">
+                        <div className="flex-1 min-w-0 font-mono">
+                            <SheetTitle className="text-lg font-bold uppercase tracking-wider text-left break-words">
                                 {source.title}
                             </SheetTitle>
-                            <SheetDescription className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">
-                                    {source.type?.toUpperCase()}
+                            <SheetDescription className="flex flex-wrap items-center gap-2 mt-2 font-mono text-xs uppercase text-gray-500">
+                                <Badge variant="outline" className="rounded-none border-black dark:border-white uppercase text-[10px] px-1 py-0 h-5">
+                                    {source.type}
                                 </Badge>
-                                <span className="text-xs">
+                                <span className="text-[10px]">
                                     {getSourceTypeLabel(source.source_type)}
                                 </span>
-                                <span className="text-xs">•</span>
-                                <span className="text-xs">
+                                <span>/</span>
+                                <span className="text-[10px]">
                                     {new Date(source.created_at).toLocaleDateString('zh-TW')}
                                 </span>
                             </SheetDescription>
@@ -98,67 +98,71 @@ export function SourceDetailSheet({
                     </div>
                 </SheetHeader>
 
-                <ScrollArea className="flex-1 mt-4">
-                    {/* AI 摘要區塊 */}
-                    <div className="mb-6">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold flex items-center gap-2">
-                                <Sparkles className="w-4 h-4 text-yellow-500" />
-                                來源導覽
-                            </h3>
-                            {onGenerateSummary && (
-                                <button
-                                    onClick={handleGenerateSummary}
-                                    disabled={isGenerating}
-                                    className="text-xs text-primary hover:underline disabled:opacity-50"
-                                >
-                                    {isGenerating ? (
-                                        <span className="flex items-center gap-1">
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                            生成中...
-                                        </span>
-                                    ) : (source.summary ? '重新生成' : '生成摘要')}
-                                </button>
+                <ScrollArea className="flex-1 bg-white dark:bg-black">
+                    <div className="p-6 space-y-8 font-mono">
+                        {/* AI 摘要區塊 */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-black dark:border-white pb-2">
+                                <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4" />
+                                    Source Summary
+                                </h3>
+                                {onGenerateSummary && (
+                                    <button
+                                        onClick={handleGenerateSummary}
+                                        disabled={isGenerating}
+                                        className="text-[10px] uppercase font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black px-2 py-1 border border-transparent hover:border-black dark:hover:border-white transition-colors disabled:opacity-50"
+                                    >
+                                        {isGenerating ? (
+                                            <span className="flex items-center gap-1">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Generating...
+                                            </span>
+                                        ) : (source.summary ? 'Regenerate' : 'Generate Summary')}
+                                    </button>
+                                )}
+                            </div>
+
+                            {source.summary ? (
+                                <div className="space-y-4">
+                                    <p className="text-sm leading-relaxed text-justify opacity-90">{source.summary}</p>
+
+                                    {/* 話題標籤 */}
+                                    {source.topics && source.topics.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 pt-2">
+                                            {source.topics.map((topic, idx) => (
+                                                <Badge key={idx} variant="outline" className="rounded-none border-black dark:border-white text-[10px] uppercase px-1.5 py-0.5 font-normal">
+                                                    #{topic}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center border border-dashed border-gray-300 dark:border-gray-700">
+                                    <p className="text-xs uppercase tracking-wider text-gray-400">
+                                        No summary generated yet
+                                    </p>
+                                </div>
                             )}
                         </div>
 
-                        {source.summary ? (
-                            <div className="p-4 bg-muted/50 rounded-lg border">
-                                <p className="text-sm leading-relaxed">{source.summary}</p>
-
-                                {/* 話題標籤 */}
-                                {source.topics && source.topics.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
-                                        {source.topics.map((topic, idx) => (
-                                            <Badge key={idx} variant="secondary" className="text-xs">
-                                                {topic}
-                                            </Badge>
-                                        ))}
+                        {/* 原始內容區塊 */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider border-b border-black dark:border-white pb-2">
+                                Original Content
+                            </h3>
+                            <div className="bg-gray-50 dark:bg-gray-900 border border-black/10 dark:border-white/10 p-4 min-h-[200px]">
+                                {source.content ? (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none break-words break-all font-sans text-xs leading-relaxed opacity-80">
+                                        <ReactMarkdown>{source.content}</ReactMarkdown>
                                     </div>
+                                ) : (
+                                    <p className="text-xs uppercase text-gray-400 text-center py-8 tracking-wider">
+                                        Content not available
+                                    </p>
                                 )}
                             </div>
-                        ) : (
-                            <div className="p-4 bg-muted/30 rounded-lg border border-dashed text-center">
-                                <p className="text-sm text-muted-foreground">
-                                    尚未生成摘要
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 原始內容區塊 */}
-                    <div>
-                        <h3 className="text-sm font-semibold mb-3">📖 原始內容</h3>
-                        <div className="p-4 bg-background border rounded-lg">
-                            {source.content ? (
-                                <div className="prose prose-sm dark:prose-invert max-w-none break-words break-all">
-                                    <ReactMarkdown>{source.content}</ReactMarkdown>
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-8">
-                                    無法載入原始內容
-                                </p>
-                            )}
                         </div>
                     </div>
                 </ScrollArea>

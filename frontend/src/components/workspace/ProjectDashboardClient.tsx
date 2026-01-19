@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ProjectDashboardLayout } from "@/components/workspace/ProjectDashboardLayout";
 import { SectionList } from "@/components/editor/SectionList";
-import { ProjectStage } from "@/components/workspace/ProjectWorkflowStepper";
+import { ProjectStage, ProjectWorkflowStepper } from "@/components/workspace/ProjectWorkflowStepper";
 import { AssessmentTable } from "@/components/workspace/AssessmentTable";
 
 interface ProjectDashboardClientProps {
@@ -27,22 +27,29 @@ export function ProjectDashboardClient({ project, sections }: ProjectDashboardCl
             case ProjectStage.Assessment: // 0
                 return (
                     <div className="max-w-6xl mx-auto pb-20">
-                        <AssessmentTable />
+                        <AssessmentTable projectId={project.id} />
                     </div>
                 );
             case ProjectStage.Launch: // 1
                 return (
-                    <div className="max-w-4xl mx-auto pb-20 text-center py-20">
-                        <h2 className="text-2xl font-bold mb-4">領標啟動 (Tender Launch)</h2>
-                        <p className="text-muted-foreground">在此階段管理領標文件與相關作業。</p>
-                        {/* Placeholder for future implementation */}
+                    <div className="max-w-4xl mx-auto pb-20 text-center py-20 font-mono">
+                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tighter">Tender_Launch</h2>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            System_Status: Pending_Implementation
+                            <br />
+                            Management of acquisition documents and preliminary logistics.
+                        </p>
                     </div>
                 );
             case ProjectStage.Planning: // 2
                 return (
-                    <div className="max-w-4xl mx-auto pb-20 text-center py-20">
-                        <h2 className="text-2xl font-bold mb-4">標書規劃 (Proposal Planning)</h2>
-                        <p className="text-muted-foreground">在此階段規劃標書架構與分工。</p>
+                    <div className="max-w-4xl mx-auto pb-20 text-center py-20 font-mono">
+                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tighter">Proposal_Planning</h2>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            System_Status: Pending_Implementation
+                            <br />
+                            Structural architecture and resource allocation strategy.
+                        </p>
                     </div>
                 );
             case ProjectStage.Writing: // 3
@@ -53,16 +60,24 @@ export function ProjectDashboardClient({ project, sections }: ProjectDashboardCl
                 );
             case ProjectStage.Review: // 4
                 return (
-                    <div className="max-w-4xl mx-auto pb-20 text-center py-20">
-                        <h2 className="text-2xl font-bold mb-4">簡報評選 (Presentation Selection)</h2>
-                        <p className="text-muted-foreground">在此階段準備簡報材料與演練。</p>
+                    <div className="max-w-4xl mx-auto pb-20 text-center py-20 font-mono">
+                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tighter">Presentation_Selection</h2>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            System_Status: Pending_Implementation
+                            <br />
+                            Materials preparation and simulation for review panel.
+                        </p>
                     </div>
                 );
             case ProjectStage.Handover: // 5
                 return (
-                    <div className="max-w-4xl mx-auto pb-20 text-center py-20">
-                        <h2 className="text-2xl font-bold mb-4">決標移交 (Award & Handover)</h2>
-                        <p className="text-muted-foreground">在此階段處理結案與移交事項。</p>
+                    <div className="max-w-4xl mx-auto pb-20 text-center py-20 font-mono">
+                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tighter">Award_Handover</h2>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                            System_Status: Pending_Implementation
+                            <br />
+                            Final project resolution and transition protocol.
+                        </p>
                     </div>
                 );
             default:

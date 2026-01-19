@@ -254,26 +254,29 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
             if (!open) resetToMain();
             onOpenChange(open);
         }}>
-            <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col">
-                <DialogHeader className="shrink-0">
-                    <DialogTitle className="text-center">
-                        <span className="text-lg">用文件</span>
-                        <br />
-                        <span className="text-primary text-sm font-medium">{getPanelTitle()}</span>
+            <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col gap-0 p-0 border border-black dark:border-white rounded-none bg-white dark:bg-black font-mono">
+                <DialogHeader className="shrink-0 p-6 border-b border-black dark:border-white">
+                    <DialogTitle className="text-center space-y-2">
+                        <span className="text-xl font-bold uppercase tracking-widest block">Add Source</span>
+                        <span className="text-xs font-normal uppercase tracking-wider text-gray-500 block">
+                            {getPanelTitle() === "自己的文件" ? "Upload Files" :
+                                getPanelTitle() === "網站" ? "Web Link" :
+                                    "Paste Text"}
+                        </span>
                     </DialogTitle>
                 </DialogHeader>
 
                 {/* AI 搜索區塊 - 始終顯示在頂部 */}
-                <div className="border rounded-xl p-4 bg-muted/20 shrink-0">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-black dark:border-white shrink-0">
                     {/* 搜索輸入框 */}
-                    <div className="flex items-center gap-2 mb-3">
-                        <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-2 mb-3 border border-black dark:border-white bg-white dark:bg-black p-1">
+                        <Search className="w-4 h-4 ml-2 shrink-0" />
                         <Input
-                            placeholder="我要來源"
+                            placeholder="SEARCH FOR SOURCES..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
-                            className="border-none bg-transparent focus-visible:ring-0 text-base"
+                            className="border-none bg-transparent focus-visible:ring-0 text-sm h-8 rounded-none uppercase placeholder:text-gray-400"
                             disabled={isSearching}
                         />
                         <Button
@@ -281,12 +284,12 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                             variant="ghost"
                             onClick={handleAISearch}
                             disabled={isSearching || !searchQuery.trim()}
-                            className="shrink-0"
+                            className="shrink-0 h-8 w-8 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                         >
                             {isSearching ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                                <ArrowRight className="w-5 h-5" />
+                                <ArrowRight className="w-4 h-4" />
                             )}
                         </Button>
                     </div>
@@ -296,26 +299,26 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                         {/* 來源模式：網路 / 雲端硬碟 */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-1">
+                                <Button variant="outline" size="sm" className="gap-2 rounded-none border-black dark:border-white h-7 text-xs uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">
                                     {sourceMode === "web" ? (
-                                        <><Globe className="w-4 h-4" /> 網路</>
+                                        <><Globe className="w-3 h-3" /> Web</>
                                     ) : (
-                                        <><HardDrive className="w-4 h-4" /> 雲端硬碟</>
+                                        <><HardDrive className="w-3 h-3" /> Drive</>
                                     )}
-                                    <ChevronDown className="w-3 h-3" />
+                                    <ChevronDown className="w-3 h-3 ml-1" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => setSourceMode("web")}>
-                                    <Globe className="w-4 h-4 mr-2" />
-                                    網路
+                            <DropdownMenuContent className="rounded-none border border-black dark:border-white p-0">
+                                <DropdownMenuItem onClick={() => setSourceMode("web")} className="rounded-none font-mono text-xs uppercase focus:bg-black focus:text-white">
+                                    <Globe className="w-3 h-3 mr-2" />
+                                    Web
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => {
                                     setSourceMode("drive");
-                                    toast.info("Google 雲端硬碟功能即將推出");
-                                }}>
-                                    <HardDrive className="w-4 h-4 mr-2" />
-                                    雲端硬碟
+                                    toast.info("Coming Soon");
+                                }} className="rounded-none font-mono text-xs uppercase focus:bg-black focus:text-white">
+                                    <HardDrive className="w-3 h-3 mr-2" />
+                                    Drive
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -323,53 +326,53 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                         {/* 研究模式：Fast / Deep */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="gap-1">
+                                <Button variant="outline" size="sm" className="gap-2 rounded-none border-black dark:border-white h-7 text-xs uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">
                                     {researchMode === "fast" ? (
-                                        <><Zap className="w-4 h-4 text-yellow-500" /> Fast Research</>
+                                        <><Zap className="w-3 h-3" /> Fast</>
                                     ) : (
-                                        <><Brain className="w-4 h-4 text-purple-500" /> Deep Research</>
+                                        <><Brain className="w-3 h-3" /> Deep</>
                                     )}
-                                    <ChevronDown className="w-3 h-3" />
+                                    <ChevronDown className="w-3 h-3 ml-1" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => setResearchMode("fast")}>
-                                    <Zap className="w-4 h-4 mr-2 text-yellow-500" />
-                                    Fast Research
-                                    <span className="ml-2 text-xs text-muted-foreground">快速搜索</span>
+                            <DropdownMenuContent className="rounded-none border border-black dark:border-white p-0 w-[200px]">
+                                <DropdownMenuItem onClick={() => setResearchMode("fast")} className="rounded-none font-mono text-xs uppercase focus:bg-black focus:text-white flex flex-col items-start gap-1 p-2">
+                                    <span className="flex items-center font-bold"><Zap className="w-3 h-3 mr-2" /> Fast Research</span>
+                                    <span className="text-[10px] opacity-70">Quick scan</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setResearchMode("deep")}>
-                                    <Brain className="w-4 h-4 mr-2 text-purple-500" />
-                                    Deep Research
-                                    <span className="ml-2 text-xs text-muted-foreground">深度分析</span>
+                                <DropdownMenuItem onClick={() => setResearchMode("deep")} className="rounded-none font-mono text-xs uppercase focus:bg-black focus:text-white flex flex-col items-start gap-1 p-2">
+                                    <span className="flex items-center font-bold"><Brain className="w-3 h-3 mr-2" /> Deep Research</span>
+                                    <span className="text-[10px] opacity-70">In-depth analysis</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
 
                     {/* 提示文字 */}
-                    <p className="text-xs text-muted-foreground text-center mt-3">
-                        正在探索其他來源時，會暫時停用搜尋功能。
+                    <p className="text-[10px] text-gray-400 text-center mt-3 uppercase tracking-wider">
+                        Search disabled while browsing locally
                     </p>
                 </div>
 
                 {/* 搜索結果顯示 */}
                 {searchResults.length > 0 && (
-                    <div className="border rounded-lg p-3 max-h-[200px] overflow-y-auto">
-                        <p className="text-sm font-medium mb-2">搜索結果</p>
-                        <div className="space-y-2">
+                    <div className="border-b border-black dark:border-white p-0 max-h-[200px] overflow-y-auto">
+                        <div className="p-2 bg-black text-white text-xs font-bold uppercase tracking-wider sticky top-0">
+                            Search Results
+                        </div>
+                        <div className="divide-y divide-black/10 dark:divide-white/10">
                             {searchResults.map((result, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex items-center justify-between p-2 rounded hover:bg-muted/50 cursor-pointer"
+                                    className="flex items-center justify-between p-3 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer group transition-colors"
                                     onClick={() => handleAddSearchResult(result)}
                                 >
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{result.title}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{result.url}</p>
+                                    <div className="flex-1 min-w-0 pr-4">
+                                        <p className="text-xs font-bold truncate uppercase">{result.title}</p>
+                                        <p className="text-[10px] text-gray-500 truncate font-sans">{result.url}</p>
                                     </div>
-                                    <Button size="sm" variant="ghost">
-                                        <ArrowRight className="w-4 h-4" />
+                                    <Button size="sm" variant="ghost" className="h-6 w-6 rounded-none p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black hover:text-white">
+                                        <ArrowRight className="w-3 h-3" />
                                     </Button>
                                 </div>
                             ))}
@@ -378,16 +381,17 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                 )}
 
                 {/* 內容區域 - 根據 activePanel 切換 */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto p-6">
                     {activePanel === "main" && (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {/* 拖曳上傳區 */}
                             <div
-                                className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                                className="border border-dashed border-gray-400 dark:border-gray-600 p-12 text-center hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors cursor-pointer group"
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <p className="text-muted-foreground mb-4">
-                                    或者將檔案拖曳到這裡
+                                <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-black dark:group-hover:text-white transition-colors" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-gray-500 group-hover:text-black dark:group-hover:text-white transition-colors">
+                                    Drag & Drop Files Here
                                 </p>
                                 <input
                                     ref={fileInputRef}
@@ -400,43 +404,46 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                             </div>
 
                             {/* 底部按鈕組 */}
-                            <div className="flex justify-center gap-3 flex-wrap">
+                            <div className="grid grid-cols-2 gap-3">
                                 <Button
                                     variant="outline"
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isLoading}
+                                    className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    上傳檔案
+                                    <Upload className="w-3 h-3 mr-2" />
+                                    Upload File
                                 </Button>
                                 <Button
                                     variant="outline"
                                     onClick={() => setActivePanel("url")}
+                                    className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
-                                    <Link2 className="w-4 h-4 mr-2" />
-                                    <Youtube className="w-4 h-4 mr-1 text-red-500" />
-                                    網站
+                                    <Link2 className="w-3 h-3 mr-2" />
+                                    Web URL
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onClick={() => toast.info("Google 雲端硬碟功能即將推出")}
+                                    onClick={() => toast.info("Coming soon")}
+                                    className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black opacity-50"
                                 >
-                                    <HardDrive className="w-4 h-4 mr-2" />
-                                    雲端硬碟
+                                    <HardDrive className="w-3 h-3 mr-2" />
+                                    Google Drive
                                 </Button>
                                 <Button
                                     variant="outline"
                                     onClick={() => setActivePanel("text")}
+                                    className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
-                                    <FileText className="w-4 h-4 mr-2" />
-                                    複製的文字
+                                    <FileText className="w-3 h-3 mr-2" />
+                                    Paste Text
                                 </Button>
                             </div>
 
                             {isLoading && (
-                                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    上傳中...
+                                <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-wider animate-pulse">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Uploading...
                                 </div>
                             )}
                         </div>
@@ -444,25 +451,26 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
 
                     {/* 網站 URL 輸入面板 */}
                     {activePanel === "url" && (
-                        <div className="space-y-4 p-4">
-                            <Button variant="ghost" size="sm" onClick={resetToMain}>
-                                ← 返回
+                        <div className="space-y-6">
+                            <Button variant="ghost" size="sm" onClick={resetToMain} className="rounded-none -ml-2 text-xs uppercase hover:bg-transparent hover:text-gray-500 pl-0">
+                                ← Back
                             </Button>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">網頁網址</label>
+                            <div className="space-y-4">
+                                <label className="text-xs font-bold uppercase tracking-wider block">URL Address</label>
                                 <div className="flex gap-2">
                                     <Input
-                                        placeholder="https://example.com/article 或 YouTube 網址"
+                                        placeholder="https://..."
                                         value={urlInput}
                                         onChange={(e) => setUrlInput(e.target.value)}
                                         disabled={isLoading}
+                                        className="rounded-none border-black dark:border-white font-mono text-sm h-10 focus-visible:ring-0"
                                     />
-                                    <Button onClick={handleAddUrl} disabled={isLoading || !urlInput.trim()}>
-                                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "添加"}
+                                    <Button onClick={handleAddUrl} disabled={isLoading || !urlInput.trim()} className="rounded-none bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black h-10 w-20 uppercase font-bold text-xs">
+                                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "ADD"}
                                     </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    支援一般網頁和 YouTube 影片網址
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wide">
+                                    Supports Web Articles and YouTube Links
                                 </p>
                             </div>
                         </div>
@@ -470,48 +478,54 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
 
                     {/* 複製文字面板 */}
                     {activePanel === "text" && (
-                        <div className="space-y-4 p-4">
-                            <Button variant="ghost" size="sm" onClick={resetToMain}>
-                                ← 返回
+                        <div className="space-y-6 h-full flex flex-col">
+                            <Button variant="ghost" size="sm" onClick={resetToMain} className="rounded-none -ml-2 text-xs uppercase hover:bg-transparent hover:text-gray-500 pl-0 w-fit shrink-0">
+                                ← Back
                             </Button>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">標題（選填）</label>
-                                <Input
-                                    placeholder="為這段文字命名..."
-                                    value={textTitle}
-                                    onChange={(e) => setTextTitle(e.target.value)}
-                                    disabled={isLoading}
-                                />
+                            <div className="space-y-4 flex-1 flex flex-col">
+                                <div className="space-y-2 shrink-0">
+                                    <label className="text-xs font-bold uppercase tracking-wider block">Title (Optional)</label>
+                                    <Input
+                                        placeholder="UNTITLED NOTE..."
+                                        value={textTitle}
+                                        onChange={(e) => setTextTitle(e.target.value)}
+                                        disabled={isLoading}
+                                        className="rounded-none border-black dark:border-white font-mono text-sm h-10 focus-visible:ring-0 uppercase placeholder:normal-case"
+                                    />
+                                </div>
+                                <div className="space-y-2 flex-1 flex flex-col">
+                                    <label className="text-xs font-bold uppercase tracking-wider block">Content</label>
+                                    <Textarea
+                                        placeholder="Type or paste content here..."
+                                        value={textInput}
+                                        onChange={(e) => setTextInput(e.target.value)}
+                                        disabled={isLoading}
+                                        className="rounded-none border-black dark:border-white font-mono text-sm p-4 focus-visible:ring-0 flex-1 min-h-[200px] resize-none"
+                                    />
+                                </div>
+                                <Button
+                                    onClick={handleAddText}
+                                    disabled={isLoading || !textInput.trim()}
+                                    className="w-full rounded-none bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black h-12 uppercase font-bold text-xs tracking-widest shrink-0"
+                                >
+                                    {isLoading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : null}
+                                    SAVE TEXT NOTE
+                                </Button>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">內容</label>
-                                <Textarea
-                                    placeholder="貼上你想要作為來源的文字內容..."
-                                    value={textInput}
-                                    onChange={(e) => setTextInput(e.target.value)}
-                                    disabled={isLoading}
-                                    rows={6}
-                                />
-                            </div>
-                            <Button
-                                onClick={handleAddText}
-                                disabled={isLoading || !textInput.trim()}
-                                className="w-full"
-                            >
-                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                添加文字
-                            </Button>
                         </div>
                     )}
                 </div>
 
                 {/* 底部來源計數 */}
-                <div className="shrink-0 border-t pt-3 mt-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="w-24 h-1 bg-primary/30 rounded-full">
-                            <div className="w-1/3 h-full bg-primary rounded-full" />
+                <div className="shrink-0 border-t border-black dark:border-white p-3 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-gray-500">
+                        <div className="flex items-center gap-2">
+                            <div className="w-16 h-1 bg-gray-200 dark:bg-gray-700">
+                                <div className="w-1/3 h-full bg-black dark:bg-white" />
+                            </div>
+                            <span>Capacity Usage</span>
                         </div>
-                        <span>37/300</span>
+                        <span>37 / 300 Sources</span>
                     </div>
                 </div>
             </DialogContent>

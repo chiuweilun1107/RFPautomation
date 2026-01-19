@@ -115,41 +115,41 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
     }
 
     return (
-        <form onSubmit={handleUpload} className="space-y-4">
-            <div className="grid gap-4">
+        <form onSubmit={handleUpload} className="space-y-6">
+            <div className="grid gap-6">
                 <div className="grid gap-2">
-                    <Label htmlFor="template-name" className="font-bold">範本名稱</Label>
+                    <Label htmlFor="template-name" className="text-sm font-black uppercase tracking-widest">範本名稱</Label>
                     <Input
                         id="template-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="例如:標準投標書範本"
                         required
-                        className="font-medium"
+                        className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="template-category" className="font-bold">分類（選填）</Label>
+                    <Label htmlFor="template-category" className="text-sm font-black uppercase tracking-widest">分類（選填）</Label>
                     <Input
                         id="template-category"
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         placeholder="例如:標案投標"
-                        className="font-medium"
+                        className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="template-description" className="font-bold">描述（選填）</Label>
+                    <Label htmlFor="template-description" className="text-sm font-black uppercase tracking-widest">描述（選填）</Label>
                     <Input
                         id="template-description"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="簡短描述此範本的用途"
-                        className="font-medium"
+                        className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="template-file" className="font-bold">Word 檔案 (.docx)</Label>
+                    <Label htmlFor="template-file" className="text-sm font-black uppercase tracking-widest">Word 檔案 (.docx)</Label>
                     <div className="flex items-center gap-2">
                         <Input
                             id="template-file"
@@ -157,22 +157,22 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
                             accept=".docx"
                             onChange={handleFileChange}
                             required
-                            className="font-medium"
+                            className="rounded-none border-2 border-black font-mono file:rounded-none file:mr-4 file:py-1 file:px-4 file:border-0 file:text-sm file:font-black file:uppercase file:bg-black file:text-white hover:file:bg-[#FA4028] cursor-pointer"
                         />
                         {file && (
                             <Button
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={() => setFile(null)}
-                                className="shrink-0"
+                                className="shrink-0 rounded-none border-2 border-black hover:bg-red-50"
                             >
                                 <X className="h-4 w-4" />
                             </Button>
                         )}
                     </div>
                     {file && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex items-center gap-2 text-xs font-mono font-bold text-black dark:text-gray-400 bg-gray-100 p-2 border border-black uppercase italic">
                             <FileText className="h-4 w-4" />
                             <span>{file.name}</span>
                         </div>
@@ -182,7 +182,7 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
             <Button
                 type="submit"
                 disabled={uploading}
-                className="w-full bg-[#FA4028] hover:bg-[#D93620] text-white font-bold"
+                className="w-full rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] py-6"
             >
                 {uploading ? "上傳中..." : "確認上傳"}
             </Button>

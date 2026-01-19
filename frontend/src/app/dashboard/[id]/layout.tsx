@@ -20,11 +20,13 @@ export default async function Layout({
         .eq('id', id)
         .single()
 
+    // Verify project exists
     if (!project) notFound()
 
+    // Page component handles its own layout via ProjectDashboardClient
     return (
-        <ProjectWorkspaceLayout project={project}>
+        <>
             {children}
-        </ProjectWorkspaceLayout>
+        </>
     )
 }

@@ -17,18 +17,18 @@ interface ProjectWorkflowStepperProps {
 }
 
 const STAGES = [
-    { id: 0, label: "標案初評" },
-    { id: 1, label: "領標啟動" },
-    { id: 2, label: "標書規劃" },
-    { id: 3, label: "文件撰寫" },
-    { id: 4, label: "簡報評選" },
-    { id: 5, label: "決標移交" },
+    { id: 0, label: "Assessment" },
+    { id: 1, label: "Tender_Launch" },
+    { id: 2, label: "Planning" },
+    { id: 3, label: "Writing" },
+    { id: 4, label: "Review" },
+    { id: 5, label: "Handover" },
 ];
 
 export function ProjectWorkflowStepper({ currentStage, className, onStageSelect }: ProjectWorkflowStepperProps) {
     return (
         <div className={cn("w-full py-4", className)}>
-            <div className="flex items-start w-full">
+            <div className="flex items-start w-full font-mono">
                 {STAGES.map((stage, index) => {
                     const isCompleted = currentStage > stage.id;
                     const isCurrent = currentStage === stage.id;
@@ -44,41 +44,41 @@ export function ProjectWorkflowStepper({ currentStage, className, onStageSelect 
                             {!isLast && (
                                 <>
                                     {/* Grey Background Line */}
-                                    <div className="absolute top-4 left-[50%] w-full h-[2px] bg-gray-200 dark:bg-gray-700" />
+                                    <div className="absolute top-4 left-[50%] w-full h-[1px] bg-black/20 dark:bg-white/20" />
 
                                     {/* Colored Active Line */}
                                     <div
                                         className={cn(
-                                            "absolute top-4 left-[50%] w-full h-[2px] bg-primary transition-all duration-500 origin-left scale-x-0",
+                                            "absolute top-4 left-[50%] w-full h-[1px] bg-black dark:bg-white transition-all duration-500 origin-left scale-x-0",
                                             isCompleted && "scale-x-100"
                                         )}
                                     />
                                 </>
                             )}
 
-                            {/* Step Circle */}
+                            {/* Step Box */}
                             <div
                                 className={cn(
-                                    "relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 bg-background z-10 group-hover:border-primary/50",
-                                    isCompleted && "bg-primary border-primary text-primary-foreground",
-                                    isCurrent && "border-primary text-primary ring-4 ring-primary/20",
-                                    !isCompleted && !isCurrent && "border-muted text-muted-foreground"
+                                    "relative flex items-center justify-center w-8 h-8 border transition-all duration-300 bg-white dark:bg-black z-10 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black",
+                                    isCompleted && "bg-black border-black text-white dark:bg-white dark:border-white dark:text-black",
+                                    isCurrent && "border-black text-black ring-1 ring-black ring-offset-2 dark:border-white dark:text-white dark:ring-white dark:ring-offset-black",
+                                    !isCompleted && !isCurrent && "border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-600"
                                 )}
                             >
                                 {isCompleted ? (
                                     <Check className="w-4 h-4" />
                                 ) : (
-                                    <span className="text-xs font-semibold">{index + 1}</span>
+                                    <span className="text-[10px] font-bold">{(index + 1).toString().padStart(2, '0')}</span>
                                 )}
                             </div>
 
                             {/* Label */}
                             <span
                                 className={cn(
-                                    "mt-2 text-[10px] md:text-xs font-medium whitespace-nowrap transition-colors duration-300",
-                                    isCompleted && "text-primary/80",
-                                    isCurrent && "text-primary font-bold",
-                                    !isCompleted && !isCurrent && "text-muted-foreground"
+                                    "mt-2 text-[10px] uppercase tracking-wider font-medium whitespace-nowrap transition-colors duration-300",
+                                    isCompleted && "text-black dark:text-white",
+                                    isCurrent && "text-black font-bold dark:text-white",
+                                    !isCompleted && !isCurrent && "text-gray-400 dark:text-gray-600"
                                 )}
                             >
                                 {stage.label}

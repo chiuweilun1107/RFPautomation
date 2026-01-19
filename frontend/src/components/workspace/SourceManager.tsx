@@ -28,7 +28,7 @@ import {
 import {
     Plus, FileText, Globe, Loader2, Trash2, Check, Eye, Search,
     MoreVertical, Pencil, Sparkles, X, ChevronDown, ArrowRight,
-    Brain, Zap, ExternalLink, ThumbsUp, ThumbsDown
+    Brain, Zap, ExternalLink, ThumbsUp, ThumbsDown, RefreshCw
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -79,8 +79,13 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
     const [sourceToRename, setSourceToRename] = useState<Source | null>(null);
     const [sourceToDelete, setSourceToDelete] = useState<Source | null>(null); // New state for delete confirmation
     const [filterQuery, setFilterQuery] = useState("");
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({}); // Fixed: Moved state up
     const fileInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClient();
+
+    const toggleSection = (key: string) => {
+        setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+    };
 
     // AI Search Function
     const handleAISearch = async () => {
@@ -295,6 +300,32 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
         }
     };
 
+    const handleRefreshSource = async (source: Source, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (loading) return;
+
+        toast.info("Triggering refresh...");
+        try {
+            const response = await fetch('/api/n8n/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: source.origin_url || source.title,
+                    type: source.type,
+                    projectId: projectId,
+                    source_id: source.id
+                })
+            });
+
+            if (!response.ok) throw new Error("Refresh failed");
+
+            toast.success("Refresh triggered successfully");
+        } catch (error) {
+            console.error("Refresh error:", error);
+            toast.error("Failed to refresh source");
+        }
+    };
+
     const handleRenameClick = (source: Source, e: React.MouseEvent) => {
         e.stopPropagation();
         setSourceToRename(source);
@@ -381,18 +412,31 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
         )
         : sources;
 
+    // Group Sources Logic
+    const sourceSections = {
+        tender: { label: 'TENDER DOCUMENTS', items: [] as Source[] },
+        internal: { label: 'INTERNAL KNOWLEDGE', items: [] as Source[] },
+        external: { label: 'EXTERNAL SOURCES', items: [] as Source[] },
+    };
+
+    filteredSources.forEach(s => {
+        const type = s.type?.toLowerCase();
+        const sourceType = s.source_type?.toLowerCase();
+
+        if (type === 'web' || type === 'web_crawl' || sourceType === 'web' || sourceType === 'url') {
+            sourceSections.external.items.push(s);
+        } else if (sourceType === 'rfp' || sourceType === 'tender') {
+            sourceSections.tender.items.push(s);
+        } else {
+            sourceSections.internal.items.push(s);
+        }
+    });
+
     return (
         <TooltipProvider>
             <Card className="h-full border-none shadow-none flex flex-col bg-transparent">
                 <CardHeader className="px-0 pt-0 pb-3 shrink-0 space-y-4">
-
-                    {/* 1. Header Area */}
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg font-semibold">知識來源</CardTitle>
-                        <p className="text-xs text-muted-foreground">
-                            已選擇 {linkedCount} 個來源用於此專案
-                        </p>
-                    </div>
+                    {/* 1. Header Removed to fix duplication */}
 
                     {/* 2. AI Search / Status / Results Area */}
 
@@ -400,33 +444,33 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                     {searchState === 'idle' && (
                         <div className="space-y-3">
                             {/* Search Widget */}
-                            <div className="relative group">
+                            <div className="relative group font-mono text-sm">
                                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                    <Search className="h-4 w-4 text-muted-foreground" />
+                                    <Search className="h-4 w-4 text-black dark:text-white" />
                                 </div>
                                 <Input
-                                    placeholder="搜索來源.."
+                                    placeholder="SEARCH SOURCES..."
                                     value={aiSearchQuery}
                                     onChange={(e) => setAiSearchQuery(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAISearch()}
-                                    className="pl-9 pr-12 h-12 rounded-xl bg-muted/30 border-transparent hover:bg-muted/50 focus:bg-background transition-all"
+                                    className="pl-9 pr-12 h-10 rounded-none border border-black dark:border-white focus:bg-transparent placeholder:text-gray-400 uppercase tracking-wider"
                                 />
                                 <div className="absolute inset-y-0 right-2 flex items-center gap-1">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">
                                                 {researchMode === 'fast' ?
-                                                    <Zap className="h-4 w-4 text-yellow-500" /> :
-                                                    <Brain className="h-4 w-4 text-purple-500" />
+                                                    <Zap className="h-3 w-3" /> :
+                                                    <Brain className="h-3 w-3" />
                                                 }
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => setResearchMode('fast')}>
-                                                <Zap className="mr-2 h-4 w-4 text-yellow-500" /> Fast Research
+                                        <DropdownMenuContent align="end" className="rounded-none border border-black dark:border-white font-mono uppercase tracking-wider">
+                                            <DropdownMenuItem onClick={() => setResearchMode('fast')} className="rounded-none focus:bg-black focus:text-white dark:focus:bg-white dark:focus:text-black">
+                                                <Zap className="mr-2 h-4 w-4" /> Fast Research
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setResearchMode('deep')}>
-                                                <Brain className="mr-2 h-4 w-4 text-purple-500" /> Deep Research
+                                            <DropdownMenuItem onClick={() => setResearchMode('deep')} className="rounded-none focus:bg-black focus:text-white dark:focus:bg-white dark:focus:text-black">
+                                                <Brain className="mr-2 h-4 w-4" /> Deep Research
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -434,32 +478,32 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 rounded-full"
+                                        className="h-6 w-6 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                                         onClick={handleAISearch}
                                         disabled={!aiSearchQuery.trim()}
                                     >
-                                        <ArrowRight className="h-4 w-4" />
+                                        <ArrowRight className="h-3 w-3" />
                                     </Button>
                                 </div>
                             </div>
 
                             {/* Original Add/Filter Actions */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 font-mono text-xs">
                                 <Button
                                     variant="outline"
-                                    className="flex-1 justify-center border-dashed h-9"
+                                    className="flex-1 justify-center border-black dark:border-white h-8 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black uppercase tracking-wider"
                                     onClick={() => setIsAddDialogOpen(true)}
                                 >
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    新增來源
+                                    <Plus className="w-3 h-3 mr-2" />
+                                    Add Source
                                 </Button>
                                 <div className="relative flex-1">
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
                                     <Input
-                                        placeholder="搜尋來源..."
+                                        placeholder="FILTER..."
                                         value={filterQuery}
                                         onChange={(e) => setFilterQuery(e.target.value)}
-                                        className="pl-8 h-9 text-sm"
+                                        className="pl-8 h-8 rounded-none border-black dark:border-white uppercase tracking-wider text-[10px]"
                                     />
                                 </div>
                             </div>
@@ -468,14 +512,13 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
                     {/* STATE: Searching - Show Banner */}
                     {searchState === 'searching' && (
-                        <div className="bg-primary/5 rounded-xl p-4 flex items-center gap-3 animate-source-pulse">
+                        <div className="border border-black dark:border-white p-4 flex items-center gap-3 font-mono bg-white dark:bg-black animate-pulse">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
-                                <Sparkles className="relative w-5 h-5 text-primary" />
+                                <Sparkles className="relative w-4 h-4 text-black dark:text-white" />
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium text-primary">{loadingText}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">正在分析: {aiSearchQuery}</p>
+                                <p className="font-bold text-xs uppercase tracking-wider text-black dark:text-white">{loadingText}</p>
+                                <p className="text-[10px] text-gray-500 mt-1 uppercase truncate max-w-[200px]">{aiSearchQuery}</p>
                             </div>
                         </div>
                     )}
@@ -570,105 +613,123 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
                 {/* 3. Source List Area (Only show if not in results mode, or push down?) */}
                 {/* NotebookLM shows list below results panel, so we keep it */}
-                <CardContent className="px-0 space-y-2 flex-1 overflow-y-auto">
+                <CardContent className="px-0 space-y-6 flex-1 overflow-y-auto">
                     {filteredSources.length === 0 && sources.length === 0 && searchState === 'idle' && (
-                        <div className="text-center text-muted-foreground py-8 text-sm">
-                            尚無知識來源
+                        <div className="text-center text-gray-400 py-12 text-xs font-mono uppercase tracking-wider border border-dashed border-gray-300 dark:border-gray-700 m-1">
+                            NO SOURCES FOUND
                             <br />
-                            <span className="text-xs">點擊「新增來源」上傳文件或使用上方 AI 搜尋</span>
+                            <span className="text-[10px] opacity-70 mt-2 block">Upload files or use AI Search above</span>
                         </div>
                     )}
                     {filteredSources.length === 0 && sources.length > 0 && filterQuery && (
-                        <div className="text-center text-muted-foreground py-8 text-sm">
-                            找不到符合「{filterQuery}」的來源
+                        <div className="text-center text-gray-400 py-8 text-xs font-mono uppercase tracking-wider">
+                            NO MATCHES FOR "{filterQuery}"
                         </div>
                     )}
-                    {filteredSources.map(source => {
-                        const isLinked = linkedSourceIds.has(source.id);
+
+                    {(Object.entries(sourceSections) as [keyof typeof sourceSections, typeof sourceSections.tender][]).map(([key, section]) => {
+                        if (section.items.length === 0) return null;
+                        const isCollapsed = collapsedSections[key];
+
                         return (
-                            <div
-                                key={source.id}
-                                className={`group flex items-center gap-3 p-3 border rounded-lg transition-colors ${isLinked
-                                    ? 'bg-primary/5 border-primary/30 hover:bg-primary/10'
-                                    : 'bg-muted/30 hover:bg-muted/50'
-                                    }`}
-                            >
+                            <div key={key} className="space-y-1">
                                 <div
-                                    className="cursor-pointer"
-                                    onClick={() => toggleSourceLink(source.id)}
+                                    className="px-3 py-2 bg-black/5 dark:bg-white/5 text-[10px] font-bold uppercase tracking-widest text-black/80 dark:text-white/80 flex items-center justify-between cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors group select-none"
+                                    onClick={() => toggleSection(key)}
                                 >
-                                    <Checkbox
-                                        checked={isLinked}
-                                        disabled={saving || source.status !== 'ready'}
-                                        className="pointer-events-none"
-                                    />
+                                    <span>{section.label}</span>
+                                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`} />
                                 </div>
 
-                                <div
-                                    className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-                                    onClick={() => handleViewSource(source)}
-                                >
-                                    <div className="p-2 bg-background rounded-md border shrink-0">
-                                        {source.type === 'web' ? (
-                                            <Globe className="w-4 h-4 text-blue-500" />
-                                        ) : (
-                                            <FileText className="w-4 h-4 text-orange-500" />
-                                        )}
+                                {!isCollapsed && (
+                                    <div className="border-t border-black/10 dark:border-white/10">
+                                        {section.items.map(source => {
+                                            const isLinked = linkedSourceIds.has(source.id);
+                                            return (
+                                                <div
+                                                    key={source.id}
+                                                    className={`group flex items-center gap-3 p-3 border-b border-black/10 dark:border-white/10 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-mono ${isLinked
+                                                        ? 'bg-black/5 dark:bg-white/5'
+                                                        : 'bg-transparent'
+                                                        }`}
+                                                >
+                                                    <div
+                                                        className="cursor-pointer"
+                                                        onClick={() => toggleSourceLink(source.id)}
+                                                    >
+                                                        <Checkbox
+                                                            checked={isLinked}
+                                                            disabled={saving || source.status !== 'ready'}
+                                                            className="pointer-events-none rounded-none border-black dark:border-white data-[state=checked]:bg-black data-[state=checked]:text-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black"
+                                                        />
+                                                    </div>
+
+                                                    <div
+                                                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                                                        onClick={() => handleViewSource(source)}
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <h4 className="text-xs font-bold uppercase tracking-wider truncate max-w-[180px]">
+                                                                        {source.title}
+                                                                    </h4>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="bg-black text-white border-0 text-xs px-2 py-1 max-w-sm break-all rounded-none font-mono">
+                                                                    {source.title}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+
+                                                            <div className="flex items-center gap-2 text-[10px] text-gray-500 group-hover:text-gray-300 dark:group-hover:text-gray-600 uppercase">
+                                                                <span>{source.type}</span>
+                                                                <span>•</span>
+                                                                {source.created_at && <span>{new Date(source.created_at).toLocaleDateString()}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="shrink-0 flex items-center gap-1 transition-opacity">
+                                                        {source.status === 'processing' && (
+                                                            <span className="text-[10px] uppercase font-bold text-yellow-600 border border-yellow-600 px-1 mr-2 group-hover:text-yellow-300 group-hover:border-yellow-300">
+                                                                Processing
+                                                            </span>
+                                                        )}
+                                                        {source.status === 'error' && (
+                                                            <span className="text-[10px] uppercase font-bold text-red-600 border border-red-600 px-1 mr-2 group-hover:text-red-300 group-hover:border-red-300">
+                                                                Error
+                                                            </span>
+                                                        )}
+
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="w-6 h-6 hover:bg-transparent hover:text-white dark:hover:text-black">
+                                                                    <MoreVertical className="w-3 h-3" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="rounded-none border border-black dark:border-white font-mono uppercase tracking-wider">
+                                                                <DropdownMenuItem onClick={(e) => handleRefreshSource(source, e)} className="rounded-none focus:bg-black focus:text-white">
+                                                                    <RefreshCw className="w-3 h-3 mr-2" />
+                                                                    Refresh
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={(e) => handleRenameClick(source, e)} className="rounded-none focus:bg-black focus:text-white">
+                                                                    <Pencil className="w-3 h-3 mr-2" />
+                                                                    Rename
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={(e) => handleDeleteSource(source, e)}
+                                                                    className="text-red-600 focus:text-red-600 rounded-none focus:bg-red-50"
+                                                                >
+                                                                    <Trash2 className="w-3 h-3 mr-2" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <h4 className="text-sm font-medium truncate max-w-[180px]">
-                                                    {source.title}
-                                                </h4>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="bg-black text-white border-0 text-base px-3 py-2 max-w-sm break-all">
-                                                {source.title}
-                                            </TooltipContent>
-                                        </Tooltip>
-
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <span className="capitalize">{source.type}</span>
-                                            <span>•</span>
-                                            <span>{new Date(source.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {source.status === 'processing' && (
-                                        <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full mr-2">
-                                            處理中
-                                        </span>
-                                    )}
-                                    {source.status === 'error' && (
-                                        <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5 rounded-full mr-2">
-                                            錯誤
-                                        </span>
-                                    )}
-
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="w-8 h-8">
-                                                <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={(e) => handleRenameClick(source, e)}>
-                                                <Pencil className="w-4 h-4 mr-2" />
-                                                重新命名來源
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={(e) => handleDeleteSource(source, e)}
-                                                className="text-red-600 focus:text-red-600"
-                                            >
-                                                <Trash2 className="w-4 h-4 mr-2" />
-                                                移除來源
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
+                                )}
                             </div>
                         );
                     })}

@@ -27,7 +27,21 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        // 2. Trigger n8n Ingestion (Server-to-Server)
+        // 2. Link to Project (Important for "Selected" state)
+        if (project_id) {
+            const { error: linkError } = await supabase
+                .from('project_sources')
+                .insert({
+                    project_id,
+                    source_id: data.id
+                });
+
+            if (linkError) {
+                console.warn('Auto-link warning:', linkError);
+            }
+        }
+
+        // 3. Trigger n8n Ingestion (Server-to-Server)
         // We can reuse the logic or call the n8n endpoint directly here
         const n8nUrl = process.env.N8N_INGEST_WEBHOOK || 'http://localhost:5678/webhook/ingest';
 
