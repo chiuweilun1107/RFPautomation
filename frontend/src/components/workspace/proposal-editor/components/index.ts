@@ -7,3 +7,5 @@ export { AIGenerationPanel } from "./AIGenerationPanel";
 export { SourceSelector } from "./SourceSelector";
 export { ContentPanel } from "./ContentPanel";
 export { ControlPanel } from "./ControlPanel";
+export { DialogManager } from "./DialogManager";
+export { SectionHeader } from "./SectionHeader";

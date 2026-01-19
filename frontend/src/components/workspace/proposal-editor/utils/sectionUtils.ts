@@ -81,7 +81,7 @@ export async function autoSortChildren(
 
     await updateOrder(supabase, updates);
   } catch (e) {
-    console.error('Auto-sort failed:', e);
+    // Auto-sort failure is non-critical
   }
 }
 
@@ -108,7 +108,6 @@ export async function updateOrder(
 
     if (error) throw error;
   } catch (e) {
-    console.error('Failed to save order:', e);
     throw e;
   }
 }
@@ -129,7 +128,6 @@ export async function updateTaskOrder(
       if (error) throw error;
     }
   } catch (e) {
-    console.error('Failed to save task order:', e);
     throw e;
   }
 }

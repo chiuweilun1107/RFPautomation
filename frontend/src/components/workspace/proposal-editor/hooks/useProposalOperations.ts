@@ -21,7 +21,6 @@ export function useProposalOperations(
   const addSection = useAsyncAction(
     async (title: string, parentId?: string) => {
       // TODO: 调用 API
-      console.log("Adding section:", { title, parentId, projectId });
       // const result = await sectionsApi.create({ ... });
       // state.setSections(prev => [...prev, result]);
       toast.success("章节已添加");
@@ -39,7 +38,6 @@ export function useProposalOperations(
   const editSection = useAsyncAction(
     async (sectionId: string, title: string) => {
       // TODO: 调用 API
-      console.log("Editing section:", { sectionId, title });
       toast.success("章节已更新");
       return { id: sectionId, title };
     },
@@ -54,7 +52,6 @@ export function useProposalOperations(
   const deleteSection = useAsyncAction(
     async (sectionId: string) => {
       // TODO: 调用 API
-      console.log("Deleting section:", sectionId);
       toast.success("章节已删除");
       return { id: sectionId };
     },
@@ -71,7 +68,6 @@ export function useProposalOperations(
   const addTask = useAsyncAction(
     async (sectionId: string, title: string, sourceIds?: string[]) => {
       // TODO: 调用 API
-      console.log("Adding task:", { sectionId, title, sourceIds });
       toast.success("任务已添加");
       return { id: "new", section_id: sectionId, title };
     },
@@ -86,7 +82,6 @@ export function useProposalOperations(
   const editTask = useAsyncAction(
     async (taskId: string, title: string, description?: string) => {
       // TODO: 调用 API
-      console.log("Editing task:", { taskId, title, description });
       toast.success("任务已更新");
       return { id: taskId, title, description };
     },
@@ -101,7 +96,6 @@ export function useProposalOperations(
   const deleteTask = useAsyncAction(
     async (taskId: string) => {
       // TODO: 调用 API
-      console.log("Deleting task:", taskId);
       toast.success("任务已删除");
       return { id: taskId };
     },
@@ -119,7 +113,6 @@ export function useProposalOperations(
     async (sections: Section[]) => {
       try {
         // TODO: 调用 API 更新顺序
-        console.log("Reordering sections");
         state.setSections(sections);
       } catch (error) {
         toast.error("重新排序失败");
@@ -135,7 +128,6 @@ export function useProposalOperations(
     async (sectionId: string, tasks: Task[]) => {
       try {
         // TODO: 调用 API 更新顺序
-        console.log("Reordering tasks in section:", sectionId);
         state.setSections((prev: Section[]) => {
           // 更新对应章节的任务顺序
           return prev.map((s) => (s.id === sectionId ? { ...s, tasks } : s));
@@ -155,7 +147,6 @@ export function useProposalOperations(
   const generateTasks = useAsyncAction(
     async (sectionId: string, sourceIds: string[], userDescription?: string) => {
       // TODO: 调用 n8n API
-      console.log("Generating tasks:", { sectionId, sourceIds, userDescription });
       state.setGenerating(true);
       state.setGeneratingSectionId(sectionId);
 
@@ -192,7 +183,6 @@ export function useProposalOperations(
   const generateSubsection = useAsyncAction(
     async (taskId: string, sourceIds: string[]) => {
       // TODO: 调用 API
-      console.log("Generating subsection:", { taskId, sourceIds });
       state.setIsGeneratingSubsection(true);
 
       try {
@@ -211,7 +201,6 @@ export function useProposalOperations(
   const generateTaskContent = useAsyncAction(
     async (taskId: string, sourceIds: string[]) => {
       // TODO: 调用 API
-      console.log("Generating task content:", { taskId, sourceIds });
       state.setGeneratingTaskId(taskId);
 
       try {
@@ -232,7 +221,6 @@ export function useProposalOperations(
   const generateImage = useAsyncAction(
     async (taskId: string, prompt: string) => {
       // TODO: 调用图片生成 API
-      console.log("Generating image:", { taskId, prompt });
       state.setGeneratingTaskId(taskId);
 
       try {
@@ -251,7 +239,6 @@ export function useProposalOperations(
   const uploadImage = useAsyncAction(
     async (taskId: string, file: File) => {
       // TODO: 调用 API 上传
-      console.log("Uploading image:", { taskId, fileName: file.name });
       state.setGeneratingTaskId(taskId);
 
       try {
@@ -273,7 +260,6 @@ export function useProposalOperations(
   const addSource = useAsyncAction(
     async (sourceData: any) => {
       // TODO: 调用 API
-      console.log("Adding source:", sourceData);
       toast.success("源文献已添加");
       return { id: "new", ...sourceData };
     },
@@ -288,7 +274,6 @@ export function useProposalOperations(
   const deleteSource = useAsyncAction(
     async (sourceId: string) => {
       // TODO: 调用 API
-      console.log("Deleting source:", sourceId);
       state.setSources((prev: any[]) => prev.filter((s) => s.id !== sourceId));
       toast.success("源文献已删除");
       return { id: sourceId };
@@ -305,7 +290,6 @@ export function useProposalOperations(
     async (taskId: string, sourceIds: string[]) => {
       try {
         // TODO: 调用 API
-        console.log("Linking sources to task:", { taskId, sourceIds });
         toast.success("源文献已链接");
       } catch (error) {
         toast.error("链接失败");
