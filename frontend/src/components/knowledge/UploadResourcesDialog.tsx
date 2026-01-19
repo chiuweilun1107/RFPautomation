@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { UploadZone } from "./UploadZone"
 
-export function UploadResourcesDialog() {
+export function UploadResourcesDialog({ onUploadComplete }: { onUploadComplete?: () => void }) {
     const [open, setOpen] = React.useState(false)
 
     return (

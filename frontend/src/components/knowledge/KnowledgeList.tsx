@@ -35,8 +35,30 @@ interface Source {
     created_at: string
 }
 
-export function KnowledgeList({ initialDocs }: { initialDocs: any[] }) {
-    const docs = initialDocs as Source[]
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { MoreVertical, LayoutGrid, ArrowRight, Loader2 } from "lucide-react"
+
+export function KnowledgeList({
+    initialDocs,
+    searchQuery = "",
+    viewMode = 'grid'
+}: {
+    initialDocs: any[],
+    searchQuery?: string,
+    viewMode?: 'grid' | 'list'
+}) {
+    const rawDocs = initialDocs as Source[]
+
+    // Client-side filtering
+    const docs = React.useMemo(() => {
+        if (!searchQuery.trim()) return rawDocs;
+        const query = searchQuery.toLowerCase();
+        return rawDocs.filter(doc =>
+            doc.title.toLowerCase().includes(query) ||
+            doc.type?.toLowerCase()?.includes(query)
+        );
+    }, [rawDocs, searchQuery]);
+
     const router = useRouter()
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
     const [docToDelete, setDocToDelete] = React.useState<Source | null>(null)
@@ -58,7 +80,6 @@ export function KnowledgeList({ initialDocs }: { initialDocs: any[] }) {
                 .from('raw-files')
                 .remove([doc.origin_url])
 
-            // Note: Even if storage delete fails (file missing), we should try to delete from DB
             if (storageError) console.error("Storage delete failed", storageError)
 
             // 2. Delete from DB (Sources)
@@ -82,8 +103,106 @@ export function KnowledgeList({ initialDocs }: { initialDocs: any[] }) {
 
     if (docs.length === 0) {
         return (
-            <div className="text-center py-12 text-sm text-gray-500">
-                No documents uploaded yet.
+            <div className="text-center py-20 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-black/5 dark:bg-white/5">
+                <FileText className="h-12 w-12 mx-auto text-black/20 dark:text-white/20 mb-4" />
+                <p className="font-mono text-sm font-black uppercase text-gray-500">
+                    No matching records found.
+                </p>
+            </div>
+        )
+    }
+
+    if (viewMode === 'grid') {
+        return (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {docs.map((doc) => (
+                    <Card
+                        key={doc.id}
+                        className="group relative flex flex-col overflow-visible border-[1.5px] border-black dark:border-white rounded-none bg-background transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)]"
+                    >
+                        <CardHeader className="p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Badge
+                                    className={`
+                                        rounded-none border-black dark:border-white font-mono text-[9px] uppercase font-black px-2 py-0.5
+                                        ${doc.status === 'ready' ? 'bg-emerald-500 text-white' : doc.status === 'error' ? 'bg-[#FA4028] text-white' : 'bg-amber-400 text-black'}
+                                    `}
+                                >
+                                    {doc.status === 'processing' && <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin inline-block" />}
+                                    {doc.status.toUpperCase()}
+                                </Badge>
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    onClick={() => handleDelete(doc)}
+                                    disabled={deletingId === doc.id}
+                                >
+                                    {deletingId === doc.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                </Button>
+                            </div>
+
+                            <CardTitle className="text-2xl font-black leading-[1.1] font-mono tracking-tighter uppercase group-hover:text-[#FA4028] transition-colors line-clamp-2">
+                                {doc.title}
+                            </CardTitle>
+
+                            <div className="grid grid-cols-1 gap-2 pt-2">
+                                <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-black dark:border-white space-y-1">
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FA4028] uppercase tracking-[0.2em]">
+                                        <FileText className="h-3.5 w-3.5" />
+                                        SOURCE_ENTITY
+                                    </div>
+                                    <div className="text-xl font-black font-mono text-foreground break-words leading-tight line-clamp-1">
+                                        {doc.type || "UNDEFINED_DATA"}
+                                    </div>
+                                </div>
+                                <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-[#FA4028] space-y-1">
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FA4028] uppercase tracking-[0.2em]">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        TEMPORAL_STAMP
+                                    </div>
+                                    <div className="text-xl font-black font-mono text-foreground leading-tight">
+                                        {new Date(doc.created_at).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+                        </CardHeader>
+
+                        <CardFooter className="px-5 py-3 flex items-center justify-between border-t border-black/5 dark:border-white/5 mt-auto opacity-40 hover:opacity-100 transition-opacity">
+                            <div className="flex gap-4 text-[9px] font-mono uppercase font-bold italic">
+                                <span>Upd: {new Date(doc.created_at).toLocaleDateString()}</span>
+                                <span>Cre: {new Date(doc.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                        </CardFooter>
+                    </Card>
+                ))}
+
+                {/* Delete Dialog (Same as before) */}
+                <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+                    <AlertDialogContent className="rounded-none border-2 border-black dark:border-white font-mono">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="font-black uppercase tracking-tight">CONFIRM_DELETE</AlertDialogTitle>
+                            <AlertDialogDescription className="text-xs font-bold">
+                                // This will permanently delete &quot;{docToDelete?.title}&quot;.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-none border-black border-2 font-black uppercase text-xs">CANCEL</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={confirmDelete}
+                                className="rounded-none bg-[#FA4028] hover:bg-black text-white font-black uppercase text-xs transition-colors"
+                            >
+                                DELETE_RECORD
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         )
     }

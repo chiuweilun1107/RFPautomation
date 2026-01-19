@@ -10,6 +10,6 @@
 
 import { ProjectListContainer } from '@/features/projects';
 
-export function ProjectList() {
-  return <ProjectListContainer />;
+export function ProjectList({ searchQuery = "" }: { searchQuery?: string }) {
+  return <ProjectListContainer externalSearchQuery={searchQuery} />;
 }

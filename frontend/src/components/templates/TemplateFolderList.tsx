@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Folder, Upload, Trash2, FileText, Clock, Edit2, FolderPlus } from "lucide-react"
+import { Folder, Upload, Trash2, FileText, Clock, Edit2, FolderPlus, ArrowRight, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -51,9 +51,17 @@ interface TemplateFolderListProps {
     selectedFolderId: string | null | "all"
     onFolderUpdate?: () => void
     onCreateFolderClick?: () => void
+    viewMode?: 'grid' | 'list'
 }
 
-export function TemplateFolderList({ folders, onFolderSelect, selectedFolderId, onFolderUpdate, onCreateFolderClick }: TemplateFolderListProps) {
+export function TemplateFolderList({
+    folders,
+    onFolderSelect,
+    selectedFolderId,
+    onFolderUpdate,
+    onCreateFolderClick,
+    viewMode = 'grid'
+}: TemplateFolderListProps) {
     const [folderToDelete, setFolderToDelete] = React.useState<TemplateFolder | null>(null)
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
     const [editingFolder, setEditingFolder] = React.useState<TemplateFolder | null>(null)
@@ -167,48 +175,55 @@ export function TemplateFolderList({ folders, onFolderSelect, selectedFolderId, 
         <>
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {/* All Templates Folder */}
+                {/* All Templates Folder */}
                 <div
                     onClick={() => handleFolderClick("all")}
                     className={cn(
-                        "group relative flex flex-col overflow-hidden border-[1.5px] border-black dark:border-white rounded-none bg-background transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] cursor-pointer",
-                        selectedFolderId === "all" && "ring-4 ring-[#FA4028] ring-inset"
+                        "group relative flex flex-col justify-between h-[340px] border-[1.5px] border-black dark:border-white rounded-none bg-background transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] cursor-pointer",
+                        selectedFolderId === "all" ? "ring-2 ring-black ring-inset text-[#FA4028]" : ""
                     )}
                 >
-                    <div className="h-1.5 w-full bg-black/40" />
-
-                    <div className="p-5 flex-1 space-y-4">
-                        <div className="flex justify-between items-start">
-                            <div className="w-12 h-12 rounded-none bg-black flex items-center justify-center border border-black group-hover:bg-[#FA4028] transition-colors">
-                                <Folder className="w-6 h-6 text-white" />
-                            </div>
-                            <Badge className="rounded-none border-black dark:border-white font-mono text-[9px] uppercase font-black px-2 py-0.5 bg-black text-white">
+                    <div className="p-5 flex flex-col items-start flex-1 space-y-4">
+                        <div className="flex items-center justify-between w-full">
+                            <Badge className="rounded-none border-black dark:border-white font-mono text-[9px] uppercase font-black px-2 py-0.5 bg-emerald-500 text-white border-none">
                                 SYSTEM_POOL
                             </Badge>
+                            <Folder className="h-4 w-4 text-muted-foreground" />
                         </div>
 
                         <div className="space-y-1">
-                            <h3 className="text-2xl font-black leading-[1.1] font-mono tracking-tighter uppercase group-hover:text-[#FA4028] transition-colors">
-                                所有範本
+                            <h3 className="text-2xl font-black font-mono uppercase tracking-tighter leading-[1.1] group-hover:text-[#FA4028] transition-colors line-clamp-2">
+                                ALL_RESOURCES
                             </h3>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2 pt-2">
+                        <div className="grid grid-cols-1 gap-2 pt-2 w-full">
                             <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-black dark:border-white space-y-1">
-                                <div className="text-[9px] font-black text-[#FA4028] uppercase tracking-[0.2em]">IDENTIFIER</div>
-                                <div className="text-sm font-black font-mono uppercase">ALL_RESOURCES</div>
+                                <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FA4028] uppercase tracking-[0.2em]">
+                                    <LayoutGrid className="h-3.5 w-3.5" />
+                                    ROOT_DIRECTORY
+                                </div>
+                                <div className="text-xl font-black font-mono text-foreground break-words leading-tight line-clamp-1">
+                                    GLOBAL_INDEX
+                                </div>
                             </div>
-                            <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-black/20 dark:border-white/20 space-y-1">
-                                <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">DESCRIPTION</div>
-                                <div className="text-[11px] font-mono font-bold leading-tight uppercase opacity-70">
-                                    查看所有未分類的範本檔案
+                            <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-[#FA4028] space-y-1">
+                                <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FA4028] uppercase tracking-[0.2em]">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    ACCESS_STATUS
+                                </div>
+                                <div className="text-xl font-black font-mono text-foreground leading-tight">
+                                    VERIFIED_STABLE
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="px-5 py-3 flex items-center justify-between border-t border-black/10 dark:border-white/10 mt-auto bg-black/5">
-                        <div className="text-[10px] font-black uppercase tracking-widest opacity-40">ITEM_COUNT: N/A</div>
-                        <Folder className="h-3.5 w-3.5 opacity-20" />
+                    <div className="px-5 py-3 flex items-center justify-between border-t border-black/5 dark:border-white/5 mt-auto opacity-40 hover:opacity-100 transition-opacity">
+                        <div className="flex gap-4 text-[9px] font-mono uppercase font-bold italic">
+                            <span>Upd: SYSTEM</span>
+                        </div>
+                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                 </div>
 
@@ -218,78 +233,59 @@ export function TemplateFolderList({ folders, onFolderSelect, selectedFolderId, 
                         key={folder.id}
                         onClick={() => handleFolderClick(folder.id)}
                         className={cn(
-                            "group relative flex flex-col overflow-hidden border-[1.5px] border-black dark:border-white rounded-none bg-background transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] cursor-pointer",
-                            selectedFolderId === folder.id && "ring-4 ring-[#FA4028] ring-inset"
+                            "group relative flex flex-col justify-between h-[340px] border-[1.5px] border-black dark:border-white rounded-none bg-background transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] cursor-pointer",
+                            selectedFolderId === folder.id ? "ring-2 ring-black ring-inset text-[#FA4028]" : ""
                         )}
                     >
-                        <div className="h-1.5 w-full bg-[#FA4028]" />
+                        <div className="p-5 flex flex-col items-start flex-1 space-y-4">
+                            <div className="flex items-center justify-between w-full">
+                                <Badge className="rounded-none border-black dark:border-white font-mono text-[9px] uppercase font-black px-2 py-0.5 bg-indigo-500 text-white border-none">
+                                    CUSTOM_PATH
+                                </Badge>
 
-                        <div className="p-5 flex-1 space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div className="w-12 h-12 rounded-none bg-black flex items-center justify-center border border-black group-hover:bg-[#FA4028] transition-colors">
-                                    <Folder className="w-6 h-6 text-white" />
-                                </div>
-                                <div className="flex flex-col gap-1 items-end">
-                                    <Badge className="rounded-none border-black dark:border-white font-mono text-[9px] uppercase font-black px-2 py-0.5 bg-black text-white">
-                                        USER_FOLDER
-                                    </Badge>
-                                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={(e) => {
-                                                e.preventDefault()
-                                                e.stopPropagation()
-                                                handleEdit(folder)
-                                            }}
-                                            className="h-7 w-7 rounded-none border-black hover:bg-[#FA4028] hover:text-white transition-colors"
-                                        >
-                                            <Edit2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={(e) => {
-                                                e.preventDefault()
-                                                e.stopPropagation()
-                                                handleDelete(folder)
-                                            }}
-                                            className="h-7 w-7 rounded-none border-black hover:bg-black hover:text-white transition-colors"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
+                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(folder)} className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground">
+                                        <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(folder)} className="h-8 w-8 rounded-none text-red-500 hover:text-red-700">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <CardTitle className="text-2xl font-black leading-[1.1] font-mono tracking-tighter uppercase group-hover:text-[#FA4028] transition-colors line-clamp-2 h-[2.2em]">
+                                <h3 className="text-2xl font-black font-mono uppercase tracking-tighter leading-[1.1] group-hover:text-[#FA4028] transition-colors line-clamp-2">
                                     {folder.name}
-                                </CardTitle>
+                                </h3>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-2 pt-2">
+                            <div className="grid grid-cols-1 gap-2 pt-2 w-full">
                                 <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-black dark:border-white space-y-1">
-                                    <div className="text-[9px] font-black text-[#FA4028] uppercase tracking-[0.2em]">DESCRIPTION</div>
-                                    <div className="text-[11px] font-mono font-bold leading-tight uppercase opacity-70 line-clamp-2">
-                                        {folder.description || "NO_DESCRIPTION_PROVIDED"}
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FA4028] uppercase tracking-[0.2em]">
+                                        <Folder className="h-3.5 w-3.5" />
+                                        ITEMS_COUNT
+                                    </div>
+                                    <div className="text-xl font-black font-mono text-foreground break-words leading-tight line-clamp-1">
+                                        {String(folder.template_count || 0).padStart(2, '0')} UNITS
                                     </div>
                                 </div>
-
                                 <div className="bg-black/5 dark:bg-white/5 p-4 border-l-4 border-[#FA4028] space-y-1">
-                                    <div className="text-[9px] font-black text-[#FA4028] uppercase tracking-[0.2em]">UPDATED_SEQUENCE</div>
-                                    <div className="text-sm font-black font-mono uppercase">
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FA4028] uppercase tracking-[0.2em]">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        UPDATED_AT
+                                    </div>
+                                    <div className="text-xl font-black font-mono text-foreground leading-tight">
                                         {new Date(folder.updated_at).toLocaleDateString()}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="px-5 py-3 flex items-center justify-between border-t border-black/10 dark:border-white/10 mt-auto bg-black/5">
-                            <div className="text-[9px] font-mono uppercase font-bold italic opacity-40">
-                                DOC_COUNT: {folder.template_count || 0}
+                        <div className="px-5 py-3 flex items-center justify-between border-t border-black/5 dark:border-white/5 mt-auto opacity-40 hover:opacity-100 transition-opacity">
+                            <div className="flex gap-4 text-[9px] font-mono uppercase font-bold italic">
+                                <span>Cre: {new Date(folder.created_at).toLocaleDateString()}</span>
                             </div>
-                            <Folder className="h-3.5 w-3.5 opacity-20" />
+                            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                         </div>
                     </div>
                 ))}

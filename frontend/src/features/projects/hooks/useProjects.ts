@@ -4,9 +4,8 @@ import { createClient } from '@/lib/supabase/client';
 export interface ProjectAssessment {
   id: string;
   project_id: string;
-  criterion: string;
-  score: number;
-  notes?: string;
+  basic_info?: any;
+  dates?: any;
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +40,24 @@ export function useProjects() {
         .order('updated_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setProjects(data || []);
+
+      // Map assessment data to project fields if missing
+      const mappedData = (data as any[])?.map(p => {
+        const assessment = Array.isArray(p.project_assessments)
+          ? p.project_assessments[0]
+          : p.project_assessments;
+
+        const assessedAgency = assessment?.basic_info?.content?.['主辦機關']?.text;
+        const assessedDeadline = assessment?.dates?.content?.['投標截止']?.text;
+
+        return {
+          ...p,
+          agency: p.agency || assessedAgency,
+          deadline: p.deadline || assessedDeadline
+        };
+      });
+
+      setProjects(mappedData || []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch projects'));

@@ -115,7 +115,10 @@
       "Bash(tmutil startbackup:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: comprehensive frontend refactoring and UI improvements\n\nFrontend Components:\n- Enhance workspace components \\(ProjectDashboard, SourceManager, Assessment\\)\n- Improve dashboard templates, knowledge management, and tender lists\n- Add new components: UploadResourcesDialog, RecursiveAssessmentRenderer\n- Add scrollbar hiding for cleaner UI in ProjectDashboardLayout\n\nStyling & CSS:\n- Update globals.css with improved styling and layout fixes\n- Enhance component styling across dashboard and workspace\n\nAPI & Backend:\n- Add n8n evaluate webhook endpoint\n- Improve sources API create route\n- Update parsing service with enhanced functionality\n\nDatabase:\n- Update n8n database with latest migrations\n\nConfiguration:\n- Update Claude settings for project optimization\n\nAll changes maintain security and follow project standards.\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git rm:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run analyze:*)",
+      "Bash(ANALYZE=true npm run build:*)",
+      "Bash(kill:*)"
     ]
   }
 }
