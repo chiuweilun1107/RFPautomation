@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { BaseDialog } from "@/components/common";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,19 +81,30 @@ export function ImageGenerationDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px]">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <ImageIcon className="w-5 h-5 text-blue-500" />
-                        生成視覺化圖片
-                    </DialogTitle>
-                    <DialogDescription>
-                        為任務「{task?.requirement_text.slice(0, 20)}...」生成視覺化圖片
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="py-4">
+        <BaseDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            title={
+                <div className="flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-blue-500" />
+                    生成視覺化圖片
+                </div>
+            }
+            description={`為任務「${task?.requirement_text.slice(0, 20) || ''}...」生成視覺化圖片`}
+            maxWidth="lg"
+            loading={loading}
+            showFooter={true}
+            footer={
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+                    <Button onClick={handleGenerateClick} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        {loading ? "生成中..." : "開始生成"}
+                    </Button>
+                </div>
+            }
+        >
+            <div className="py-4">
                     <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full">
                         <TabsList className="grid w-full grid-cols-3 mb-4">
                             <TabsTrigger value="auto" className="flex items-center gap-2">
@@ -221,16 +232,7 @@ export function ImageGenerationDialog({
                             </Tabs>
                         </div>
                     </Tabs>
-                </div>
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-                    <Button onClick={handleGenerateClick} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {loading ? "生成中..." : "開始生成"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </div>
+        </BaseDialog>
     );
 }

@@ -30,7 +30,13 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
     const [totalCount, setTotalCount] = React.useState(0)
     const [debouncedSearch, setDebouncedSearch] = React.useState("")
     const [pageSize, setPageSize] = React.useState(12)
+    const [isMounted, setIsMounted] = React.useState(false)
     const supabase = createClient()
+
+    // Fix hydration error by tracking if component is mounted
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const searchParams = useSearchParams()
     const selectedKeyword = searchParams.get('keyword')
@@ -222,7 +228,7 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                     </div>
 
                     {syncButtonPortalId ? (
-                        typeof document !== 'undefined' && document.getElementById(syncButtonPortalId) ? (
+                        isMounted && document.getElementById(syncButtonPortalId) ? (
                             createPortal(
                                 <Button
                                     variant="outline"

@@ -98,9 +98,15 @@ export function reportWebVitals(metric: Metric) {
 
 /**
  * Initialize performance monitoring
+ * 返回清理函数以防止内存泄漏
  */
-export function initPerformanceMonitoring() {
-  if (typeof window === 'undefined') return;
+export function initPerformanceMonitoring(): () => void {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  const observers: PerformanceObserver[] = [];
+  const listeners: Array<{ event: string; handler: EventListener }> = [];
 
   // Monitor long tasks (tasks taking >50ms)
   if ('PerformanceObserver' in window) {
@@ -113,6 +119,7 @@ export function initPerformanceMonitoring() {
         }
       });
       longTaskObserver.observe({ entryTypes: ['longtask'] });
+      observers.push(longTaskObserver);
     } catch (e) {
       // Long task API not supported
     }
@@ -130,13 +137,14 @@ export function initPerformanceMonitoring() {
         }
       });
       resourceObserver.observe({ entryTypes: ['resource'] });
+      observers.push(resourceObserver);
     } catch (e) {
       // Resource timing not supported
     }
   }
 
   // Log navigation timing on page load
-  window.addEventListener('load', () => {
+  const handleLoad = () => {
     setTimeout(() => {
       const perfData = window.performance.timing;
       const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
@@ -149,5 +157,21 @@ export function initPerformanceMonitoring() {
       console.log('Render Time:', `${renderTime}ms`);
       console.groupEnd();
     }, 0);
-  });
+  };
+
+  window.addEventListener('load', handleLoad);
+  listeners.push({ event: 'load', handler: handleLoad as EventListener });
+
+  // 返回清理函数
+  return () => {
+    // 断开所有 PerformanceObserver
+    observers.forEach((observer) => {
+      observer.disconnect();
+    });
+
+    // 移除所有事件监听器
+    listeners.forEach(({ event, handler }) => {
+      window.removeEventListener(event, handler);
+    });
+  };
 }

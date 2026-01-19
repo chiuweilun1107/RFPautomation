@@ -10,15 +10,7 @@ import { sourcesApi } from "@/features/sources/api/sourcesApi"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-} from "@/components/ui/dialog"
+import { BaseDialog } from "@/components/common"
 
 interface CreateProjectDialogProps {
     open?: boolean;
@@ -152,26 +144,39 @@ export function CreateProjectDialog({
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <>
             {/* Only show trigger button in uncontrolled mode or if custom trigger provided */}
             {controlledOpen === undefined && (
-                <DialogTrigger asChild>
-                    {trigger || (
-                        <Button className="cursor-pointer rounded-none bg-foreground text-background hover:bg-muted-foreground font-mono font-bold uppercase tracking-wider h-10 border border-transparent">
-                            <Plus className="mr-2 h-4 w-4" />
-                            New_Project
-                        </Button>
-                    )}
-                </DialogTrigger>
+                trigger || (
+                    <Button
+                        onClick={() => setOpen(true)}
+                        className="cursor-pointer rounded-none bg-foreground text-background hover:bg-muted-foreground font-mono font-bold uppercase tracking-wider h-10 border border-transparent"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New_Project
+                    </Button>
+                )
             )}
-            <DialogContent className="sm:max-w-[425px] rounded-none border-black dark:border-white font-mono p-0 overflow-hidden">
-                <DialogHeader className="bg-muted p-6 border-b border-black dark:border-white">
-                    <DialogTitle className="font-bold text-xl uppercase tracking-tighter">Initialize Project</DialogTitle>
-                    <DialogDescription className="text-xs font-mono">
-                        Upload RFP documentation for automated analysis.
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={onSubmit} className="p-6 space-y-6">
+            <BaseDialog
+                open={open}
+                onOpenChange={setOpen}
+                title="Initialize Project"
+                description="Upload RFP documentation for automated analysis."
+                maxWidth="md"
+                loading={isLoading}
+                showFooter={true}
+                footer={
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full rounded-none bg-foreground text-background hover:bg-muted-foreground font-bold uppercase tracking-widest"
+                    >
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isLoading ? 'PROCESSING...' : 'CONFIRM_INITIALIZATION'}
+                    </Button>
+                }
+            >
+                <form onSubmit={onSubmit} className="space-y-6">
                     <div className="grid gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="title" className="font-bold text-xs uppercase">
@@ -235,14 +240,8 @@ export function CreateProjectDialog({
                             )}
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="submit" disabled={isLoading} className="w-full rounded-none bg-foreground text-background hover:bg-muted-foreground font-bold uppercase tracking-widest">
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isLoading ? 'PROCESSING...' : 'CONFIRM_INITIALIZATION'}
-                        </Button>
-                    </DialogFooter>
                 </form>
-            </DialogContent>
-        </Dialog>
+            </BaseDialog>
+        </>
     )
 }

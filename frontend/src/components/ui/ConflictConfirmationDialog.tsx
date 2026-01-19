@@ -2,14 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
+import { BaseDialog } from "@/components/common";
 
 export interface ConflictOption {
     label: string;
@@ -47,44 +40,14 @@ export function ConflictConfirmationDialog({
     cancelLabel = "取消 (Cancel)",
 }: ConflictConfirmationDialogProps) {
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                    {description && (
-                        <DialogDescription>
-                            {typeof description === "string" ? description : description}
-                        </DialogDescription>
-                    )}
-                </DialogHeader>
-                <div className="space-y-3 py-4">
-                    {/* Append Option */}
-                    <div className="flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0" />
-                        <div>
-                            <p className="font-medium text-sm">{appendOption.label}</p>
-                            <p className="text-xs text-gray-500">
-                                {appendOption.description}
-                            </p>
-                        </div>
-                    </div>
-                    {/* Replace Option */}
-                    <div className="flex items-start gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-2 shrink-0" />
-                        <div>
-                            <p className="font-medium text-sm flex items-center gap-1">
-                                {replaceOption.label}
-                                {replaceOption.showWarning && (
-                                    <span className="text-red-600">⚠️</span>
-                                )}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                {replaceOption.description}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter className="flex gap-2 sm:gap-2 flex-wrap justify-end">
+        <BaseDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            title={title}
+            description={typeof description === "string" ? description : undefined}
+            showFooter={true}
+            footer={
+                <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={onCancel}>
                         {cancelLabel}
                     </Button>
@@ -94,8 +57,41 @@ export function ConflictConfirmationDialog({
                     <Button variant="destructive" onClick={onReplace}>
                         {replaceOption.label}
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </div>
+            }
+        >
+            {typeof description !== "string" && description && (
+                <div className="mb-4">
+                    {description}
+                </div>
+            )}
+            <div className="space-y-3">
+                {/* Append Option */}
+                <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0" />
+                    <div>
+                        <p className="font-medium text-sm">{appendOption.label}</p>
+                        <p className="text-xs text-gray-500">
+                            {appendOption.description}
+                        </p>
+                    </div>
+                </div>
+                {/* Replace Option */}
+                <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-2 shrink-0" />
+                    <div>
+                        <p className="font-medium text-sm flex items-center gap-1">
+                            {replaceOption.label}
+                            {replaceOption.showWarning && (
+                                <span className="text-red-600">⚠️</span>
+                            )}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            {replaceOption.description}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </BaseDialog>
     );
 }

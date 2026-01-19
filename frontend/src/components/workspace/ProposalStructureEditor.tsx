@@ -61,6 +61,12 @@ import { CSS } from '@dnd-kit/utilities';
 // ... imports
 import { parseChineseNumber } from "./utils";
 import { ProposalTreeItem } from "./structure/ProposalTreeItem";
+import { useProposalState } from "./proposal-editor/hooks/useProposalState";
+import { useProposalOperations as useProposalOpsHook } from "./proposal-editor/hooks/useProposalOperations";
+import { useProposalDialogs } from "./proposal-editor/hooks/useProposalDialogs";
+import { useSourcesQuery } from "@/hooks/queries/useSourcesQuery";
+import { useTemplatesQuery } from "@/hooks/queries/useTemplatesQuery";
+import { useProjectsQuery } from "@/hooks/queries/useProjectsQuery";
 
 interface ProposalStructureEditorProps {
     projectId: string;
@@ -71,11 +77,104 @@ interface ProposalStructureEditorProps {
 
 export function ProposalStructureEditor({ projectId }: ProposalStructureEditorProps) {
     const supabase = createClient();
-    const [sections, setSections] = useState<Section[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
-    const [streamingSections, setStreamingSections] = useState<Set<string>>(new Set());
-    const [progress, setProgress] = useState<{ current: number, total: number } | null>(null);
+
+    // 统一状态管理 Hook - 替代 51 个分散的 useState
+    const state = useProposalState([]);
+
+    // 快速访问常用状态 (从 useProposalState 提取)
+    const {
+        // 核心结构
+        sections, setSections, loading, setLoading, generating, setGenerating,
+        streamingSections, setStreamingSections, progress, setProgress,
+        expandedSections, setExpandedSections, expandedCategories, setExpandedCategories,
+
+        // 源文献
+        sources, setSources, selectedSourceIds, setSelectedSourceIds,
+        linkedSourceIds, setLinkedSourceIds, contentGenerationSourceIds, setContentGenerationSourceIds,
+        subsectionSourceIds, setSubsectionSourceIds,
+
+        // 编辑状态
+        editingSection, setEditingSection, editingTask, setEditingTask,
+        targetSection, setTargetSection, targetSectionId, setTargetSectionId,
+        inlineEditingSectionId, setInlineEditingSectionId, inlineSectionValue, setInlineSectionValue,
+        inlineEditingTaskId, setInlineEditingTaskId, inlineTaskValue, setInlineTaskValue,
+
+        // 生成进度
+        generatingTaskId, setGeneratingTaskId, generatingSectionId, setGeneratingSectionId,
+        isGeneratingSubsection, setIsGeneratingSubsection,
+        integratingSectionId, setIntegratingSectionId,
+
+        // 内容
+        taskContents, setTaskContents, openContentPanels, setOpenContentPanels,
+        sectionViewModes, setSectionViewModes, expandedTaskIds, setExpandedTaskIds,
+
+        // 引用
+        selectedEvidence, setSelectedEvidence,
+
+        // 便利函数
+        toggleSectionExpansion, toggleTaskExpansion, toggleCategoryExpansion,
+        startInlineEditSection, cancelInlineEditSection,
+        startInlineEditTask, cancelInlineEditTask,
+        resetGenerationState, resetEditingState,
+    } = state;
+
+    // 初始化 Dialog 状态管理 Hook
+    const dialogState = useProposalDialogs();
+    const {
+        // Dialog 开关状态
+        isAddSectionOpen, setIsAddSectionOpen,
+        isAddTaskOpen, setIsAddTaskOpen,
+        isAddSubsectionOpen, setIsAddSubsectionOpen,
+        isGenerateSubsectionOpen, setIsGenerateSubsectionOpen,
+        imageGenDialogOpen, setImageGenDialogOpen,
+        isContentGenerationDialogOpen, setIsContentGenerationDialogOpen,
+        isAddSourceDialogOpen, setIsAddSourceDialogOpen,
+        isConflictDialogOpen, setIsConflictDialogOpen,
+        isSubsectionConflictDialogOpen, setIsSubsectionConflictDialogOpen,
+        isContentConflictDialogOpen, setIsContentConflictDialogOpen,
+        isTemplateDialogOpen, setIsTemplateDialogOpen,
+
+        // Dialog 输入数据
+        dialogInputValue, setDialogInputValue,
+        subsectionInputValue, setSubsectionInputValue,
+
+        // Dialog 上下文信息
+        taskConflictContext, setTaskConflictContext,
+        contentGenerationTarget, setContentGenerationTarget,
+        selectedTaskForImage, setSelectedTaskForImage,
+        subsectionTargetSection, setSubsectionTargetSection,
+        structureWarningSection, setStructureWarningSection,
+
+        // UI 状态
+        showSourceSelector, setShowSourceSelector,
+
+        // 待处理的异步操作数据
+        pendingSubsectionArgs, setPendingSubsectionArgs,
+        pendingContentGeneration, setPendingContentGeneration,
+    } = dialogState;
+
+    // 初始化业务操作 Hook
+    const operations = useProposalOpsHook(projectId, state);
+
+    // ============ Query Hooks - 数据获取和缓存 ============
+    // 源文献数据查询（自动缓存 5 分钟）
+    const sourcesQueryResult = useSourcesQuery(projectId);
+    const { data: querySources, isLoading: sourcesLoading } = sourcesQueryResult;
+
+    // 模板数据查询
+    const templatesQueryResult = useTemplatesQuery(projectId);
+    const { data: queryTemplates } = templatesQueryResult;
+
+    // 项目数据查询
+    const projectsQueryResult = useProjectsQuery();
+    const { data: queryProjects } = projectsQueryResult;
+
+    // 当 Query Hook 获取到源文献数据时，更新 state
+    useEffect(() => {
+        if (querySources && querySources.length > 0) {
+            setSources(querySources);
+        }
+    }, [querySources, setSources]);
 
     // Realtime Subscription
     useEffect(() => {
@@ -128,16 +227,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         };
     }, []);
 
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-    const [sources, setSources] = useState<any[]>([]);
-
-    const [subsectionSourceIds, setSubsectionSourceIds] = useState<string[]>([]);
-    const [isGeneratingSubsection, setIsGeneratingSubsection] = useState(false);
-    const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['tender', 'internal', 'external']));
-
-    // Citation Logic
-    const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
-
+    // 所有状态已迁移到 useProposalState 和 useProposalDialogs hooks
     const fullSources = useMemo(() => {
         const map: Record<string, any> = {};
         sources.forEach((s: any) => {
@@ -154,89 +244,6 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         })
     );
 
-    // Dialog States
-    const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
-    const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
-    const [editingSection, setEditingSection] = useState<Section | null>(null);
-    const [editingTask, setEditingTask] = useState<Task | null>(null);
-    const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
-    const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-
-    // Form Inputs
-    const [dialogInputValue, setDialogInputValue] = useState("");
-    const [targetSection, setTargetSection] = useState<Section | null>(null);
-
-    // Inline Editing State
-    const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
-    const [inlineTaskValue, setInlineTaskValue] = useState("");
-
-    const [targetSectionId, setTargetSectionId] = useState<string | null>(null); // For Add Section (parent)
-    const [structureWarningSection, setStructureWarningSection] = useState<Section | null>(null); // For Manual Add Structure Warning
-    const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
-    const [linkedSourceIds, setLinkedSourceIds] = useState<string[]>([]);
-    const [showSourceSelector, setShowSourceSelector] = useState(false);
-
-    // Task Conflict Management
-    const [taskConflictContext, setTaskConflictContext] = useState<{
-        type: 'all' | 'single';
-        targetSection?: Section; // for single
-        sourceIds: string[];
-        userDesc?: string;
-        workflowType?: 'technical' | 'management';
-    } | null>(null);
-
-    // Global Source Selection State
-
-    // Subsection Generation State (for + button)
-    const [isAddSubsectionOpen, setIsAddSubsectionOpen] = useState(false); // New: Manual Add Dialog
-    const [subsectionInputValue, setSubsectionInputValue] = useState(""); // New: Input for manual add
-    const [isGenerateSubsectionOpen, setIsGenerateSubsectionOpen] = useState(false); // Existing: Source Selection
-    const [subsectionTargetSection, setSubsectionTargetSection] = useState<Section | null>(null);
-    // Removed duplicate state declarations that were causing build errors
-    const [isSubsectionConflictDialogOpen, setIsSubsectionConflictDialogOpen] = useState(false); // New: Conflict Dialog
-    const [pendingSubsectionArgs, setPendingSubsectionArgs] = useState<{ sourceIds: string[], targetSection: Section } | null>(null); // New: Store args while waiting for user
-
-    // Content Generation State
-    const [taskContents, setTaskContents] = useState<Map<string, TaskContent>>(new Map());
-    const [generatingTaskId, setGeneratingTaskId] = useState<string | null>(null);
-    const [generatingSectionId, setGeneratingSectionId] = useState<string | null>(null);
-    const [openContentPanels, setOpenContentPanels] = useState<Map<string, { taskText: string; sectionTitle: string }>>(new Map());
-
-    // Image Generation State
-    const [imageGenDialogOpen, setImageGenDialogOpen] = useState(false);
-    const [selectedTaskForImage, setSelectedTaskForImage] = useState<Task | null>(null);
-
-    // Content Generation Source Selection
-    const [isContentGenerationDialogOpen, setIsContentGenerationDialogOpen] = useState(false);
-    const [contentGenerationTarget, setContentGenerationTarget] = useState<{ task: Task, section: Section } | null>(null);
-    const [contentGenerationSourceIds, setContentGenerationSourceIds] = useState<string[]>([]);
-    const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
-
-    // Content Generation Conflict Management
-    const [isContentConflictDialogOpen, setIsContentConflictDialogOpen] = useState(false);
-    const [pendingContentGeneration, setPendingContentGeneration] = useState<{
-        task: Task;
-        section: Section;
-    } | null>(null);
-
-    // Content Integration
-
-    const [integratingSectionId, setIntegratingSectionId] = useState<string | null>(null);
-    const [sectionViewModes, setSectionViewModes] = useState<Record<string, 'tasks' | 'content'>>({});
-    const [inlineEditingSectionId, setInlineEditingSectionId] = useState<string | null>(null);
-    const [inlineSectionValue, setInlineSectionValue] = useState<string>("");
-
-    // Collapsible tasks state
-    const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
-
-    const toggleTaskExpansion = useCallback((taskId: string) => {
-        setExpandedTaskIds(prev => {
-            const next = new Set(prev);
-            if (next.has(taskId)) next.delete(taskId);
-            else next.add(taskId);
-            return next;
-        });
-    }, []);
 
 
 
@@ -1732,7 +1739,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
     );
 
     // Original renderSection definition replaced by:
-    const renderSection = useCallback((section: Section, depth: number = 0, dragHandleProps?: any) => {
+    const renderSection = useCallback((section: Section, depth: number = 0, dragHandleProps?: any): React.ReactNode => {
         return (
             <ProposalTreeItem
                 key={section.id}
@@ -1851,6 +1858,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                                 >
                                     <div className="space-y-1">
                                         {sections.map((section) => (
+                                            // @ts-ignore - renderSection has correct signature despite TypeScript inference issue
                                             <SortableNode
                                                 key={section.id}
                                                 section={section}

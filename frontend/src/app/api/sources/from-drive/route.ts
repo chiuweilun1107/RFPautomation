@@ -114,10 +114,24 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
 
-    // Extract file extension from original filename
-    const fileExtension = metadata.name.split('.').pop() || 'file';
+    // Determine file extension from mimeType (more reliable than filename)
+    const extensionMap: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/msword': 'doc',
+      'text/plain': 'txt',
+      'text/markdown': 'md',
+      'application/vnd.google-apps.document': 'docx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.google-apps.spreadsheet': 'xlsx',
+      'application/vnd.google-apps.presentation': 'pptx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    };
 
-    // Create safe filename (only alphanumeric, hyphen, underscore)
+    const fileExtension = extensionMap[metadata.mimeType] || 'bin';
+
+    // Create safe filename (only alphanumeric, hyphen, underscore, dot)
     const safeFileName = `${randomStr}_${timestamp}.${fileExtension}`;
 
     // Upload to Supabase Storage

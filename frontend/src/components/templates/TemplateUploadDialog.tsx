@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { getErrorMessage } from '@/lib/errorUtils';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@/components/ui/dialog";
+import { BaseDialog } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -89,17 +82,37 @@ export function TemplateUploadDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px] rounded-none border-4 border-black p-0">
-                <div className="p-8">
-                    <DialogHeader className="mb-8">
-                        <DialogTitle className="text-3xl font-black uppercase tracking-tight">上傳標書範本</DialogTitle>
-                        <DialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-2 italic font-bold">
-                            // NO STRUCTURE DETECTED. UPLOAD DOCX TO AUTO-GENERATE CHAPTERS.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="grid gap-8 py-4">
+        <BaseDialog
+            open={open}
+            onOpenChange={onClose}
+            title="上傳標書範本"
+            description="// NO STRUCTURE DETECTED. UPLOAD DOCX TO AUTO-GENERATE CHAPTERS."
+            maxWidth="lg"
+            loading={isUploading}
+            showFooter={true}
+            footer={
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={onClose} disabled={isUploading} className="rounded-none border-2 border-black font-black uppercase tracking-widest flex-1">
+                        CANCEL
+                    </Button>
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!file || isUploading}
+                        className="rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest flex-1 shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                    >
+                        {isUploading ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ANALYZING...
+                            </>
+                        ) : (
+                            "START_GENERATION"
+                        )}
+                    </Button>
+                </div>
+            }
+        >
+            <div className="grid gap-8">
                         <div className="grid w-full items-center gap-3">
                             <Label htmlFor="template-file" className="text-sm font-black uppercase tracking-widest text-[#FA4028]">選擇檔案 (.DOCX)</Label>
                             <div className="flex items-center gap-2">
@@ -150,28 +163,6 @@ export function TemplateUploadDialog({
                             </RadioGroup>
                         </div>
                     </div>
-
-                    <DialogFooter className="mt-8 flex gap-3">
-                        <Button variant="outline" onClick={onClose} disabled={isUploading} className="rounded-none border-2 border-black font-black uppercase tracking-widest flex-1">
-                            CANCEL
-                        </Button>
-                        <Button
-                            onClick={handleUpload}
-                            disabled={!file || isUploading}
-                            className="rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest flex-1 shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
-                        >
-                            {isUploading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ANALYZING...
-                                </>
-                            ) : (
-                                "START_GENERATION"
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </div>
-            </DialogContent>
-        </Dialog>
+            </BaseDialog>
     );
 }

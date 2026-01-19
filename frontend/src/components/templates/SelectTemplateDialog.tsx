@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { getErrorMessage } from '@/lib/errorUtils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { BaseDialog } from "@/components/common"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -114,15 +114,43 @@ export function SelectTemplateDialog({ open, onOpenChange, projectId, sections }
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-none border-4 border-black p-0">
-                <div className="p-8">
-                    <DialogHeader className="mb-8">
-                        <DialogTitle className="text-3xl font-black uppercase tracking-tight">選擇範本生成文件 // GENERATE_DOC</DialogTitle>
-                        <DialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-2 italic font-bold">
-                            // SELECT WORD TEMPLATE TO AUTO-FILL CHAPTERS.
-                        </DialogDescription>
-                    </DialogHeader>
+        <BaseDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            title="選擇範本生成文件 // GENERATE_DOC"
+            description="// SELECT WORD TEMPLATE TO AUTO-FILL CHAPTERS."
+            maxWidth="2xl"
+            loading={loading || generating}
+            showFooter={true}
+            footer={
+                <div className="flex justify-end gap-4 flex-col sm:flex-row">
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        className="rounded-none border-2 border-black font-black uppercase tracking-widest flex-1 sm:flex-none"
+                    >
+                        CANCEL
+                    </Button>
+                    <Button
+                        onClick={handleGenerateDocument}
+                        disabled={!selectedTemplateId || generating || loading}
+                        className="rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest flex-1 sm:flex-none shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                    >
+                        {generating ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                GENERATING...
+                            </>
+                        ) : (
+                            <>
+                                <Download className="w-4 h-4 mr-2" />
+                                GENERATE_DOCUMENT
+                            </>
+                        )}
+                    </Button>
+                </div>
+            }
+        >
 
                     <div className="space-y-6">
                         {loading ? (
@@ -175,36 +203,7 @@ export function SelectTemplateDialog({ open, onOpenChange, projectId, sections }
                             </div>
                         )}
                     </div>
-
-                    <div className="flex justify-end gap-4 mt-10 pt-6 border-t-2 border-black flex-col sm:flex-row">
-                        <Button
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            className="rounded-none border-2 border-black font-black uppercase tracking-widest flex-1 sm:flex-none"
-                        >
-                            CANCEL
-                        </Button>
-                        <Button
-                            onClick={handleGenerateDocument}
-                            disabled={!selectedTemplateId || generating}
-                            className="rounded-none border-2 border-black bg-[#FA4028] hover:bg-black text-white font-black uppercase tracking-widest flex-1 sm:flex-none shadow-[4px_4px_0_0_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
-                        >
-                            {generating ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    GENERATING...
-                                </>
-                            ) : (
-                                <>
-                                    <Download className="w-4 h-4 mr-2" />
-                                    GENERATE_DOCUMENT
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
+        </BaseDialog>
     )
 }
 

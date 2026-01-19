@@ -1,13 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { BaseDialog } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -212,22 +207,28 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
         }
     };
 
+    const handleOpenChange = (newOpen: boolean) => {
+        if (!newOpen) resetToMain();
+        onOpenChange(newOpen);
+    };
+
     return (
-        <Dialog open={open} onOpenChange={(open) => {
-            if (!open) resetToMain();
-            onOpenChange(open);
-        }}>
-            <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden flex flex-col gap-0 p-0 border border-black dark:border-white rounded-none bg-white dark:bg-black font-mono">
-                <DialogHeader className="shrink-0 p-6 border-b border-black dark:border-white">
-                    <DialogTitle className="text-center space-y-2">
-                        <span className="text-xl font-bold uppercase tracking-widest block">Add Source</span>
-                        <span className="text-xs font-normal uppercase tracking-wider text-gray-500 block">
-                            {getPanelTitle() === "自己的文件" ? "Upload Files" :
-                                getPanelTitle() === "網站" ? "Web Link" :
-                                    "Paste Text"}
-                        </span>
-                    </DialogTitle>
-                </DialogHeader>
+        <BaseDialog
+            open={open}
+            onOpenChange={handleOpenChange}
+            title={
+                <div className="text-center space-y-2">
+                    <span className="text-xl font-bold uppercase tracking-widest block">Add Source</span>
+                    <span className="text-xs font-normal uppercase tracking-wider text-gray-500 block">
+                        {getPanelTitle() === "自己的文件" ? "Upload Files" :
+                            getPanelTitle() === "網站" ? "Web Link" :
+                                "Paste Text"}
+                    </span>
+                </div>
+            }
+            maxWidth="lg"
+            showFooter={false}
+        >
 
                 {/* AI 搜索區塊 - 始終顯示在頂部 */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-black dark:border-white shrink-0">
@@ -492,8 +493,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                         <span>37 / 300 Sources</span>
                     </div>
                 </div>
-            </DialogContent>
-        </Dialog>
+        </BaseDialog>
     );
 }
 
