@@ -1,0 +1,12 @@
+# FastAPI 服務框架
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+python-multipart==0.0.9
+
+# OCR 引擎
+pytesseract==0.3.10
+Pillow==10.4.0
+
+# HTTP 客戶端
+requests==2.31.0

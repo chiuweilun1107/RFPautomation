@@ -1,0 +1,179 @@
+{
+  "name": "文件生成工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-document",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - 接收生成請求",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://document-generation-v2:8005/generate-from-supabase",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file_path",
+              "value": "={{ $json.template_file_path }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json.form_data) }}"
+            },
+            {
+              "name": "supabase_url",
+              "value": "={{ $env.SUPABASE_URL }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "generate-document",
+      "name": "生成文件 (easy-template-x)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "generated-documents",
+        "fileName": "={{ $json.project_id }}_{{ $now.toFormat('yyyyMMdd_HHmmss') }}.docx",
+        "options": {}
+      },
+      "id": "upload-to-storage",
+      "name": "上傳到 Supabase Storage",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "tableId": "generated_documents",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "project_id",
+              "fieldValue": "={{ $('Webhook - 接收生成請求').item.json.project_id }}"
+            },
+            {
+              "fieldId": "template_id",
+              "fieldValue": "={{ $('Webhook - 接收生成請求').item.json.template_id }}"
+            },
+            {
+              "fieldId": "file_path",
+              "fieldValue": "={{ $json.path }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Webhook - 接收生成請求').item.json.user_id }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            }
+          ]
+        }
+      },
+      "id": "save-record",
+      "name": "儲存生成記錄",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"download_url\": $env.SUPABASE_URL + '/storage/v1/object/public/' + $json.file_path, \"file_path\": $json.file_path } }}"
+      },
+      "id": "respond-success",
+      "name": "回應下載連結",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - 接收生成請求": {
+      "main": [
+        [
+          {
+            "node": "生成文件 (easy-template-x)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成文件 (easy-template-x)": {
+      "main": [
+        [
+          {
+            "node": "上傳到 Supabase Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "上傳到 Supabase Storage": {
+      "main": [
+        [
+          {
+            "node": "儲存生成記錄",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "儲存生成記錄": {
+      "main": [
+        [
+          {
+            "node": "回應下載連結",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "id": "generate-document-workflow",
+  "meta": {
+    "instanceId": "your-instance-id"
+  },
+  "tags": []
+}
+

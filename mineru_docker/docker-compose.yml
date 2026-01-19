@@ -1,0 +1,52 @@
+services:
+  mineru:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mineru-service
+    platform: linux/arm64
+    ports:
+      - "8001:8001"
+    volumes:
+      # Config file
+      - ./mineru-cpu.json:/app/mineru.json:ro
+      # Models directory (read-only for safety)
+      - /Users/chiuyongren/.cache/modelscope/hub/models/OpenDataLab:/models:ro
+      # Output directory (read-write)
+      - ./output:/app/output
+      # Cache directory for better performance
+      - mineru-cache:/tmp/mineru_cache
+    environment:
+      - MINERU_DEVICE_MODE=cpu
+      - MAGIC_PDF_CONFIG_PATH=/app/mineru.json
+      - MINERU_TOOLS_CONFIG_JSON=/app/mineru.json
+      - MINERU_MODEL_SOURCE=local
+      - MINERU_VIRTUAL_VRAM_SIZE=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Network
+    networks:
+      - mineru-network
+
+volumes:
+  mineru-cache:
+    driver: local
+
+networks:
+  mineru-network:
+    driver: bridge

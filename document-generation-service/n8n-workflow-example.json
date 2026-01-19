@@ -1,0 +1,172 @@
+{
+  "name": "WF-Document-Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-document",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user-input",
+              "name": "user_input",
+              "value": "={{ $json.body.user_input }}",
+              "type": "string"
+            },
+            {
+              "id": "template-name",
+              "name": "template_name",
+              "value": "={{ $json.body.template_name || 'rfp_response.docx' }}",
+              "type": "string"
+            },
+            {
+              "id": "output-format",
+              "name": "output_format",
+              "value": "={{ $json.body.output_format || 'pdf' }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "extract-params",
+      "name": "Extract Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "content": "你是一個專業的 RFP 回應書撰寫助手。\n\n請根據用戶輸入,產出一個 JSON 對象,包含以下欄位:\n\n{\n  \"customer_name\": \"客戶公司名稱\",\n  \"project_id\": \"專案編號 (格式: RFP-YYYY-XXX)\",\n  \"project_name\": \"專案名稱\",\n  \"total_budget\": 總預算 (數字),\n  \"team\": [\n    {\"name\": \"成員姓名\", \"role\": \"職位\", \"experience\": 年資}\n  ],\n  \"milestones\": [\n    {\"phase\": \"階段名稱\", \"duration\": 月數, \"deliverable\": \"交付項目\"}\n  ],\n  \"items\": [\n    {\"name\": \"項目名稱\", \"quantity\": 數量, \"price\": 單價}\n  ]\n}\n\n用戶輸入:\n{{ $json.user_input }}\n\n請直接返回 JSON,不要有其他說明文字。"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "ai-generate-json",
+      "name": "AI Generate JSON",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析 AI 返回的 JSON\nconst aiResponse = $input.item.json.response;\n\n// 移除可能的 markdown 代碼塊標記\nlet jsonStr = aiResponse.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// 解析 JSON\nconst contextData = JSON.parse(jsonStr);\n\n// 返回結構化數據\nreturn {\n  json: {\n    context_data: contextData,\n    template_name: $input.item.json.template_name,\n    output_format: $input.item.json.output_format\n  }\n};"
+      },
+      "id": "parse-ai-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://document-generation-service:8003/generate",
+        "sendBody": true,
+        "specifyBody": "form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "template_name",
+              "value": "={{ $json.template_name }}"
+            },
+            {
+              "name": "context_json",
+              "value": "={{ JSON.stringify($json.context_data) }}"
+            },
+            {
+              "name": "output_format",
+              "value": "={{ $json.output_format }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "call-doc-service",
+      "name": "Call Document Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "rfp-documents",
+        "fileName": "={{ 'generated_' + $now.format('YYYYMMDDHHmmss') + '.' + $json.output_format }}",
+        "binaryData": true,
+        "options": {
+          "contentType": "={{ $json.output_format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }}"
+        }
+      },
+      "id": "upload-to-supabase",
+      "name": "Upload to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "your-supabase-credential-id",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": true,\n  \"message\": \"文件生成成功\",\n  \"file_url\": $json.publicUrl,\n  \"file_name\": $json.fileName,\n  \"format\": $json.output_format\n} }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Extract Parameters", "type": "main", "index": 0}]]
+    },
+    "Extract Parameters": {
+      "main": [[{"node": "AI Generate JSON", "type": "main", "index": 0}]]
+    },
+    "AI Generate JSON": {
+      "main": [[{"node": "Parse AI Response", "type": "main", "index": 0}]]
+    },
+    "Parse AI Response": {
+      "main": [[{"node": "Call Document Service", "type": "main", "index": 0}]]
+    },
+    "Call Document Service": {
+      "main": [[{"node": "Upload to Supabase", "type": "main", "index": 0}]]
+    },
+    "Upload to Supabase": {
+      "main": [[{"node": "Webhook Response", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

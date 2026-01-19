@@ -1,0 +1,73 @@
+# Unit Testing Commands Reference Card
+# =====================================
+
+## Running Tests
+--------------
+npm test                     # Run all tests once
+npm run test:watch           # Watch mode (auto-rerun)
+npm run test:coverage        # Generate coverage report
+npm run test:ci              # CI/CD mode (for GitHub Actions)
+
+## Specific Test Runs
+------------------
+npm test -- button           # Run tests matching "button"
+npm test -- src/__tests__/lib/utils.test.ts  # Run specific file
+npm test -- --verbose        # Verbose output
+npm test -- -u               # Update snapshots
+
+## Coverage
+---------
+npm run test:coverage                    # Generate report
+open coverage/lcov-report/index.html     # View in browser (Mac)
+
+## Test Development
+----------------
+npm run test:watch                       # Auto-rerun on file change
+npm test -- --testNamePattern="should"   # Run specific test names
+npm test -- --onlyChanged                # Only changed files
+
+## Debug Mode
+-----------
+node --inspect-brk node_modules/.bin/jest --runInBand
+# Then open chrome://inspect in Chrome
+
+## Quick Status Check
+------------------
+npm test 2>&1 | grep "Test Suites"      # Summary only
+npm test 2>&1 | grep -E "PASS|FAIL"     # Pass/fail status
+
+## Test File Locations
+-------------------
+src/__tests__/components/     # Component tests
+src/__tests__/hooks/          # Hook tests
+src/__tests__/lib/            # Utility tests
+src/__tests__/utils/          # Test utilities
+
+## Configuration Files
+-------------------
+jest.config.js               # Jest configuration
+jest.setup.js                # Test environment setup
+package.json                 # Test scripts
+
+## Documentation
+-------------
+UNIT_TEST_REPORT.md          # Full implementation report
+TEST_QUICK_START.md          # Developer guide
+UNIT_TESTING_COMPLETE.md     # Executive summary
+TEST_COMMANDS.txt            # This file
+
+## Status (as of 2026-01-18)
+------------------------
+Test Files:    11
+Total Tests:   190
+Passing:       161 (84.7%)
+Coverage:      2.86% (target: 70%)
+Status:        Infrastructure Complete ✅
+
+## Next Steps
+----------
+1. Fix failing tests
+2. Add more component tests
+3. Increase coverage to 70%
+4. Set up CI/CD pipeline
+

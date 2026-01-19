@@ -1,0 +1,266 @@
+/* PDF 表格渲染器樣式 */
+
+/* 容器 */
+.pdf-table-container {
+  width: 100%;
+  margin: 20px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+.pdf-table-wrapper {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+/* 表格 */
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+/* 表格行 */
+.table-row {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+/* 表格單元格 */
+.table-cell {
+  border: 1px solid #e0e0e0;
+  padding: 12px 16px;
+  text-align: left;
+  vertical-align: middle;
+  background-color: white;
+  transition: background-color 0.2s ease;
+}
+
+.table-cell:hover {
+  background-color: #f8f9fa;
+}
+
+/* 合併單元格樣式 */
+.merged-cell {
+  background-color: #f0f4f8;
+  font-weight: 600;
+  color: #1a202c;
+  vertical-align: top;
+  border-left: 2px solid #3182ce;
+}
+
+.merged-cell:hover {
+  background-color: #e6effc;
+}
+
+/* 空單元格 */
+.empty-cell {
+  background-color: #fafafa;
+  color: #a0aec0;
+  font-style: italic;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .table-cell {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .pdf-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .pdf-table {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-cell {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  
+  .merged-cell {
+    font-size: 13px;
+  }
+}
+
+/* 載入狀態 */
+.table-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #f7fafc;
+  border-radius: 8px;
+  border: 2px dashed #cbd5e0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #3182ce;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.table-loader p {
+  margin-top: 16px;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+/* 錯誤狀態 */
+.table-error {
+  padding: 20px;
+  background: #fff5f5;
+  border: 1px solid #feb2b2;
+  border-radius: 8px;
+  color: #c53030;
+}
+
+.table-error p {
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.error-details {
+  background: white;
+  padding: 12px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  overflow-x: auto;
+  color: #718096;
+}
+
+/* 無表格狀態 */
+.no-table {
+  padding: 40px;
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+}
+
+/* 簡單表格容器樣式 */
+.simple-table-container {
+  width: 100%;
+  margin: 20px 0;
+}
+
+.simple-table-container .pdf-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.simple-table-container .pdf-table td {
+  border: 1px solid #e0e0e0;
+  padding: 12px 16px;
+}
+
+.simple-table-container .pdf-table td[rowspan] {
+  background-color: #f0f4f8;
+  font-weight: 600;
+  vertical-align: top;
+}
+
+/* 打印樣式 */
+@media print {
+  .pdf-table-container {
+    page-break-inside: avoid;
+  }
+  
+  .table-cell {
+    color: black;
+  }
+  
+  .merged-cell {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .pdf-table-wrapper {
+    background: #2d3748;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .table-cell {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .table-cell:hover {
+    background-color: #4a5568;
+  }
+  
+  .merged-cell {
+    background-color: #1a365d;
+    border-left-color: #63b3ed;
+    color: #e2e8f0;
+  }
+  
+  .merged-cell:hover {
+    background-color: #2c5282;
+  }
+  
+  .empty-cell {
+    background-color: #1a202c;
+    color: #718096;
+  }
+  
+  .table-row {
+    border-bottom-color: #4a5568;
+  }
+}
+
+/* 動畫效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pdf-table-wrapper {
+  animation: fadeIn 0.3s ease-in;
+}
+
+/* 可訪問性 */
+.table-cell:focus {
+  outline: 2px solid #3182ce;
+  outline-offset: -2px;
+}
+
+/* 高對比度模式 */
+@media (prefers-contrast: high) {
+  .table-cell {
+    border-width: 2px;
+  }
+  
+  .merged-cell {
+    border-left-width: 3px;
+  }
+}

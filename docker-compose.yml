@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  template-parsing-service:
+    build: 
+      context: ./template-parsing-service
+    container_name: template-parsing-service
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./template-parsing-service:/app
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uvicorn service:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - rfp-network
+
+  image-processing-service:
+    build:
+      context: ./image-processing-service
+    container_name: image-processing-service
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./image-processing-service:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - rfp-network
+
+  paddleocr-service:
+    build:
+      context: ./paddleocr-service
+    container_name: paddleocr-service
+    ports:
+      - "8006:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - rfp-network
+
+  parsing-service:
+    build:
+      context: ./parsing-service
+      dockerfile: Dockerfile
+    container_name: parsing-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./parsing-service/tmp:/app/tmp
+      - ./parsing-service/models/cache:/root/.cache
+      - ./parsing-service/models/rapidocr:/usr/local/lib/python3.11/site-packages/rapidocr/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MAX_WORKERS=4
+      - HF_HOME=/root/.cache/huggingface
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped
+    networks:
+      - rfp-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: rfp-n8n
+    ports:
+      - "5679:5678"
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    env_file:
+      - .env
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_SECURE_COOKIE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_METRICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_RESPONSE_CONTROL_ALLOW_ORIGIN=http://localhost:3000
+      - N8N_CORS_ALLOWED_ORIGINS=*
+      - N8N_RESPONSE_CONTROL_ALLOW_METHODS=GET,POST,PUT,DELETE,OPTIONS
+      - N8N_RESPONSE_CONTROL_ALLOW_HEADERS=Content-Type,Authorization,X-Requested-With
+    restart: unless-stopped
+    networks:
+      - rfp-network
+
+volumes:
+  n8n_data:
+    external: true
+networks:
+  rfp-network:
+    external: true
+    name: aidev_rfp-network

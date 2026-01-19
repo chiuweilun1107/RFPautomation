@@ -45,4 +45,20 @@ logs/
 # 暫存文件
 tmp/
 temp/
-*.tmp
+# Large Model Files / Cache
+parsing-service/models/
+ComfyUI/models/
+*.bin
+*.onnx
+*.pth
+*.pt
+*.safetensors
+# Bulky Installers & Service models
+mineru-service/
+*.sh
+*.exe
+*.dmg
+*.pkg
+**/cache/
+**/blobs/
+**/snapshots/

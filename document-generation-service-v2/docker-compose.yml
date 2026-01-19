@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  document-generation-v2:
+    build: .
+    container_name: document-generation-v2
+    ports:
+      - "8005:8005"
+    environment:
+      - NODE_ENV=production
+      - PORT=8005
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+    volumes:
+      - ./output:/tmp/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8005/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+

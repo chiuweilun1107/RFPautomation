@@ -1,0 +1,183 @@
+{
+  "name": "範本解析工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "parse-template",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - 接收範本",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/public/{{ $json.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-template",
+      "name": "下載範本檔案",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://template-parsing-service:8004/parse-template",
+        "sendBinaryData": true,
+        "options": {}
+      },
+      "id": "parse-template",
+      "name": "解析範本欄位",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "templates",
+        "filterType": "manual",
+        "matchBy": "id",
+        "valueToMatchOn": "={{ $('Webhook - 接收範本').item.json.template_id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "parsed_fields",
+              "fieldValue": "={{ JSON.stringify($json.fields) }}"
+            },
+            {
+              "fieldId": "parsed_tables",
+              "fieldValue": "={{ JSON.stringify($json.tables) }}"
+            },
+            {
+              "fieldId": "sections",
+              "fieldValue": "={{ JSON.stringify($json.sections) }}"
+            },
+            {
+              "fieldId": "parsed_styles",
+              "fieldValue": "={{ JSON.stringify($json.styles) }}"
+            },
+            {
+              "fieldId": "parsed_images",
+              "fieldValue": "={{ JSON.stringify($json.images) }}"
+            },
+            {
+              "fieldId": "structure",
+              "fieldValue": "={{ JSON.stringify($json.structure) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "ready"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "update-database",
+      "name": "更新資料庫",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "1",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"template_id\": $('Webhook - 接收範本').item.json.template_id, \"fields_count\": $json.fields.length, \"tables_count\": $json.tables.length } }}"
+      },
+      "id": "respond-success",
+      "name": "回應成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - 接收範本": {
+      "main": [
+        [
+          {
+            "node": "下載範本檔案",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "下載範本檔案": {
+      "main": [
+        [
+          {
+            "node": "解析範本欄位",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析範本欄位": {
+      "main": [
+        [
+          {
+            "node": "更新資料庫",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "更新資料庫": {
+      "main": [
+        [
+          {
+            "node": "回應成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "id": "parse-template-workflow",
+  "meta": {
+    "instanceId": "your-instance-id"
+  },
+  "tags": []
+}

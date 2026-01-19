@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虛擬環境
+venv/
+env/
+ENV/
+.venv/
+
+# 輸出檔案（不需要包含在 image 中）
+output/
+*.md
+*.png
+*.jpg
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 測試檔案
+test_*.py
+*.log
+
+# 暫存檔案
+tmp/
+*.tmp

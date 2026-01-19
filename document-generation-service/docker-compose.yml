@@ -1,0 +1,36 @@
+services:
+  document-generation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: document-generation-service
+    platform: linux/arm64
+    ports:
+      - "8003:8003"
+    volumes:
+      # 範本目錄 (可以從外部掛載自定義範本)
+      - ./templates:/app/templates
+      # 輸出目錄
+      - ./output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - PORT=8003
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+

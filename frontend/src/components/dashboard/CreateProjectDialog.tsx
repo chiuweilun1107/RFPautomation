@@ -23,13 +23,15 @@ export function CreateProjectDialog() {
     const [open, setOpen] = React.useState(false)
     const [isLoading, setIsLoading] = React.useState(false)
     const [title, setTitle] = React.useState("")
-    const [file, setFile] = React.useState<File | null>(null)
+    const [agency, setAgency] = React.useState("")
+    const [deadline, setDeadline] = React.useState("")
+    const [files, setFiles] = React.useState<File[]>([])
     const router = useRouter()
     const supabase = createClient()
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault()
-        if (!file || !title) return
+        if (!files.length || !title) return
 
         setIsLoading(true)
 
@@ -37,58 +39,102 @@ export function CreateProjectDialog() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            // 1. Upload File (to raw-files)
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${user.id}/${Date.now()}.${fileExt}`
-            const { error: uploadError } = await supabase.storage
-                .from('raw-files')
-                .upload(fileName, file)
+            // 1. Create Project Record FIRST (Parent)
+            // Try with new columns first
+            let project = null
 
-            if (uploadError) throw uploadError
+            try {
+                const { data, error: dbError } = await supabase
+                    .from('projects')
+                    .insert({
+                        title,
+                        agency: agency || null,
+                        deadline: deadline || null,
+                        owner_id: user.id,
+                        status: 'processing',
+                    })
+                    .select()
+                    .single()
 
-            // 2. Create Project Record (New Schema)
-            const { data: project, error: dbError } = await supabase
-                .from('projects')
-                .insert({
-                    title,
-                    owner_id: user.id,
-                    status: 'processing',
-                })
-                .select()
-                .single()
+                if (dbError) throw dbError
+                project = data
+            } catch (err: any) {
+                // Fallback: If columns don't exist, try without them
+                console.warn("Extended columns might be missing, retrying with basic fields...", err)
+                if (err.message?.includes('column') || err.code === '42703') { // 42703: undefined_column
+                    const { data, error: retryError } = await supabase
+                        .from('projects')
+                        .insert({
+                            title,
+                            owner_id: user.id,
+                            status: 'processing',
+                        })
+                        .select()
+                        .single()
 
-            if (dbError) throw dbError
+                    if (retryError) throw retryError
+                    project = data
 
-            // 3. Create Source & Trigger n8n (via API)
-            const sourceResponse = await fetch('/api/sources/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: file.name,
-                    origin_url: fileName,
-                    type: fileExt === 'pdf' ? 'pdf' : 'docx',
-                    status: 'processing',
-                    project_id: project.id
-                })
-            })
-
-            if (!sourceResponse.ok) {
-                console.error("Failed to create source record via API")
-                // Non-blocking but good to log
+                    toast.warning("Project created, but extra details weren't saved (Database update required).")
+                } else {
+                    throw err
+                }
             }
 
-            toast.success("Project created! Document is being processed.")
+            if (!project) throw new Error("Failed to create project record")
+
+            // 2. Loop through all files
+            const uploadPromises = files.map(async (file) => {
+                // Upload File
+                const fileExt = file.name.split('.').pop()
+                // Sanitize filename for Storage (ASCII only) to prevent "Invalid key" errors
+                const timestamp = Date.now();
+                const safeName = `${timestamp}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const storagePath = `${user.id}/${safeName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('raw-files')
+                    .upload(storagePath, file)
+
+                if (uploadError) throw uploadError
+
+                // Create Source & Trigger n8n
+                const sourceResponse = await fetch('/api/sources/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: file.name, // Keep original Chinese name for display
+                        origin_url: storagePath, // Use safe path for retrieval
+                        type: fileExt ? fileExt.toLowerCase() : 'unknown',
+                        status: 'processing',
+                        project_id: project.id,
+                        // NEW: Auto-assign as Tender Data
+                        source_type: 'tender',
+                        tags: ['標案']
+                    })
+                })
+
+                if (!sourceResponse.ok) {
+                    const errText = await sourceResponse.text();
+                    console.error(`Failed to trigger source for ${file.name}:`, errText);
+                    toast.error(`Error processing ${file.name}: ${errText.substring(0, 50)}`);
+                }
+            })
+
+            await Promise.all(uploadPromises)
+
+            toast.success(`Project initialized. ${files.length} documents queued.`)
 
             setOpen(false)
             setTitle("")
-            setFile(null)
-            router.refresh()
-            // Optional: Redirect to the new project immediately
-            // router.push(`/dashboard/${project.id}`)
+            setAgency("")
+            setDeadline("")
+            setFiles([])
+            // Removed router.refresh() - Realtime subscription will auto-update the project list
 
         } catch (error) {
             console.error("Error creating project:", error)
-            toast.error("Failed to create project. Please try again.")
+            toast.error("Failed to create project.")
         } finally {
             setIsLoading(false)
         }
@@ -97,67 +143,111 @@ export function CreateProjectDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button className="cursor-pointer rounded-none bg-foreground text-background hover:bg-muted-foreground font-mono font-bold uppercase tracking-wider h-10 border border-transparent">
                     <Plus className="mr-2 h-4 w-4" />
-                    New Project
+                    New_Project
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Create New Project</DialogTitle>
-                    <DialogDescription>
-                        Upload your RFP document to start the automation process.
+            <DialogContent className="sm:max-w-[425px] rounded-none border-black dark:border-white font-mono p-0 overflow-hidden">
+                <DialogHeader className="bg-muted p-6 border-b border-black dark:border-white">
+                    <DialogTitle className="font-bold text-xl uppercase tracking-tighter">Initialize Project</DialogTitle>
+                    <DialogDescription className="text-xs font-mono">
+                        Upload RFP documentation for automated analysis.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={onSubmit}>
-                    <div className="grid gap-4 py-4">
+                <form onSubmit={onSubmit} className="p-6 space-y-6">
+                    <div className="grid gap-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="title">Project Title</Label>
+                            <Label htmlFor="title" className="font-bold text-xs uppercase">
+                                Project Designation <span className="text-red-600">*</span>
+                            </Label>
                             <Input
                                 id="title"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="e.g., Government Cloud Migration RFP"
+                                placeholder="e.g. GOV_ALGORITHM_V2"
                                 required
+                                className="font-mono rounded-none border-black dark:border-white focus-visible:ring-0 focus:bg-muted"
                             />
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="agency" className="font-bold text-xs uppercase">
+                                    Agency
+                                </Label>
+                                <Input
+                                    id="agency"
+                                    value={agency}
+                                    onChange={(e) => setAgency(e.target.value)}
+                                    placeholder="Agency Name"
+                                    className="font-mono rounded-none border-black dark:border-white focus-visible:ring-0 focus:bg-muted"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="deadline" className="font-bold text-xs uppercase">
+                                    Deadline
+                                </Label>
+                                <Input
+                                    id="deadline"
+                                    type="date"
+                                    value={deadline}
+                                    onChange={(e) => setDeadline(e.target.value)}
+                                    className="font-mono rounded-none border-black dark:border-white focus-visible:ring-0 focus:bg-muted"
+                                />
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
-                            <Label htmlFor="file">RFP Document</Label>
+                            <Label htmlFor="file" className="font-bold text-xs uppercase">
+                                Source Materials <span className="text-red-600">*</span>
+                            </Label>
                             <div className="flex items-center justify-center w-full">
                                 <label
                                     htmlFor="file"
-                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 border-gray-300 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-black/20 dark:border-white/20 rounded-none cursor-pointer hover:bg-muted hover:border-black dark:hover:border-white transition-all group"
                                 >
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <Upload className="w-8 h-8 mb-4 text-muted-foreground text-gray-400" />
-                                        <p className="mb-2 text-sm text-muted-foreground text-gray-500">
-                                            <span className="font-semibold">Click to upload</span>
+                                        <Upload className="w-8 h-8 mb-4 text-muted-foreground group-hover:text-foreground" />
+                                        <p className="mb-2 text-xs text-muted-foreground group-hover:text-foreground">
+                                            <span className="font-bold">CLICK_TO_UPLOAD</span> or drag file
                                         </p>
-                                        <p className="text-xs text-muted-foreground text-gray-400">
-                                            DOCX, PDF, or XLSX (MAX. 10MB)
+                                        <p className="text-[10px] text-muted-foreground/50">
+                                            SUPPORTED: PDF, DOCX, XLSX, TXT (MAX 50MB)
                                         </p>
                                     </div>
                                     <Input
                                         id="file"
                                         type="file"
                                         className="hidden"
-                                        accept=".docx,.pdf,.xlsx"
-                                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                        accept=".doc,.docx,.pdf,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.md,.jpg,.jpeg,.png,.bmp,.tiff,.html,.htm,.odt"
+                                        multiple
+                                        onChange={(e) => {
+                                            if (e.target.files) {
+                                                setFiles(Array.from(e.target.files))
+                                            }
+                                        }}
                                         required
                                     />
                                 </label>
                             </div>
-                            {file && (
-                                <p className="text-sm font-medium text-green-600 truncate">
-                                    Selected: {file.name}
-                                </p>
+
+                            {files.length > 0 && (
+                                <div className="text-xs font-mono bg-muted p-2 border-l-2 border-black dark:border-white">
+                                    <p className="mb-1 font-bold">SELECTED_FILES ({files.length}):</p>
+                                    <ul className="list-inside opacity-70">
+                                        {files.map((f, i) => (
+                                            <li key={i} className="truncate before:content-['>_'] before:mr-1">{f.name}</li>
+                                        ))}
+                                    </ul>
+                                </div>
                             )}
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button type="submit" disabled={isLoading}>
+                        <Button type="submit" disabled={isLoading} className="w-full rounded-none bg-foreground text-background hover:bg-muted-foreground font-bold uppercase tracking-widest">
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Project
+                            {isLoading ? 'PROCESSING...' : 'CONFIRM_INITIALIZATION'}
                         </Button>
                     </DialogFooter>
                 </form>

@@ -1,0 +1,71 @@
+/* docx-preview 樣式 */
+.docx-preview-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: #f5f5f5;
+    padding: 20px;
+}
+
+.docx-preview-content {
+    max-width: 210mm; /* A4 寬度 */
+    margin: 0 auto;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* docx-preview library 的預設樣式 */
+.docx-wrapper {
+    background: white;
+    padding: 30px;
+    min-height: 297mm; /* A4 高度 */
+}
+
+.docx-wrapper section.docx {
+    margin-bottom: 20px;
+}
+
+/* 確保字體正確渲染 */
+.docx-wrapper * {
+    font-family: inherit !important;
+}
+
+/* 表格樣式 */
+.docx-wrapper table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.docx-wrapper table td,
+.docx-wrapper table th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+/* 分頁符 */
+.docx-wrapper .docx-page-break {
+    page-break-after: always;
+    margin: 20px 0;
+    border-top: 1px dashed #ccc;
+}
+
+/* Dark mode 支援 */
+.dark .docx-preview-container {
+    background: #1a1a1a;
+}
+
+.dark .docx-preview-content {
+    background: #2a2a2a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark .docx-wrapper {
+    background: #2a2a2a;
+    color: #e5e5e5;
+}
+
+.dark .docx-wrapper table td,
+.dark .docx-wrapper table th {
+    border-color: #444;
+}
+

@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  parsing-service:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./tmp:/app/tmp
+      - ./models/cache:/root/.cache
+      - ./models/rapidocr:/usr/local/lib/python3.11/site-packages/rapidocr/models
+    environment:
+      - MAX_WORKERS=4
+      - HF_HOME=/root/.cache/huggingface
+      - SUPABASE_URL=https://goyonrowhfphooryfzif.supabase.co
+      - SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdveW9ucm93aGZwaG9vcnlmemlmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTYxMTA4NywiZXhwIjoyMDgxMTg3MDg3fQ.O49nmTt-80E0oAx70B_QYMU7rZpcoe26x5FQr6IuKnU
+      - GEMINI_API_KEY=AIzaSyAs0XLKYp_R-MLoAOmM9alHWadol08264E
+    restart: unless-stopped
