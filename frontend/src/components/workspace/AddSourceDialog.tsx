@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { sourcesApi } from "@/features/sources/api/sourcesApi";
 
 interface AddSourceDialogProps {
     open: boolean;
@@ -61,27 +62,12 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
 
         setIsSearching(true);
         try {
-            const response = await fetch('/api/sources/ai-search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: searchQuery.trim(),
-                    mode: researchMode, // fast or deep
-                    source: sourceMode, // web or drive
-                    project_id: projectId
-                })
-            });
+            const result = await sourcesApi.aiSearch(searchQuery.trim(), projectId);
+            setSearchResults((result as any).results || result.sources || []);
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Search failed');
-            }
-
-            const data = await response.json();
-            setSearchResults(data.results || []);
-
-            if (data.results?.length > 0) {
-                toast.success(`找到 ${data.results.length} 個相關來源`);
+            const resultCount = (result as any).results?.length || result.sources?.length || 0;
+            if (resultCount > 0) {
+                toast.success(`找到 ${resultCount} 個相關來源`);
             } else {
                 toast.info('沒有找到相關來源');
             }
@@ -97,18 +83,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
     const handleAddSearchResult = async (result: any) => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/sources/from-url', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: result.url,
-                    title: result.title,
-                    project_id: projectId
-                })
-            });
-
-            if (!response.ok) throw new Error('Failed to add source');
-
+            await sourcesApi.fromUrl(result.url, projectId);
             toast.success('來源已添加');
             onSourceAdded?.();
         } catch (error) {
@@ -136,20 +111,14 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
 
             // 2. 創建 Source 記錄
             const fileExt = file.name.split('.').pop();
-            const response = await fetch('/api/sources/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: file.name,
-                    origin_url: filePath,
-                    type: fileExt === 'pdf' ? 'pdf' : 'docx',
-                    status: 'processing',
-                    project_id: projectId,
-                    source_type: 'upload'
-                })
+            await sourcesApi.create({
+                title: file.name,
+                origin_url: filePath,
+                type: fileExt === 'pdf' ? 'pdf' : 'docx',
+                status: 'processing',
+                project_id: projectId,
+                source_type: 'upload',
             });
-
-            if (!response.ok) throw new Error('Failed to create source');
 
             toast.success('文件上傳成功，正在處理中...');
             onSourceAdded?.();
@@ -172,20 +141,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
 
         setIsLoading(true);
         try {
-            const response = await fetch('/api/sources/from-url', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: urlInput.trim(),
-                    project_id: projectId
-                })
-            });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to fetch URL');
-            }
-
+            await sourcesApi.fromUrl(urlInput.trim(), projectId);
             toast.success('網頁內容已添加');
             setUrlInput("");
             onSourceAdded?.();
@@ -207,18 +163,11 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
 
         setIsLoading(true);
         try {
-            const response = await fetch('/api/sources/from-text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: textTitle.trim() || `文字筆記 ${new Date().toLocaleDateString()}`,
-                    content: textInput.trim(),
-                    project_id: projectId
-                })
-            });
-
-            if (!response.ok) throw new Error('Failed to add text');
-
+            await sourcesApi.fromText(
+                textTitle.trim() || `文字筆記 ${new Date().toLocaleDateString()}`,
+                textInput.trim(),
+                projectId
+            );
             toast.success('文字已添加');
             setTextInput("");
             setTextTitle("");

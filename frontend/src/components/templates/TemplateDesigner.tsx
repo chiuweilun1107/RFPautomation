@@ -11,6 +11,7 @@ import { SaveDialog } from "./SaveDialog"
 import { SaveAsDialog } from "./SaveAsDialog"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { templatesApi } from "@/features/templates/api/templatesApi"
 
 
 
@@ -48,26 +49,10 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
 
   const handleUpdateOriginal = async (designConfig: Template['design_config']) => {
     try {
-      const response = await fetch('/api/templates/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          template_id: template.id,
-          design_config: designConfig
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast.success('範本已更新')
-        setShowSaveDialog(false)
-        setHasUnsavedChanges(false)
-      } else {
-        toast.error(result.error || '更新失敗')
-      }
+      await templatesApi.update(template.id, { ...template, design_config: designConfig } as any);
+      toast.success('範本已更新')
+      setShowSaveDialog(false)
+      setHasUnsavedChanges(false)
     } catch (error) {
       console.error('Update error:', error)
       toast.error('更新失敗')
@@ -76,21 +61,12 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
 
   const handleSaveAsNew = async (newTemplate: Partial<Template>) => {
     try {
-      const response = await fetch('/api/templates/save-as', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          template_id: template.id,
-          name: newTemplate.name,
-          description: newTemplate.description,
-          category: newTemplate.category,
-          folder_id: newTemplate.folder_id
-        }),
-      })
-
-      const result = await response.json()
+      const result = await templatesApi.saveAs(template.id, {
+        name: newTemplate.name!,
+        description: newTemplate.description,
+        category: newTemplate.category as string | undefined,
+        folder_id: newTemplate.folder_id,
+      });
 
       if (result.success) {
         toast.success('已另存為新範本')

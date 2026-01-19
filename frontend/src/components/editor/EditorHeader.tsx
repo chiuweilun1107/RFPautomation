@@ -13,7 +13,7 @@ interface EditorHeaderProps {
     status: string
     projectId: string
     stage?: number
-    onStageSelect: (stageId: number) => void
+    onStageSelect?: (stageId: number) => void
 }
 
 export function EditorHeader({ title, status, projectId, stage = 0, onStageSelect }: EditorHeaderProps) {

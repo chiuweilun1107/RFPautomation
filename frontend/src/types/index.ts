@@ -103,4 +103,4 @@ export type {
 } from './ui';
 
 // Supabase Database Types
-export * from './supabase';
+// export * from './supabase'; // Temporarily disabled until types are generated

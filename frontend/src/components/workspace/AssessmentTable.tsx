@@ -10,6 +10,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { n8nApi } from "@/features/n8n/api/n8nApi";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RecursiveAssessmentRenderer } from "./RecursiveAssessmentRenderer";
@@ -186,25 +187,14 @@ export function AssessmentTable({ projectId }: AssessmentTableProps) {
             console.log("[AssessmentTable] Starting analysis for project:", projectId);
             setIsAnalyzing(true);
             try {
-                const response = await fetch('/api/n8n/evaluate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ projectId })
+                await n8nApi.evaluateProject(projectId);
+
+                console.log("[AssessmentTable] API call successful");
+                toast.success("AI Analysis Started", {
+                    description: "The deconstruction process has been initiated. This may take a few minutes."
                 });
-
-                console.log("[AssessmentTable] API Response status:", response.status);
-
-                if (response.ok) {
-                    toast.success("AI Analysis Started", {
-                        description: "The deconstruction process has been initiated. This may take a few minutes."
-                    });
-                    // Optimistically fetch, though Realtime will likely catch it later
-                    setTimeout(() => fetchData(), 2000);
-                } else {
-                    const errData = await response.json().catch(() => ({}));
-                    console.error("[AssessmentTable] Analysis trigger failed:", errData);
-                    throw new Error(errData.error || "Failed to trigger analysis");
-                }
+                // Optimistically fetch, though Realtime will likely catch it later
+                setTimeout(() => fetchData(), 2000);
             } catch (err: any) {
                 console.error("[AssessmentTable] Catch error:", err);
                 toast.error("Analysis Failed", {

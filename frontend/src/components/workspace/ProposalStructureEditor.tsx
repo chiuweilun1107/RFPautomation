@@ -28,6 +28,7 @@ import { SourceSelectionList } from "./SourceSelectionList";
 import { AddSourceDialog } from "./AddSourceDialog";
 import { DraggableContentPanel } from "./DraggableContentPanel";
 import { ConflictConfirmationDialog } from "@/components/ui/ConflictConfirmationDialog";
+import { sourcesApi } from "@/features/sources/api/sourcesApi";
 import { AddTaskDialog } from "./dialogs/AddTaskDialog";
 import { ContentGenerationDialog } from "./dialogs/ContentGenerationDialog";
 import { ImageGenerationDialog, ImageGenerationOptions } from "./dialogs/ImageGenerationDialog";
@@ -2105,16 +2106,9 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                                 source={selectedEvidence ? { ...fullSources[selectedEvidence.source_id], id: selectedEvidence.source_id } : undefined}
                                 evidence={selectedEvidence}
                                 onClose={() => setSelectedEvidence(null)}
-                                onGenerateSummary={async (sourceId) => {
+                                onGenerateSummary={async (sourceId: string) => {
                                     try {
-                                        const response = await fetch('/api/sources/summarize', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ sourceId }),
-                                        });
-
-                                        if (!response.ok) throw new Error('Failed to generate summary');
-                                        const data = await response.json();
+                                        await sourcesApi.summarize(sourceId);
 
                                         // Note: We might need to update the source in a more persistent way or just notify user
                                         toast.success('摘要生成成功 (Summary Generated)');
@@ -2166,19 +2160,8 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                         open={isAddSourceDialogOpen}
                         onOpenChange={setIsAddSourceDialogOpen}
                         projectId={projectId}
-                        onSourceAdded={(newIds) => {
-                            fetchData().then(() => {
-                                if (newIds && newIds.length > 0) {
-                                    // If Content Generation Dialog is open, auto-select new sources
-                                    if (isContentGenerationDialogOpen) {
-                                        setContentGenerationSourceIds(prev => Array.from(new Set([...prev, ...newIds])));
-                                    }
-                                    // If Subsection Generation Dialog is open, auto-select new sources
-                                    if (isGenerateSubsectionOpen) {
-                                        setSubsectionSourceIds(prev => Array.from(new Set([...prev, ...newIds])));
-                                    }
-                                }
-                            });
+                        onSourceAdded={() => {
+                            fetchData();
                         }}
                     />
                 </div>

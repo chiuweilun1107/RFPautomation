@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
 import { SourceDetailSheet } from "@/components/workspace/SourceDetailSheet"
 import { createClient } from "@/lib/supabase/client"
+import { ragApi } from "@/features/rag/api/ragApi"
 
 // Types based on the schema
 interface Task {
@@ -150,21 +151,11 @@ export function SectionList({ sections, projectId }: SectionListProps) {
     const handleGenerateDraft = async (section: Section) => {
         setGeneratingSectionId(section.id)
         try {
-            const response = await fetch('/api/rag/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    project_id: projectId,
-                    section_id: section.id,
-                    section_title: section.content || section.title,
-                })
+            const data = await ragApi.generate({
+                project_id: projectId,
+                section_id: section.id,
+                section_title: section.content || section.title,
             })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || '生成失敗')
-            }
 
             // 顯示引用來源
             if (data.sources && data.sources.length > 0) {

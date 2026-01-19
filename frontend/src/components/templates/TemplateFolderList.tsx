@@ -287,7 +287,7 @@ export function TemplateFolderList({ folders, onFolderSelect, selectedFolderId, 
 
                         <div className="px-5 py-3 flex items-center justify-between border-t border-black/10 dark:border-white/10 mt-auto bg-black/5">
                             <div className="text-[9px] font-mono uppercase font-bold italic opacity-40">
-                                DOC_COUNT: {folder.templates?.length || 0}
+                                DOC_COUNT: {folder.template_count || 0}
                             </div>
                             <Folder className="h-3.5 w-3.5 opacity-20" />
                         </div>

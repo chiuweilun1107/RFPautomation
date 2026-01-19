@@ -7,6 +7,7 @@ import { EditorHeader } from "@/components/editor/EditorHeader";
 import { SourceDetailPanel } from "@/components/workspace/SourceDetailPanel";
 import { toast } from "sonner";
 import { ProjectStage } from "@/components/workspace/ProjectWorkflowStepper";
+import { sourcesApi } from "@/features/sources/api/sourcesApi";
 
 interface ProjectWorkspaceLayoutProps {
     project: any;
@@ -33,17 +34,7 @@ export function ProjectWorkspaceLayout({ project, children }: ProjectWorkspaceLa
 
     const handleGenerateSummary = async (sourceId: string) => {
         try {
-            const response = await fetch('/api/sources/summarize', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ sourceId }),
-            });
-
-            if (!response.ok) throw new Error('Failed to generate summary');
-
-            const data = await response.json();
+            const data = await sourcesApi.summarize(sourceId);
 
             setSelectedSource((prev: any) => prev ? {
                 ...prev,

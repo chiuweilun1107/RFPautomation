@@ -35,6 +35,8 @@ import { toast } from 'sonner';
 import { SourceDetailSheet } from './SourceDetailSheet';
 import { AddSourceDialog } from './AddSourceDialog';
 import { RenameSourceDialog } from './RenameSourceDialog';
+import { sourcesApi } from '@/features/sources/api/sourcesApi';
+import { n8nApi } from '@/features/n8n/api/n8nApi';
 
 interface Source {
     id: string;
@@ -93,24 +95,14 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
         setSearchState('searching');
         try {
-            const response = await fetch('/api/sources/ai-search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: aiSearchQuery.trim(),
-                    mode: researchMode,
-                    source: 'web',
-                    project_id: projectId
-                })
-            });
+            const result = await sourcesApi.aiSearch(aiSearchQuery.trim(), projectId);
+            const data = result as any; // API response might have different structure
 
-            if (!response.ok) throw new Error('Search failed');
-            const data = await response.json();
-
-            setAiResults(data.results || []);
+            setAiResults(data.results || data.sources || []);
             setAiSearchKeywords(data.searchQueries || []); // Store keywords
             // Default select all
-            setSelectedResults(data.results ? new Set(data.results.map((_: any, i: number) => i)) : new Set());
+            const results = data.results || data.sources || [];
+            setSelectedResults(results ? new Set(results.map((_: any, i: number) => i)) : new Set());
             setSearchState('results');
         } catch (error) {
             console.error('AI search error:', error);
@@ -128,15 +120,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
         try {
             for (const result of resultsToImport) {
-                await fetch('/api/sources/from-url', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        url: result.url,
-                        title: result.title,
-                        project_id: projectId
-                    })
-                });
+                await sourcesApi.fromUrl(result.url, projectId);
             }
             toast.success(`成功匯入 ${resultsToImport.length} 個來源`);
             setSearchState('idle');
@@ -161,23 +145,16 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
     const handleGenerateSummary = async (sourceId: string) => {
         try {
-            const response = await fetch('/api/sources/summarize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ source_id: sourceId })
-            });
-
-            if (!response.ok) throw new Error('Failed to generate summary');
-            const data = await response.json();
+            const data = await sourcesApi.summarize(sourceId);
 
             setSources(prev => prev.map(s =>
                 s.id === sourceId
-                    ? { ...s, summary: data.summary, topics: data.topics }
+                    ? { ...s, summary: data.summary, topics: (data as any).topics }
                     : s
             ));
 
             if (selectedSource?.id === sourceId) {
-                setSelectedSource(prev => prev ? { ...prev, summary: data.summary, topics: data.topics } : null);
+                setSelectedSource(prev => prev ? { ...prev, summary: data.summary, topics: (data as any).topics } : null);
             }
             toast.success('摘要已生成');
         } catch (error) {
@@ -258,23 +235,15 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
             if (uploadError) throw uploadError;
 
             const fileExt = file.name.split('.').pop();
-            const response = await fetch('/api/sources/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: file.name,
-                    origin_url: filePath,
-                    type: fileExt === 'pdf' ? 'pdf' : 'docx',
-                    status: 'processing',
-                    project_id: projectId,
-                    source_type: 'upload'
-                })
+            await sourcesApi.create({
+                title: file.name,
+                origin_url: filePath,
+                type: fileExt === 'pdf' ? 'pdf' : 'docx',
+                status: 'processing',
+                project_id: projectId,
+                source_type: 'upload',
             });
 
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error || 'Failed to create source');
-            }
             toast.success('文件上傳成功，正在處理中...');
             fetchSources();
         } catch (error) {
@@ -306,19 +275,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
         toast.info("Triggering refresh...");
         try {
-            const response = await fetch('/api/n8n/ingest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: source.origin_url || source.title,
-                    type: source.type,
-                    projectId: projectId,
-                    source_id: source.id
-                })
-            });
-
-            if (!response.ok) throw new Error("Refresh failed");
-
+            await n8nApi.ingest(source.id, projectId);
             toast.success("Refresh triggered successfully");
         } catch (error) {
             console.error("Refresh error:", error);

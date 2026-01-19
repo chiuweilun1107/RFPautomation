@@ -1,9 +1,11 @@
+import { Suspense } from 'react';
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import { EditorHeader } from "@/components/editor/EditorHeader"
 import { SectionList } from "@/components/editor/SectionList"
 import { Loader2 } from "lucide-react"
 import { ProjectDashboardClient } from "@/components/workspace/ProjectDashboardClient"
+import { ProjectDashboardSkeleton } from '@/components/ui/skeletons/ProjectDashboardSkeleton';
 
 interface PageProps {
     params: Promise<{ id: string }>

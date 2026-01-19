@@ -1,10 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { ProjectDashboardLayout } from "@/components/workspace/ProjectDashboardLayout";
 import { SectionList } from "@/components/editor/SectionList";
 import { ProjectStage, ProjectWorkflowStepper } from "@/components/workspace/ProjectWorkflowStepper";
-import { AssessmentTable } from "@/components/workspace/AssessmentTable";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
+// Lazy load heavy components
+const AssessmentTable = dynamic(
+    () => import("@/components/workspace/AssessmentTable").then((mod) => ({ default: mod.AssessmentTable })),
+    {
+        loading: () => <LoadingSpinner size="lg" text="Loading assessment..." />,
+        ssr: false
+    }
+);
 
 interface ProjectDashboardClientProps {
     project: any;

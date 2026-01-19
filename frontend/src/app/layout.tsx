@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from "sonner";
+import { PerformanceMonitor } from "@/components/monitoring/PerformanceMonitor";
 
 export default function RootLayout({
   children,
@@ -31,6 +32,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <PerformanceMonitor />
       </body>
     </html>
   );

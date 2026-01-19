@@ -6,8 +6,21 @@ import { Upload, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { sourcesApi } from "@/features/sources/api/sourcesApi"
 
-export function UploadZone() {
+interface UploadZoneProps {
+    folders?: any[];
+    selectedFolderId?: string | null;
+    onFolderChange?: () => void;
+    onUploadComplete?: () => void;
+}
+
+export function UploadZone({
+    folders,
+    selectedFolderId,
+    onFolderChange,
+    onUploadComplete
+}: UploadZoneProps = {}) {
     const router = useRouter()
     const [isDragging, setIsDragging] = React.useState(false)
     const [isUploading, setIsUploading] = React.useState(false)
@@ -59,23 +72,18 @@ export function UploadZone() {
                 if (uploadError) throw new Error(`Storage Error: ${uploadError.message}`)
 
                 // 2. Create Source & Trigger n8n (via API)
-                const response = await fetch('/api/sources/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                try {
+                    await sourcesApi.create({
                         title: file.name,
                         origin_url: filePath,
                         type: fileExt === 'pdf' ? 'pdf' : 'docx',
                         status: 'processing',
-                        project_id: null
-                    })
-                })
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}))
+                        project_id: '',
+                    });
+                } catch (apiError: any) {
                     // Clean up storage if DB/API failed
                     await supabase.storage.from('raw-files').remove([filePath])
-                    throw new Error(errData.error || `API Error: ${response.statusText}`)
+                    throw new Error(apiError.message || 'API Error')
                 }
 
                 successCount++
@@ -89,6 +97,11 @@ export function UploadZone() {
         if (successCount > 0) {
             toast.success(`Successfully uploaded ${successCount} files`)
             router.refresh()
+
+            // Call onUploadComplete callback if provided
+            if (onUploadComplete) {
+                onUploadComplete()
+            }
         }
 
         if (fileInputRef.current) {

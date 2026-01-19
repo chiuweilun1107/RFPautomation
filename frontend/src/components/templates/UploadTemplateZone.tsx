@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Upload, FileText, X } from "lucide-react"
 import { toast } from "sonner"
+import { templatesApi } from "@/features/templates/api/templatesApi"
 
 interface TemplateFolder {
     id: string
@@ -85,14 +86,7 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
             if (insertError) throw insertError
 
             // 3. Trigger n8n workflow to parse template
-            fetch('/api/templates/parse', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_id: templateData.id,
-                    file_path: filePath
-                })
-            }).catch(err => {
+            templatesApi.triggerParse(templateData.id, filePath).catch(err => {
                 console.error("Failed to trigger template parsing:", err)
                 toast.error("範本上傳成功,但解析失敗")
             })

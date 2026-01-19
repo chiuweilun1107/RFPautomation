@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
+import { n8nApi } from '@/features/n8n/api/n8nApi';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -37,16 +38,8 @@ export default function ChatInterface() {
         setIsLoading(true);
 
         try {
-            const res = await fetch('/api/n8n/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: userMsg })
-            });
-
-            if (!res.ok) throw new Error('Failed to fetch response');
-
-            const data = await res.json();
-            setMessages(prev => [...prev, { role: 'assistant', content: data.answer || "I'm sorry, I couldn't generate an answer." }]);
+            const response = await n8nApi.chat([{ role: 'user', content: userMsg }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: response.message || "I'm sorry, I couldn't generate an answer." }]);
         } catch (error) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Error connecting to AI service." }]);
         } finally {

@@ -14,6 +14,7 @@ import {
     SheetFooter,
 } from "@/components/ui/sheet"
 import { Loader2, Sparkles } from "lucide-react"
+import { n8nApi } from "@/features/n8n/api/n8nApi"
 
 interface Task {
     id: string
@@ -72,20 +73,17 @@ export function TaskEditorSheet({ task, open, onOpenChange, onTaskUpdated }: Tas
     const handleMagicDraft = async () => {
         setIsGenerating(true)
         try {
-            const response = await fetch('/api/n8n/draft', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const response = await n8nApi.draft(
+                task?.requirement_text || task?.title || '',
+                {
                     taskId: task?.id,
-                    requirement: task?.requirement_text || task?.title,
                     query: "Draft a section for this task based on available documents.",
                     project_id: null // TODO: Pass actual project ID
-                })
-            });
-            const data = await response.json();
-            if (data.answer) {
+                }
+            );
+            if (response.answer) {
                 // Determine if we append or replace. For now, append.
-                const newContent = draft + `\n\n${data.answer}`;
+                const newContent = draft + `\n\n${response.answer}`;
                 setDraft(newContent);
             }
         } catch (e) {

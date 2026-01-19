@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Loader2, Plus, Upload } from "lucide-react"
 import { toast } from "sonner"
+import { sourcesApi } from "@/features/sources/api/sourcesApi"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,8 +20,18 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 
-export function CreateProjectDialog() {
-    const [open, setOpen] = React.useState(false)
+interface CreateProjectDialogProps {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    trigger?: React.ReactNode;
+}
+
+export function CreateProjectDialog({
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange,
+    trigger
+}: CreateProjectDialogProps = {}) {
+    const [internalOpen, setInternalOpen] = React.useState(false)
     const [isLoading, setIsLoading] = React.useState(false)
     const [title, setTitle] = React.useState("")
     const [agency, setAgency] = React.useState("")
@@ -28,6 +39,10 @@ export function CreateProjectDialog() {
     const [files, setFiles] = React.useState<File[]>([])
     const router = useRouter()
     const supabase = createClient()
+
+    // Support both controlled and uncontrolled usage
+    const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+    const setOpen = controlledOnOpenChange || setInternalOpen;
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -101,25 +116,19 @@ export function CreateProjectDialog() {
                 // Create Source & Trigger n8n
                 const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'unknown';
 
-                const sourceResponse = await fetch('/api/sources/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                try {
+                    await sourcesApi.create({
                         title: file.name, // Keep original Chinese name for display
                         origin_url: storagePath, // Use safe path for retrieval
                         type: fileExtension, // Use mapped safe type
                         status: 'processing',
                         project_id: project.id,
-                        // NEW: Auto-assign as Tender Data
                         source_type: 'tender',
-                        tags: ['標案']
-                    })
-                })
-
-                if (!sourceResponse.ok) {
-                    const errText = await sourceResponse.text();
-                    console.error(`Failed to trigger source for ${file.name}:`, errText);
-                    toast.error(`Error processing ${file.name}: ${errText.substring(0, 50)}`);
+                        tags: ['標案'],
+                    });
+                } catch (error: any) {
+                    console.error(`Failed to trigger source for ${file.name}:`, error);
+                    toast.error(`Error processing ${file.name}: ${error.message?.substring(0, 50)}`);
                 }
             })
 
@@ -144,12 +153,17 @@ export function CreateProjectDialog() {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="cursor-pointer rounded-none bg-foreground text-background hover:bg-muted-foreground font-mono font-bold uppercase tracking-wider h-10 border border-transparent">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New_Project
-                </Button>
-            </DialogTrigger>
+            {/* Only show trigger button in uncontrolled mode or if custom trigger provided */}
+            {controlledOpen === undefined && (
+                <DialogTrigger asChild>
+                    {trigger || (
+                        <Button className="cursor-pointer rounded-none bg-foreground text-background hover:bg-muted-foreground font-mono font-bold uppercase tracking-wider h-10 border border-transparent">
+                            <Plus className="mr-2 h-4 w-4" />
+                            New_Project
+                        </Button>
+                    )}
+                </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-[425px] rounded-none border-black dark:border-white font-mono p-0 overflow-hidden">
                 <DialogHeader className="bg-muted p-6 border-b border-black dark:border-white">
                     <DialogTitle className="font-bold text-xl uppercase tracking-tighter">Initialize Project</DialogTitle>

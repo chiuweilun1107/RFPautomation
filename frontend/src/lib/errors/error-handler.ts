@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { AppError, isAppError, InternalError, ErrorContext } from './AppError';
+import { AppError, isAppError, InternalError, BadRequestError, ErrorContext } from './AppError';
 import { logger } from './logger';
 
 /**

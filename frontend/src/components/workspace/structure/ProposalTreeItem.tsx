@@ -161,27 +161,15 @@ export function ProposalTreeItem({
                                 source_id: section.citation_source_id || '',
                                 page: section.citation_page || 0,
                                 source_title: fullSources[section.citation_source_id || '']?.title || 'Unknown Source',
-                                quote: section.citation_quote || '',
-                                sourceType: (fullSources[section.citation_source_id || '']?.source_type || 'doc') as any
+                                quote: section.citation_quote || ''
                             }}
                             onClick={() => setSelectedEvidence({
                                 id: 0,
                                 source_id: section.citation_source_id || '',
                                 page: section.citation_page || 0,
                                 source_title: fullSources[section.citation_source_id || '']?.title || 'Unknown Source',
-                                quote: section.citation_quote || '',
-                                sourceType: (fullSources[section.citation_source_id || '']?.source_type || 'doc') as any
+                                quote: section.citation_quote || ''
                             })}
-                            customTrigger={
-                                section.citation_source_id ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-transparent text-blue-600 dark:text-blue-300 text-[10px] hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-200 transition-all cursor-pointer border border-blue-100 dark:border-blue-900/30 hover:border-blue-200 dark:hover:border-blue-800 font-medium whitespace-nowrap">
-                                        <FileText className="w-3 h-3" />
-                                        <span className="truncate max-w-[150px]">{fullSources[section.citation_source_id]?.title || 'Unknown Source'}</span>
-                                        <span className="opacity-50">|</span>
-                                        <span>P.{section.citation_page || 0}</span>
-                                    </span>
-                                ) : undefined
-                            }
                         />
                     )}
                     <Badge
@@ -413,17 +401,11 @@ export function ProposalTreeItem({
                                                                                                     if (!citation) return null;
 
                                                                                                     if (citation.type === 'suggestion') {
-                                                                                                        const evidence: Evidence = { id: 0, source_id: 'suggestion', page: 0, source_title: '建議實作', quote: '此項目為建議實作功能', sourceType: 'suggestion' };
+                                                                                                        const evidence: Evidence = { id: 0, source_id: 'suggestion', page: 0, source_title: '建議實作', quote: '此項目為建議實作功能' };
                                                                                                         return (
                                                                                                             <span className="inline-flex align-baseline mx-1">
                                                                                                                 <CitationBadge
                                                                                                                     evidence={evidence}
-                                                                                                                    customTrigger={
-                                                                                                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] transition-colors cursor-pointer font-medium whitespace-nowrap border align-middle bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-100 dark:border-red-800">
-                                                                                                                            <Sparkles className="w-3 h-3" />
-                                                                                                                            <span className="truncate max-w-[150px]">{evidence.source_title}</span>
-                                                                                                                        </span>
-                                                                                                                    }
                                                                                                                 />
                                                                                                             </span>
                                                                                                         );
@@ -451,27 +433,19 @@ export function ProposalTreeItem({
 
                                                                                                                     if (specificCitation) {
                                                                                                                         const sourceInfo = fullSources[specificCitation.source_id];
-                                                                                                                        evidence = { id: 0, source_id: specificCitation.source_id, page: specificCitation.page, source_title: sourceInfo?.title || specificCitation.title || title, quote: specificCitation.quote || '', sourceType: (sourceInfo?.source_type || 'doc') as any };
+                                                                                                                        evidence = { id: 0, source_id: specificCitation.source_id, page: specificCitation.page, source_title: sourceInfo?.title || specificCitation.title || title, quote: specificCitation.quote || '' };
                                                                                                                     } else if (task.citation_source_id && fullSources[task.citation_source_id]?.title.includes(title)) {
-                                                                                                                        evidence = { id: 0, source_id: task.citation_source_id, page: task.citation_page || pageNum, source_title: fullSources[task.citation_source_id].title, quote: task.citation_quote || '', sourceType: (fullSources[task.citation_source_id].source_type || 'doc') as any };
+                                                                                                                        evidence = { id: 0, source_id: task.citation_source_id, page: task.citation_page || pageNum, source_title: fullSources[task.citation_source_id].title, quote: task.citation_quote || '' };
                                                                                                                     } else {
                                                                                                                         const source = sources.find(s => s.title === title) || sources.find(s => s.title.includes(title));
-                                                                                                                        evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: title, quote: '', sourceType: (source?.source_type || 'doc') as any };
+                                                                                                                        evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: title, quote: '' };
                                                                                                                     }
 
                                                                                                                     return (
                                                                                                                         <CitationBadge
                                                                                                                             key={`${index}-${citIdx}`}
                                                                                                                             evidence={evidence}
-                                                                                                                            onClick={() => { if (evidence.source_id && evidence.source_id !== 'unknown' && evidence.sourceType !== 'suggestion') setSelectedEvidence(evidence); }}
-                                                                                                                            customTrigger={
-                                                                                                                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] transition-colors cursor-pointer font-medium whitespace-nowrap border align-middle bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-100 dark:border-blue-800`}>
-                                                                                                                                    <FileText className="w-3 h-3" />
-                                                                                                                                    <span className="truncate max-w-[150px]">{evidence.source_title}</span>
-                                                                                                                                    <span className="opacity-30">|</span>
-                                                                                                                                    <span>P.{evidence.page}</span>
-                                                                                                                                </span>
-                                                                                                                            }
+                                                                                                                            onClick={() => { if (evidence.source_id && evidence.source_id !== 'unknown' && evidence.source_id !== 'suggestion') setSelectedEvidence(evidence); }}
                                                                                                                         />
                                                                                                                     );
                                                                                                                 })}

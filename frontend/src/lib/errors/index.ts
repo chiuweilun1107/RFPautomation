@@ -6,8 +6,6 @@
 // Error Classes
 export {
   AppError,
-  ErrorCode,
-  ErrorContext,
   BadRequestError,
   UnauthorizedError,
   ForbiddenError,
@@ -24,6 +22,11 @@ export {
   GenerationError,
   isAppError,
   isOperationalError,
+} from './AppError';
+
+export type {
+  ErrorCode,
+  ErrorContext,
 } from './AppError';
 
 // Error Handler

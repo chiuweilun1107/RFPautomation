@@ -6,6 +6,7 @@ import { EditorHeader } from "@/components/editor/EditorHeader";
 import { SourceDetailPanel } from "@/components/workspace/SourceDetailPanel";
 import { ProjectWorkflowStepper } from "@/components/workspace/ProjectWorkflowStepper";
 import { toast } from "sonner";
+import { sourcesApi } from "@/features/sources/api/sourcesApi";
 
 interface ProjectDashboardLayoutProps {
     project: any;
@@ -18,17 +19,7 @@ export function ProjectDashboardLayout({ project, children, onStageSelect }: Pro
 
     const handleGenerateSummary = async (sourceId: string) => {
         try {
-            const response = await fetch('/api/sources/summarize', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ sourceId }),
-            });
-
-            if (!response.ok) throw new Error('Failed to generate summary');
-
-            const data = await response.json();
+            const data = await sourcesApi.summarize(sourceId);
 
             // Update local state to show new summary immediately
             // Note: Supabase Realtime in SourceManager will handle the sidebar update

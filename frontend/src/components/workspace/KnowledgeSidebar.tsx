@@ -10,11 +10,22 @@ import { CriteriaList } from "@/components/workspace/CriteriaList"
 interface KnowledgeSidebarProps {
     projectId: string;
     onSelectSource?: (source: any) => void;
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
-export function KnowledgeSidebar({ projectId, onSelectSource }: KnowledgeSidebarProps) {
+export function KnowledgeSidebar({
+    projectId,
+    onSelectSource,
+    isCollapsed: externalIsCollapsed,
+    onToggleCollapse
+}: KnowledgeSidebarProps) {
     const [mounted, setMounted] = useState(false)
-    const [isCollapsed, setIsCollapsed] = useState(false)
+    const [internalIsCollapsed, setInternalIsCollapsed] = useState(false)
+
+    // Use external state if provided, otherwise use internal state
+    const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed
+    const toggleCollapse = onToggleCollapse || (() => setInternalIsCollapsed(!internalIsCollapsed))
 
     // 確保只在 client 端渲染 Tabs，避免 hydration ID 不匹配
     useEffect(() => {
@@ -32,7 +43,7 @@ export function KnowledgeSidebar({ projectId, onSelectSource }: KnowledgeSidebar
     if (isCollapsed) {
         return (
             <aside className="w-[60px] h-[60px] border bg-white dark:bg-black shrink-0 font-mono flex items-center justify-center transition-all duration-300 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black cursor-pointer group"
-                onClick={() => setIsCollapsed(false)}
+                onClick={toggleCollapse}
                 title="Expand Project Knowledge"
             >
                 <div className="text-2xl font-bold">K</div>
@@ -48,7 +59,7 @@ export function KnowledgeSidebar({ projectId, onSelectSource }: KnowledgeSidebar
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
-                    onClick={() => setIsCollapsed(true)}
+                    onClick={toggleCollapse}
                 >
                     <ChevronsLeft className="h-4 w-4" />
                 </Button>
