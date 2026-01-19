@@ -40,6 +40,7 @@ export interface Section {
 export interface Source {
     id: string;
     title: string;
+    type?: "pdf" | "docx" | "web" | "markdown" | "web_crawl";
     source_type?: string;
     origin_url?: string;
     content?: string;
@@ -48,6 +49,7 @@ export interface Source {
     topics?: string[];
     project_id?: string;
     status?: string;
+    url?: string;
 }
 
 export interface TaskImage {

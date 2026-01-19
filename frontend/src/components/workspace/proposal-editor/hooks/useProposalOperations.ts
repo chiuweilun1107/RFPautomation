@@ -162,7 +162,9 @@ export function useProposalOperations(
             id: `task-${i}`,
             section_id: sectionId,
             title: `Generated Task ${i + 1}`,
-            order: i,
+            requirement_text: `Generated Task ${i + 1}`,
+            status: 'pending',
+            order_index: i,
           });
           state.setProgress({ current: i + 1, total: 3 });
         }
