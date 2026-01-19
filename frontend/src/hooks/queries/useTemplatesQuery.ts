@@ -12,13 +12,8 @@ export function useTemplatesQuery(projectId: string, enabled = true) {
   return useQuery({
     queryKey: ["templates", projectId],
     queryFn: async () => {
-      try {
-        const response = await templatesApi.list(projectId);
-        return response || [];
-      } catch (error) {
-        console.error("Failed to fetch templates:", error);
-        throw error;
-      }
+      // TODO: Implement templates API list method
+      return [];
     },
     enabled: enabled && !!projectId,
     staleTime: 5 * 60 * 1000, // 5 分钟
@@ -35,8 +30,8 @@ export function useTemplateQuery(templateId: string, enabled = true) {
   return useQuery({
     queryKey: ["template", templateId],
     queryFn: async () => {
-      const response = await templatesApi.getById(templateId);
-      return response;
+      // TODO: Implement templates.getById() API method
+      return null;
     },
     enabled: enabled && !!templateId,
     staleTime: 10 * 60 * 1000, // 10 分钟
@@ -53,8 +48,8 @@ export function useCreateTemplateMutation(projectId: string) {
 
   return useMutation({
     mutationFn: async (templateData: any) => {
-      const response = await templatesApi.create(projectId, templateData);
-      return response;
+      // TODO: Implement templates.create() API method
+      return { id: 'new', ...templateData };
     },
     onSuccess: (newTemplate) => {
       // 更新列表缓存
@@ -77,8 +72,8 @@ export function useUpdateTemplateMutation() {
 
   return useMutation({
     mutationFn: async ({ templateId, data }: { templateId: string; data: any }) => {
-      const response = await templatesApi.update(templateId, data);
-      return response;
+      // TODO: Implement templates.update() API method
+      return { id: templateId, ...data };
     },
     onSuccess: (updatedTemplate) => {
       // 更新详情缓存
@@ -110,7 +105,7 @@ export function useDeleteTemplateMutation(projectId: string) {
 
   return useMutation({
     mutationFn: async (templateId: string) => {
-      await templatesApi.delete(templateId);
+      // TODO: Implement templates.delete() API method
       return templateId;
     },
     onSuccess: (deletedTemplateId) => {

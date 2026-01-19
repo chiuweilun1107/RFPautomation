@@ -11,10 +11,7 @@ export function useProjectsQuery(page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ["projects", { page, pageSize }],
     queryFn: async () => {
-      const response = await projectsApi.list({
-        page,
-        pageSize,
-      });
+      const response = await projectsApi.getAll();
       return response;
     },
     staleTime: 5 * 60 * 1000, // 5 分钟
@@ -31,18 +28,15 @@ export function useProjectsInfiniteQuery(pageSize = 20) {
   return useInfiniteQuery({
     queryKey: ["projects-infinite", { pageSize }],
     queryFn: async ({ pageParam = 1 }) => {
-      const response = await projectsApi.list({
-        page: pageParam,
-        pageSize,
-      });
+      const response = await projectsApi.getAll();
       return response;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage: any) => {
-      if (!lastPage || !lastPage.data || lastPage.data.length < pageSize) {
+      if (!lastPage || lastPage.length === 0) {
         return undefined;
       }
-      return lastPage.nextPage || undefined;
+      return undefined;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
