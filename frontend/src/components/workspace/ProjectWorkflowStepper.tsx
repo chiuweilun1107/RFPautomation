@@ -1,6 +1,7 @@
 "use client"
 
 import { Check } from "lucide-react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,15 +30,20 @@ const STAGES = [
 ];
 
 export function ProjectWorkflowStepper({ projectId, className }: ProjectWorkflowStepperProps) {
+    const [currentStage, setCurrentStage] = useState(0);
     const pathname = usePathname();
 
-    // Determine current stage from pathname
-    let currentStage = 0;
-    if (pathname.includes('/launch')) currentStage = 1;
-    else if (pathname.includes('/planning')) currentStage = 2;
-    else if (pathname.includes('/writing')) currentStage = 3;
-    else if (pathname.includes('/presentation')) currentStage = 4;
-    else if (pathname.includes('/handover')) currentStage = 5;
+    useEffect(() => {
+        // Determine current stage from pathname after mount to ensure server/client consistency
+        let stage = 0;
+        if (pathname.includes('/launch')) stage = 1;
+        else if (pathname.includes('/planning')) stage = 2;
+        else if (pathname.includes('/writing')) stage = 3;
+        else if (pathname.includes('/presentation')) stage = 4;
+        else if (pathname.includes('/handover')) stage = 5;
+
+        setCurrentStage(stage);
+    }, [pathname]);
 
     return (
         <div className={cn("w-full py-4", className)}>

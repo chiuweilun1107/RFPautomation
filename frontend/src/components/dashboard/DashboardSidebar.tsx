@@ -30,44 +30,49 @@ interface DashboardSidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export function DashboardSidebar({ className, userEmail, isCollapsed, onToggle }: DashboardSidebarProps) {
     const pathname = usePathname()
     const [open, setOpen] = React.useState(false)
+    const [routes, setRoutes] = React.useState<Array<any>>([])
 
     // Handle controlled vs uncontrolled state for collapse
     // If props are provided, use them; otherwise default to false (expanded)
     // Note: The parent DashboardClientLayout will usually control this.
     const collapsed = isCollapsed ?? false
 
-    const routes = [
-        {
-            label: "PROJECTS",
-            icon: FileText,
-            href: "/dashboard",
-            active: pathname === "/dashboard" || pathname.startsWith("/dashboard/projects"),
-        },
-        {
-            label: "KNOWLEDGE_BASE",
-            icon: BookOpen,
-            href: "/dashboard/knowledge",
-            active: pathname.startsWith("/dashboard/knowledge"),
-        },
-        {
-            label: "TEMPLATES",
-            icon: FileStack,
-            href: "/dashboard/templates",
-            active: pathname.startsWith("/dashboard/templates"),
-        },
-        {
-            label: "TENDER_LOGS",
-            icon: GanttChart,
-            href: "/dashboard/tenders",
-            active: pathname.startsWith("/dashboard/tenders"),
-        },
-        {
-            label: "SETTINGS",
-            icon: Settings,
-            href: "/dashboard/settings",
-            active: pathname.startsWith("/dashboard/settings"),
-        },
-    ]
+    React.useEffect(() => {
+        // Compute routes with active state after mount to ensure server/client consistency
+        // pathname is null on server, so all routes start inactive, then update on client
+        setRoutes([
+            {
+                label: "PROJECTS",
+                icon: FileText,
+                href: "/dashboard",
+                active: pathname === "/dashboard" || pathname.startsWith("/dashboard/projects"),
+            },
+            {
+                label: "KNOWLEDGE_BASE",
+                icon: BookOpen,
+                href: "/dashboard/knowledge",
+                active: pathname.startsWith("/dashboard/knowledge"),
+            },
+            {
+                label: "TEMPLATES",
+                icon: FileStack,
+                href: "/dashboard/templates",
+                active: pathname.startsWith("/dashboard/templates"),
+            },
+            {
+                label: "TENDER_LOGS",
+                icon: GanttChart,
+                href: "/dashboard/tenders",
+                active: pathname.startsWith("/dashboard/tenders"),
+            },
+            {
+                label: "SETTINGS",
+                icon: Settings,
+                href: "/dashboard/settings",
+                active: pathname.startsWith("/dashboard/settings"),
+            },
+        ])
+    }, [pathname])
 
     const SidebarContent = () => (
         <div className="flex h-full flex-col py-6 bg-background text-foreground relative group border-r border-black dark:border-white">

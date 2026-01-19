@@ -17,20 +17,23 @@ interface ProjectWorkspaceLayoutProps {
 export function ProjectWorkspaceLayout({ project, children }: ProjectWorkspaceLayoutProps) {
     const [selectedSource, setSelectedSource] = useState<any | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [currentStage, setCurrentStage] = useState(ProjectStage.Assessment);
     const pathname = usePathname();
 
-    // Determine current stage from pathname
-    const getStageFromPath = (path: string): number => {
-        if (path.includes('/assessment')) return ProjectStage.Assessment; // 0
-        if (path.includes('/launch')) return ProjectStage.Launch; // 1
-        if (path.includes('/planning')) return ProjectStage.Planning; // 2
-        if (path.includes('/writing')) return ProjectStage.Writing; // 3
-        if (path.includes('/presentation')) return ProjectStage.Review; // 4
-        if (path.includes('/handover')) return ProjectStage.Handover; // 5
-        return ProjectStage.Assessment; // Default
-    };
+    useEffect(() => {
+        // Determine current stage from pathname after mount to ensure server/client consistency
+        const getStageFromPath = (path: string): number => {
+            if (path.includes('/assessment')) return ProjectStage.Assessment; // 0
+            if (path.includes('/launch')) return ProjectStage.Launch; // 1
+            if (path.includes('/planning')) return ProjectStage.Planning; // 2
+            if (path.includes('/writing')) return ProjectStage.Writing; // 3
+            if (path.includes('/presentation')) return ProjectStage.Review; // 4
+            if (path.includes('/handover')) return ProjectStage.Handover; // 5
+            return ProjectStage.Assessment; // Default
+        };
 
-    const currentStage = getStageFromPath(pathname);
+        setCurrentStage(getStageFromPath(pathname));
+    }, [pathname]);
 
     const handleGenerateSummary = async (sourceId: string) => {
         try {
