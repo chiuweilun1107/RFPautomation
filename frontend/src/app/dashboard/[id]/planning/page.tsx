@@ -3,7 +3,6 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 // Lazy load the heavy TenderPlanning component
 const TenderPlanning = dynamic(
@@ -23,8 +22,9 @@ export default function PlanningPage({ params }: PlanningPageProps) {
         params.then(({ id }) => setProjectId(id));
     }, [params]);
 
+    // Let loading.tsx handle the loading state via Suspense boundary
     if (!projectId) {
-        return <LoadingSpinner size="lg" text="載入中..." />;
+        return null;
     }
 
     return (

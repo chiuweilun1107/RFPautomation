@@ -130,27 +130,6 @@ export default function TemplatesPage() {
         setCurrentPage(1)
     }, [searchQuery])
 
-    if (loading) {
-        return (
-            <div className="space-y-8 animate-pulse">
-                {/* Header Skeleton */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-black dark:border-white">
-                    <div className="space-y-2">
-                        <div className="h-6 w-32 bg-black/10" />
-                        <div className="h-4 w-96 bg-black/5" />
-                    </div>
-                    <div className="h-10 w-64 bg-black/5" />
-                </div>
-
-                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-[300px] border border-black dark:border-white bg-black/5" />
-                    ))}
-                </div>
-            </div>
-        )
-    }
-
     return (
         <div className="container mx-auto space-y-8 pb-12">
             {/* Breadcrumbs - Swiss Style */}

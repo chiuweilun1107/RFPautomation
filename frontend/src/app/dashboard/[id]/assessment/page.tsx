@@ -3,7 +3,6 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const AssessmentTable = dynamic(
     () => import("@/components/workspace/AssessmentTable").then((mod) => ({ default: mod.AssessmentTable })),
@@ -23,8 +22,9 @@ export default function AssessmentPage({ params }: AssessmentPageProps) {
         params.then(({ id }) => setProjectId(id));
     }, [params]);
 
+    // Let loading.tsx handle the loading state via Suspense boundary
     if (!projectId) {
-        return <LoadingSpinner size="lg" text="載入中..." />;
+        return null;
     }
 
     return (

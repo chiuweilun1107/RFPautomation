@@ -3,7 +3,6 @@
 import * as React from "react"
 import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/client"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useRouter } from "next/navigation"
 
 const SectionList = dynamic(
@@ -95,7 +94,8 @@ export default function WritingPage({ params }: { params: Promise<{ id: string }
     }, [projectId, supabase])
 
     if (!projectId || loading) {
-        return <LoadingSpinner size="lg" text="載入文章..." />
+        // Let loading.tsx handle the loading state via Suspense boundary
+        return null;
     }
 
     return (
