@@ -280,11 +280,7 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
             )}
 
             {/* View Switching Logic */}
-            {isLoading ? (
-                <div className="flex justify-center py-12 border-[1.5px] border-black dark:border-white">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#FA4028]" />
-                </div>
-            ) : tenders.length === 0 ? (
+            {tenders.length === 0 ? (
                 <div className="text-center py-12 border-[1.5px] border-black dark:border-white text-gray-500 font-mono text-xs uppercase">
                     尚無標案資料，請先新增關鍵字並同步。 // NULL_DATA
                 </div>

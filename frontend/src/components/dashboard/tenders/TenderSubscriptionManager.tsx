@@ -281,70 +281,85 @@ export function TenderSubscriptionManager() {
                 </Dialog>
             </div>
 
-            {isLoading ? (
-                <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                </div>
-            ) : (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {subscriptions.map((sub) => {
-                        const isSelected = currentKeyword === sub.keyword
-                        const count = counts[sub.keyword] || 0
-                        return (
-                            <Card
-                                key={sub.id}
-                                onClick={() => handleCardClick(sub.keyword)}
-                                className={`group relative flex flex-col justify-between overflow-hidden rounded-none border-2 bg-white dark:bg-black transition-all duration-200 p-5 h-[120px] cursor-pointer
-                                    ${isSelected
-                                        ? 'border-[#FA4028] bg-[#FA4028]/5'
-                                        : 'border-black dark:border-white hover:border-[#FA4028] group-hover:-translate-y-1'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-3">
-                                            <h3 className={`font-black font-mono text-lg uppercase tracking-tight transition-colors ${isSelected ? 'text-[#FA4028]' : 'text-black dark:text-white group-hover:text-[#FA4028]'}`}>
-                                                {sub.keyword}
-                                            </h3>
-                                            <span className={`text-[10px] font-black font-mono px-2 py-0.5 rounded-none border ${isSelected ? 'bg-[#FA4028] border-[#FA4028] text-white' : 'bg-muted border-black dark:border-white text-black dark:text-white'}`}>
-                                                {String(count).padStart(2, '0')}
-                                            </span>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {subscriptions.map((sub) => {
+                    const isSelected = currentKeyword === sub.keyword
+                    const count = counts[sub.keyword] || 0
+                    return (
+                        <Card
+                            key={sub.id}
+                            onClick={() => handleCardClick(sub.keyword)}
+                            className={`group relative overflow-hidden rounded-none border-2 bg-white dark:bg-black transition-all duration-300 cursor-pointer
+                                ${isSelected
+                                    ? 'border-[#FA4028] bg-[#FA4028]/5'
+                                    : 'border-black dark:border-white hover:border-[#FA4028] hover:-translate-y-1'
+                                }`}
+                        >
+                            <CardContent className="p-0">
+                                <div className="flex h-full min-h-[90px]">
+                                    {/* Left Side: Content */}
+                                    <div className="flex-1 p-5 flex flex-col justify-between relative z-10 transition-colors duration-300">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <h3 className={`font-black font-mono text-3xl uppercase tracking-tighter leading-[0.85] transition-colors ${isSelected ? 'text-[#FA4028]' : 'text-black dark:text-white group-hover:text-[#FA4028]'}`}>
+                                                    {sub.keyword}
+                                                    </h3>
+                                                </div>
+                                                <div className="flex items-center text-[10px] font-bold font-mono uppercase tracking-widest opacity-60">
+                                                    <Clock className="mr-1.5 h-3.5 w-3.5" />
+                                                    {sub.schedule_time?.substring(0, 5) || sub.schedule_time}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center text-[9px] font-black font-mono uppercase tracking-widest opacity-40">
-                                            <Clock className="mr-1.5 h-3 w-3" />
-                                            {sub.schedule_time?.substring(0, 5) || sub.schedule_time}
-                                        </div>
-                                    </div>
 
-                                    <div className="flex gap-1 -mr-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 rounded-none text-black/20 dark:text-white/20 hover:text-blue-500 hover:bg-blue-500/5 transition-colors opacity-0 group-hover:opacity-100"
-                                            onClick={(e) => openEditDialog(sub, e)}
-                                        >
-                                            <Edit2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 rounded-none text-black/20 dark:text-white/20 hover:text-[#FA4028] hover:bg-[#FA4028]/5 transition-colors opacity-0 group-hover:opacity-100"
-                                            onClick={(e) => handleDelete(sub.id, e)}
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
+                                        {/* Right Side: Data Visualization Area */}
+                                        <div className={`w-[100px] border-l-2 flex flex-col items-center justify-center relative
+                                            ${isSelected ? 'border-[#FA4028] bg-[#FA4028]/10' : 'border-black dark:border-white bg-muted/20'}`}>
+
+                                            {/* Action Buttons (Absolute Top Right) */}
+                                            <div className="absolute top-0 right-0 p-1 flex opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/90 dark:bg-black/90 backdrop-blur-sm border-b-2 border-l-2 border-black dark:border-white">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6 rounded-none hover:text-blue-500 hover:bg-transparent"
+                                                    onClick={(e) => openEditDialog(sub, e)}
+                                                >
+                                                    <Edit2 className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6 rounded-none hover:text-[#FA4028] hover:bg-transparent"
+                                                    onClick={(e) => handleDelete(sub.id, e)}
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+
+                                            {/* Big Count Number */}
+                                            <div className="flex flex-col items-center justify-center gap-0 w-full">
+                                                <span className={`text-5xl font-black font-mono tracking-tighter leading-none -mt-1 ${isSelected ? 'text-[#FA4028]' : 'text-black dark:text-white'}`}>
+                                                    {count}
+                                                </span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest opacity-40 mt-1">
+                                                    ITEMS
+                                                </span>
+                                            </div>
+
+                                            {/* Architectural Lines Decoration */}
+                                            <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-black/10 dark:border-white/10" />
+                                        </div>
                                     </div>
-                                </div>
+                                </CardContent>
                             </Card>
                         )
                     })}
-                    {subscriptions.length === 0 && (
-                        <div className="col-span-full text-center py-12 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-muted/30">
-                            <p className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-30">NO_SUBSCRIPTIONS_FOUND</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                {subscriptions.length === 0 && (
+                    <div className="col-span-full text-center py-12 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-muted/30">
+                        <p className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-30">NO_SUBSCRIPTIONS_FOUND</p>
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
