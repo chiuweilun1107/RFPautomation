@@ -6,6 +6,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from '@/lib/api-client';
 
+// Global flag to prevent multiple pickers across all instances
+let globalPickerLock = false;
+
 interface UseGoogleDrivePickerOptions {
   projectId?: string;
   folderId?: string;
@@ -77,12 +80,13 @@ export function useGoogleDrivePicker({
             // Reset state
             setIsConnecting(false);
 
-            // Auto-open picker after OAuth window closes (wait 2.5s to ensure window is fully closed)
+            // Auto-open picker after OAuth window closes (wait 500ms to ensure window is fully closed)
             setTimeout(() => {
-              // Reset processing flag before auto-opening picker
+              // Reset processing flags before auto-opening picker
+              globalPickerLock = false;
               isProcessingRef.current = false;
               openPickerRef.current?.();
-            }, 2500);
+            }, 500);
           }
         };
 
@@ -109,12 +113,18 @@ export function useGoogleDrivePicker({
    * Note: This requires the Google Picker API script to be loaded
    */
   const openPicker = useCallback(async () => {
-    // Prevent double-click or rapid calls
-    if (isProcessingRef.current) {
-      console.log('Picker already opening, ignoring duplicate call');
+    // Prevent double-click or rapid calls using multiple checks
+    if (globalPickerLock || isProcessingRef.current || isImporting) {
+      console.log('Picker already opening, ignoring duplicate call', {
+        globalPickerLock,
+        isProcessing: isProcessingRef.current,
+        isImporting
+      });
       return;
     }
 
+    // Set all locks
+    globalPickerLock = true;
     isProcessingRef.current = true;
 
     try {
@@ -125,8 +135,6 @@ export function useGoogleDrivePicker({
         // Load Google Picker API
         await loadGooglePickerAPI();
       }
-
-      setIsImporting(true);
 
       // Get OAuth token
       let tokenResponse;
@@ -147,9 +155,9 @@ export function useGoogleDrivePicker({
           error?.message?.includes('Unauthorized')
         ) {
           console.log('No Google Drive connection found, starting OAuth flow...');
-          await connectGoogleDrive();
-          setIsImporting(false);
+          globalPickerLock = false;
           isProcessingRef.current = false;
+          await connectGoogleDrive();
           return;
         }
         // Re-throw other errors
@@ -158,9 +166,9 @@ export function useGoogleDrivePicker({
 
       if (!tokenResponse.data?.accessToken) {
         // Not connected, trigger OAuth flow
-        await connectGoogleDrive();
-        setIsImporting(false);
+        globalPickerLock = false;
         isProcessingRef.current = false;
+        await connectGoogleDrive();
         return;
       }
 
@@ -173,9 +181,12 @@ export function useGoogleDrivePicker({
           if (data.action === google.picker.Action.PICKED) {
             const file = data.docs[0];
 
+            // Set importing state now that user has selected a file
+            setIsImporting(true);
+
             // Import file
             try {
-              const importResponse = await apiClient.post('/api/sources/from-drive', {
+              const importResponse = await apiClient.post<{ source: any }>('/api/sources/from-drive', {
                 fileId: file.id,
                 projectId,
                 folderId,
@@ -189,22 +200,22 @@ export function useGoogleDrivePicker({
               onError?.('Failed to import file from Google Drive');
             } finally {
               setIsImporting(false);
+              globalPickerLock = false;
               isProcessingRef.current = false;
             }
           } else if (data.action === google.picker.Action.CANCEL) {
-            setIsImporting(false);
+            // User cancelled, just reset the processing locks
+            globalPickerLock = false;
             isProcessingRef.current = false;
           }
         })
         .build();
 
       picker.setVisible(true);
-      // Reset processing flag after picker is shown
-      isProcessingRef.current = false;
     } catch (error) {
       console.error('Failed to open picker:', error);
       onError?.('Failed to open Google Drive picker');
-      setIsImporting(false);
+      globalPickerLock = false;
       isProcessingRef.current = false;
     }
   }, [projectId, folderId, onSuccess, onError, connectGoogleDrive]);

@@ -5,11 +5,11 @@ import { projectsApi } from "@/features/projects/api/projectsApi";
 import { toast } from "sonner";
 
 /**
- * 获取用户的项目列表（分页）
+ * 获取用户的项目列表（简化版 - 用于仪表板）
  */
-export function useProjectsQuery(page = 1, pageSize = 20) {
+export function useProjectsQuery() {
   return useQuery({
-    queryKey: ["projects", { page, pageSize }],
+    queryKey: ["projects"],
     queryFn: async () => {
       const response = await projectsApi.getAll();
       return response;
