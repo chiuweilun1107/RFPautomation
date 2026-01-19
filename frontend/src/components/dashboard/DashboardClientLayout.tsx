@@ -13,18 +13,20 @@ interface DashboardClientLayoutProps {
 export function DashboardClientLayout({ children, userEmail }: DashboardClientLayoutProps) {
     // Initialize state from localStorage if available, default to false (expanded)
     const [isCollapsed, setIsCollapsed] = React.useState(false)
-    const [isMounted, setIsMounted] = React.useState(false)
+    const [isFullScreenPage, setIsFullScreenPage] = React.useState(false)
     const pathname = usePathname()
-    // Remove padding for design page and assessment page
-    const isFullScreenPage = pathname?.includes('/design') || pathname?.includes('/assessment')
 
     React.useEffect(() => {
-        setIsMounted(true)
+        // Calculate isFullScreenPage after mount to ensure server/client consistency
+        // This prevents hydration mismatch since pathname is null on server but has value on client
+        setIsFullScreenPage(pathname?.includes('/design') || pathname?.includes('/assessment') || false)
+
+        // Initialize sidebar collapse state from localStorage
         const saved = localStorage.getItem("sidebar-collapsed")
         if (saved) {
             setIsCollapsed(JSON.parse(saved))
         }
-    }, [])
+    }, [pathname])
 
 
     const toggleSidebar = () => {
