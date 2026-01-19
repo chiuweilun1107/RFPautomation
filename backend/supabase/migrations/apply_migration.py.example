@@ -1,0 +1,98 @@
+"""
+Database Migration Script - EXAMPLE
+
+⚠️  IMPORTANT: This is an EXAMPLE file showing how to set up migrations.
+Do NOT commit this file with real credentials.
+
+Instead, use environment variables to configure your database connection.
+
+SETUP INSTRUCTIONS:
+==================
+
+1. Copy this file:
+   cp apply_migration.py.example apply_migration.py
+
+2. Set environment variables before running:
+   export DB_HOST="aws-1-ap-northeast-1.pooler.supabase.com"
+   export DB_PORT="6543"
+   export DB_NAME="postgres"
+   export DB_USER="postgres.goyonrowhfphooryfzif"
+   export DB_PASS="your-actual-password-here"
+
+3. Run the migration:
+   python3 apply_migration.py
+
+IMPORTANT:
+- Never commit apply_migration.py with real credentials
+- Always use environment variables for sensitive data
+- Check .gitignore to ensure *.py files in this directory are ignored
+"""
+
+import psycopg2
+import os
+import sys
+
+# Configuration - Read from environment variables
+DB_HOST = os.getenv('DB_HOST', 'aws-1-ap-northeast-1.pooler.supabase.com')
+DB_PORT = int(os.getenv('DB_PORT', 6543))
+DB_NAME = os.getenv('DB_NAME', 'postgres')
+DB_USER = os.getenv('DB_USER', 'postgres.goyonrowhfphooryfzif')
+DB_PASS = os.getenv('DB_PASS')
+
+if not DB_PASS:
+    print("❌ Error: DB_PASS environment variable not set")
+    print("\nPlease set DB_PASS before running this script:")
+    print("  export DB_PASS='your-password'")
+    print("\nOr source a .env file:")
+    print("  source .env.local")
+    sys.exit(1)
+
+SQL_COMMAND = """
+ALTER TABLE public.sources DROP CONSTRAINT IF EXISTS sources_type_check;
+ALTER TABLE public.sources 
+ADD CONSTRAINT sources_type_check 
+CHECK (type IN (
+  'markdown', 
+  'pdf', 
+  'docx', 'doc', 
+  'xlsx', 'xls', 'csv', 
+  'txt', 'text',
+  'png', 'jpg', 'jpeg', 'webp', 
+  'web_crawl', 'web', 'url',
+  'unknown'
+));
+"""
+
+def try_connect_and_execute():
+    print(f"Trying to connect to {DB_HOST}:{DB_PORT}...")
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS
+        )
+        print(f"✓ Connected to {DB_HOST}!")
+        
+        cur = conn.cursor()
+        print("Executing SQL...")
+        cur.execute(SQL_COMMAND)
+        conn.commit()
+        print("✓ SQL executed successfully!")
+        
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"✗ Failed to connect to {DB_HOST}:{DB_PORT}: {e}")
+    
+    return False
+
+if __name__ == "__main__":
+    if try_connect_and_execute():
+        print("✓ Migration applied successfully.")
+        sys.exit(0)
+    else:
+        print("✗ Failed to apply migration.")
+        sys.exit(1)

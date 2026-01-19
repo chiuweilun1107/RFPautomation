@@ -62,3 +62,9 @@ mineru-service/
 **/cache/
 **/blobs/
 **/snapshots/
+
+# Database Migration Scripts (含有敏感配置)
+# 只允許 .example 文件被追蹤
+backend/supabase/migrations/*.py
+!backend/supabase/migrations/*.example.py
+!backend/supabase/migrations/apply_migration.py.example
