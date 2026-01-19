@@ -118,7 +118,25 @@
       "Bash(git commit:*)",
       "Bash(npm run analyze:*)",
       "Bash(ANALYZE=true npm run build:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Skill(product-manager-toolkit)",
+      "Bash(supabase --version:*)",
+      "Bash(supabase projects list:*)",
+      "Bash(supabase db dump --schema public --table sources --data-only=false)",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql -h \"aws-1-ap-northeast-1.pooler.supabase.com\" -p 6543 -U \"postgres.goyonrowhfphooryfzif\" -d \"postgres\" -c \"\\\\d sources\")",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql -h \"aws-1-ap-northeast-1.pooler.supabase.com\" -p 6543 -U \"postgres.goyonrowhfphooryfzif\" -d \"postgres\" -c \"\\\\dt\")",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql -h \"aws-1-ap-northeast-1.pooler.supabase.com\" -p 6543 -U \"postgres.goyonrowhfphooryfzif\" -d \"postgres\" -c \"\\\\dt public.*\")",
+      "Bash(npm run type-check:*)",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql -h \"aws-1-ap-northeast-1.pooler.supabase.com\" -p 6543 -U \"postgres.goyonrowhfphooryfzif\" -d \"postgres\" -f backend/supabase/migrations/20260119200000_create_google_oauth_tokens.sql)",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql -h \"aws-1-ap-northeast-1.pooler.supabase.com\" -p 6543 -U \"postgres.goyonrowhfphooryfzif\" -d \"postgres\" -f backend/supabase/migrations/20260119200001_add_google_drive_source_type.sql)",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql -h \"aws-1-ap-northeast-1.pooler.supabase.com\" -p 6543 -U \"postgres.goyonrowhfphooryfzif\" -d \"postgres\" -c \"\\\\d google_oauth_tokens\")",
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)",
+      "Bash(psql:*)",
+      "Bash(gcloud:*)",
+      "Bash(brew:*)",
+      "Bash(export ACCESS_TOKEN:*)",
+      "Bash(PROJECT_ID=\"rfp-automation-20260119\":*)"
     ]
   }
 }

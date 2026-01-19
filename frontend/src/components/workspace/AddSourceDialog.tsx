@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { sourcesApi } from "@/features/sources/api/sourcesApi";
+import { useGoogleDrivePicker } from "@/hooks/useGoogleDrivePicker";
 
 interface AddSourceDialogProps {
     open: boolean;
@@ -52,6 +53,19 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
     const [textTitle, setTextTitle] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClient();
+
+    // Google Drive integration
+    const { isConnecting, isImporting, openPicker } = useGoogleDrivePicker({
+        projectId: projectId,
+        onSuccess: (source) => {
+            toast.success(`Successfully imported ${source.title} from Google Drive`);
+            onSourceAdded?.();
+            onOpenChange(false);
+        },
+        onError: (error) => {
+            toast.error(error);
+        }
+    });
 
     // AI 網路搜索
     const handleAISearch = async () => {
@@ -373,11 +387,12 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onClick={() => toast.info("Coming soon")}
-                                    className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black opacity-50"
+                                    onClick={() => openPicker()}
+                                    disabled={isLoading || isConnecting || isImporting}
+                                    className="rounded-none border-black dark:border-white h-10 uppercase text-xs font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
                                     <HardDrive className="w-3 h-3 mr-2" />
-                                    Google Drive
+                                    {isConnecting ? 'Connecting...' : isImporting ? 'Importing...' : 'Google Drive'}
                                 </Button>
                                 <Button
                                     variant="outline"

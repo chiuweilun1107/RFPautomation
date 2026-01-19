@@ -1,0 +1,15 @@
+name,reach,impact,confidence,effort
+Google OAuth 2.0 Setup,100,3.0,1.0,m
+Database Schema (google_tokens table),100,2.0,1.0,s
+Token Encryption Utilities,100,3.0,1.0,s
+Backend API: /api/auth/google/callback,100,3.0,1.0,m
+Backend API: /api/auth/google/refresh,100,2.0,1.0,s
+Backend API: /api/sources/from-drive,100,3.0,0.8,l
+Frontend: useGoogleDrivePicker Hook,100,3.0,0.8,m
+Frontend: Modify UploadZone Component,100,2.0,1.0,s
+Frontend: Extend sourcesApi,100,2.0,1.0,s
+Error Handling & User Feedback,80,2.0,1.0,s
+Rate Limiting Implementation,60,1.0,0.8,s
+CSRF Protection (State Token),100,2.0,1.0,s
+Documentation & Testing,50,1.0,0.8,m
+Google Cloud Console Configuration,100,3.0,1.0,xs

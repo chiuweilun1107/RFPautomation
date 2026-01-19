@@ -1,12 +1,7 @@
-"use client";
-
-import { useState } from "react";
 import { KnowledgeSidebar } from "@/components/workspace/KnowledgeSidebar";
 import { EditorHeader } from "@/components/editor/EditorHeader";
-import { SourceDetailPanel } from "@/components/workspace/SourceDetailPanel";
 import { ProjectWorkflowStepper } from "@/components/workspace/ProjectWorkflowStepper";
 import { toast } from "sonner";
-import { sourcesApi } from "@/features/sources/api/sourcesApi";
 
 interface ProjectDashboardLayoutProps {
     project: any;
@@ -15,33 +10,13 @@ interface ProjectDashboardLayoutProps {
 }
 
 export function ProjectDashboardLayout({ project, children, onStageSelect }: ProjectDashboardLayoutProps) {
-    const [selectedSource, setSelectedSource] = useState<any | null>(null);
-
-    const handleGenerateSummary = async (sourceId: string) => {
-        try {
-            const data = await sourcesApi.summarize(sourceId);
-
-            // Update local state to show new summary immediately
-            // Note: Supabase Realtime in SourceManager will handle the sidebar update
-            setSelectedSource((prev: any) => prev ? {
-                ...prev,
-                summary: data.summary,
-                topics: data.topics
-            } : null);
-
-            toast.success('摘要生成成功');
-        } catch (error) {
-            console.error('Error generating summary:', error);
-            toast.error('摘要生成失敗');
-        }
-    };
+    // Removed inline source selection handler to support draggable popup in SourceManager
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-zinc-900 overflow-hidden relative font-mono text-black dark:text-white p-4 gap-4">
             {/* Left Sidebar: Knowledge Base */}
             <KnowledgeSidebar
                 projectId={project.id}
-                onSelectSource={setSelectedSource}
             />
 
             {/* Main Content: Document Editor or Source Detail */}
@@ -63,19 +38,9 @@ export function ProjectDashboardLayout({ project, children, onStageSelect }: Pro
                 </div>
 
                 <main className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-black p-0">
-                    {selectedSource ? (
-                        <div className="max-w-5xl mx-auto pb-20 h-full p-8 border-l border-black dark:border-white">
-                            <SourceDetailPanel
-                                source={selectedSource}
-                                onClose={() => setSelectedSource(null)}
-                                onGenerateSummary={handleGenerateSummary}
-                            />
-                        </div>
-                    ) : (
-                        <div className="h-full">
-                            {children}
-                        </div>
-                    )}
+                    <div className="h-full">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

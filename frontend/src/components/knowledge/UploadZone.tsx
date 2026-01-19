@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Upload, Loader2 } from "lucide-react"
+import { Upload, Loader2, Cloud, Link as LinkIcon, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { sourcesApi } from "@/features/sources/api/sourcesApi"
+import { useGoogleDrivePicker } from "@/hooks/useGoogleDrivePicker"
 
 interface UploadZoneProps {
     folders?: any[];
@@ -25,6 +26,19 @@ export function UploadZone({
     const [isDragging, setIsDragging] = React.useState(false)
     const [isUploading, setIsUploading] = React.useState(false)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    // Google Drive integration
+    const { isConnecting, isImporting, openPicker } = useGoogleDrivePicker({
+        folderId: selectedFolderId || undefined,
+        onSuccess: (source) => {
+            toast.success(`Successfully imported ${source.title} from Google Drive`)
+            router.refresh()
+            onUploadComplete?.()
+        },
+        onError: (error) => {
+            toast.error(error)
+        }
+    })
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault()
@@ -159,6 +173,65 @@ export function UploadZone({
                         SELECT_FILES
                     </Button>
                 )}
+            </div>
+
+            {/* Action buttons grid */}
+            <div className="grid grid-cols-2 gap-2 mt-6 pt-6 border-t-2 border-dashed border-black/20 dark:border-white/20">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-none border-2 border-black dark:border-white font-mono font-bold uppercase text-[10px] tracking-wide hover:bg-black hover:text-white transition-all"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        fileInputRef.current?.click()
+                    }}
+                    disabled={isUploading}
+                >
+                    <Upload className="w-4 h-4 mr-2" />
+                    UPLOAD FILE
+                </Button>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-none border-2 border-black dark:border-white font-mono font-bold uppercase text-[10px] tracking-wide hover:bg-black hover:text-white transition-all"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        toast.info('Web URL import coming soon')
+                    }}
+                    disabled={isUploading}
+                >
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    WEB URL
+                </Button>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-none border-2 border-black dark:border-white font-mono font-bold uppercase text-[10px] tracking-wide hover:bg-black hover:text-white transition-all"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        openPicker()
+                    }}
+                    disabled={isUploading || isConnecting || isImporting}
+                >
+                    <Cloud className="w-4 h-4 mr-2" />
+                    {isConnecting ? 'CONNECTING...' : isImporting ? 'IMPORTING...' : 'GOOGLE DRIVE'}
+                </Button>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-none border-2 border-black dark:border-white font-mono font-bold uppercase text-[10px] tracking-wide hover:bg-black hover:text-white transition-all"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        toast.info('Paste text import coming soon')
+                    }}
+                    disabled={isUploading}
+                >
+                    <FileText className="w-4 h-4 mr-2" />
+                    PASTE TEXT
+                </Button>
             </div>
         </div>
     )

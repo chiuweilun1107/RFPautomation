@@ -16,6 +16,22 @@ const AssessmentTable = dynamic(
     }
 );
 
+const TenderLaunchPage = dynamic(
+    () => import("@/components/workspace/TenderLaunch").then((mod) => ({ default: mod.TenderLaunch })),
+    {
+        loading: () => <LoadingSpinner size="lg" text="Loading tender launch..." />,
+        ssr: false
+    }
+);
+
+const TenderPlanning = dynamic(
+    () => import("@/components/workspace/TenderPlanning").then((mod) => ({ default: mod.TenderPlanning })),
+    {
+        loading: () => <LoadingSpinner size="lg" text="Loading planning..." />,
+        ssr: false
+    }
+);
+
 interface ProjectDashboardClientProps {
     project: any;
     sections: any[];
@@ -37,21 +53,34 @@ export function ProjectDashboardClient({ project, sections }: ProjectDashboardCl
             case ProjectStage.Assessment: // 0
                 return (
                     <div className="max-w-6xl mx-auto pb-20">
-                        <AssessmentTable projectId={project.id} />
+                        <AssessmentTable
+                            projectId={project.id}
+                            onNextStage={() => handleStageSelect(ProjectStage.Launch)}
+                        />
                     </div>
                 );
+
             case ProjectStage.Launch: // 1
                 return (
-                    <div className="max-w-4xl mx-auto pb-20 text-center py-20 font-mono">
-                        <h2 className="text-2xl font-black mb-4 uppercase tracking-tighter">Tender_Launch</h2>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                            System_Status: Pending_Implementation
-                            <br />
-                            Management of acquisition documents and preliminary logistics.
-                        </p>
+                    <div className="h-full w-full bg-background">
+                        <TenderLaunchPage
+                            projectId={project.id}
+                            onNextStage={() => handleStageSelect(ProjectStage.Planning)}
+                            onPrevStage={() => handleStageSelect(ProjectStage.Assessment)}
+                        />
                     </div>
                 );
-            case ProjectStage.Planning: // 2
+            case ProjectStage.Planning:
+                return (
+                    <div className="h-full w-full bg-background">
+                        <TenderPlanning
+                            projectId={project.id}
+                            onPrevStage={() => handleStageSelect(ProjectStage.Launch)}
+                            onNextStage={() => handleStageSelect(ProjectStage.Writing)}
+                        />
+                    </div>
+                );
+            case ProjectStage.Writing: // 3
                 return (
                     <div className="max-w-4xl mx-auto pb-20 text-center py-20 font-mono">
                         <h2 className="text-2xl font-black mb-4 uppercase tracking-tighter">Proposal_Planning</h2>

@@ -1,22 +1,296 @@
 
 import { Evidence } from "./CitationBadge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { X, ExternalLink, Loader2 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { CardHeader, CardTitle } from "@/components/ui/card";
+import { TableOfContents } from "./TableOfContents";
+import { PageNavigation } from "./PageNavigation";
+import { useRef, useState, useEffect, useMemo } from "react";
+import { PageContent } from "@/types/content";
 
-interface SourceDetailPanelProps {
-    evidence: Evidence | null;
-    onClose: () => void;
+interface Source {
+    id: string;
+    title?: string;
+    filename?: string;
+    content?: string;
+    summary?: string;
+    pages?: PageContent[];
+    type?: string;
 }
 
-export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary }: any) {
+interface SourceDetailPanelProps {
+    evidence?: Evidence | null;
+    source?: Source | null;
+    onClose: () => void;
+    onGenerateSummary?: (sourceId: string) => void;
+}
+
+export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary }: SourceDetailPanelProps) {
     const data = evidence || source;
+    const contentRef = useRef<HTMLDivElement>(null);
+    const contentContainerRef = useRef<HTMLDivElement>(null);
+
+    // Page navigation state
+    const [currentPage, setCurrentPage] = useState(1);
+
     if (!data) return null;
 
-    const title = evidence ? evidence.source_title : source?.filename;
+    const title = evidence ? evidence.source_title : (source?.title || source?.filename);
     const page = evidence ? `Page ${evidence.page}` : null;
-    const content = evidence ? evidence.quote : source?.content;
+
+    // Determine if source has pages and should use page navigation
+    const hasPages = source?.pages && Array.isArray(source.pages) && source.pages.length > 0;
+    const isPDF = source?.type?.toLowerCase() === 'pdf';
+    const shouldShowPageNavigation = hasPages && isPDF;
+
+    // When evidence + source both exist, show full content with highlight
+    const showFullContentWithHighlight = !!(evidence && source);
+
+    console.log('[SourceDetailPanel] Render state:', {
+        hasEvidence: !!evidence,
+        hasSource: !!source,
+        showFullContentWithHighlight,
+        sourceType: source?.type,
+        evidencePage: evidence?.page
+    });
+
+    // Get content based on context
+    const content = useMemo(() => {
+        // If evidence + source exist, show full content (PDF page or full content)
+        if (showFullContentWithHighlight) {
+            if (shouldShowPageNavigation && source?.pages) {
+                return source.pages[currentPage - 1]?.content;
+            }
+            return source?.content;
+        }
+
+        // Otherwise fallback to old behavior
+        if (evidence) {
+            return evidence.quote;
+        }
+
+        if (shouldShowPageNavigation && source?.pages) {
+            return source.pages[currentPage - 1]?.content;
+        }
+
+        return source?.content;
+    }, [evidence, source, showFullContentWithHighlight, shouldShowPageNavigation, currentPage]);
+
+    // Initialize page to evidence.page when badge is clicked
+    useEffect(() => {
+        if (evidence?.page && shouldShowPageNavigation) {
+            setCurrentPage(evidence.page);
+        }
+    }, [evidence?.page, shouldShowPageNavigation]);
+
+    // Auto-scroll to highlighted quote
+    useEffect(() => {
+        if (showFullContentWithHighlight && evidence?.quote && contentContainerRef.current) {
+            // Small delay to ensure DOM is rendered
+            const timer = setTimeout(() => {
+                const markElement = contentContainerRef.current?.querySelector('mark');
+                if (markElement) {
+                    markElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [showFullContentWithHighlight, evidence?.quote, currentPage, content]);
+
+    // Helper function to highlight quote in content
+    const highlightContent = useMemo(() => {
+        if (!showFullContentWithHighlight || !evidence?.quote || !content) {
+            console.log('[SourceDetailPanel] Highlight skipped:', {
+                showFullContentWithHighlight,
+                hasQuote: !!evidence?.quote,
+                hasContent: !!content
+            });
+            return null;
+        }
+
+        let quote = evidence.quote.trim();
+
+        // Handle ellipsis in quotes - find start and end positions
+        const hasEllipsis = quote.includes('...');
+        let quoteSegments: string[] = [];
+
+        if (hasEllipsis) {
+            // Split by ellipsis and filter out short segments
+            quoteSegments = quote.split('...').map(s => s.trim()).filter(s => s.length > 15);
+            console.log('[SourceDetailPanel] Quote contains ellipsis, segments:', quoteSegments.length);
+        }
+
+        console.log('[SourceDetailPanel] Attempting to highlight:', {
+            quoteLength: quote.length,
+            contentLength: content.length,
+            hasEllipsis,
+            segmentsCount: quoteSegments.length,
+            quotePreview: quote.substring(0, 50) + '...'
+        });
+
+        // Aggressive normalization for better matching
+        const normalizeForMatching = (str: string) => {
+            return str
+                .replace(/\s+/g, '') // Remove ALL whitespace
+                .replace(/[，。！？；：、]/g, (m) => { // Normalize Chinese punctuation
+                    const map: Record<string, string> = {'，': ',', '。': '.', '！': '!', '？': '?', '；': ';', '：': ':', '、': ','};
+                    return map[m] || m;
+                });
+        };
+
+        const normalizedContent = normalizeForMatching(content);
+
+        // Helper to find position in original content from normalized index
+        const findOriginalPosition = (normalizedIdx: number): number => {
+            let normalizedCharCount = 0;
+            for (let i = 0; i < content.length; i++) {
+                if (!/\s/.test(content[i])) {
+                    if (normalizedCharCount === normalizedIdx) {
+                        return i;
+                    }
+                    normalizedCharCount++;
+                }
+            }
+            return -1;
+        };
+
+        let startIndex = -1;
+        let endIndex = -1;
+
+        if (hasEllipsis && quoteSegments.length >= 2) {
+            // Find first and last segments
+            const firstSegment = quoteSegments[0];
+            const lastSegment = quoteSegments[quoteSegments.length - 1];
+
+            const normalizedFirst = normalizeForMatching(firstSegment);
+            const normalizedLast = normalizeForMatching(lastSegment);
+
+            // Find first segment position
+            const firstNormalizedIdx = normalizedContent.indexOf(normalizedFirst);
+            if (firstNormalizedIdx !== -1) {
+                startIndex = findOriginalPosition(firstNormalizedIdx);
+            }
+
+            // Find last segment position
+            const lastNormalizedIdx = normalizedContent.indexOf(normalizedLast, firstNormalizedIdx + normalizedFirst.length);
+            if (lastNormalizedIdx !== -1) {
+                const lastStartPos = findOriginalPosition(lastNormalizedIdx);
+                // Calculate end position by counting through the last segment
+                let normalizedMatched = 0;
+                for (let i = lastStartPos; i < content.length && normalizedMatched < normalizedLast.length; i++) {
+                    if (!/\s/.test(content[i])) {
+                        normalizedMatched++;
+                    }
+                    if (normalizedMatched >= normalizedLast.length) {
+                        endIndex = i + 1;
+                        break;
+                    }
+                }
+            }
+
+            console.log('[SourceDetailPanel] Ellipsis highlight range:', { startIndex, endIndex });
+        } else {
+            // No ellipsis, find single quote
+            const normalizedQuote = normalizeForMatching(quote);
+            const normalizedIdx = normalizedContent.indexOf(normalizedQuote);
+
+            if (normalizedIdx !== -1) {
+                startIndex = findOriginalPosition(normalizedIdx);
+
+                // Calculate end position
+                let normalizedMatched = 0;
+                for (let i = startIndex; i < content.length && normalizedMatched < normalizedQuote.length; i++) {
+                    if (!/\s/.test(content[i])) {
+                        normalizedMatched++;
+                    }
+                    if (normalizedMatched >= normalizedQuote.length) {
+                        endIndex = i + 1;
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: exact match
+            if (startIndex === -1) {
+                startIndex = content.indexOf(quote);
+                if (startIndex !== -1) {
+                    endIndex = startIndex + quote.length;
+                }
+            }
+        }
+
+        if (startIndex === -1 || endIndex === -1) {
+            console.warn('[SourceDetailPanel] Quote not found in content. Quote:', quote.substring(0, 100));
+            return null;
+        }
+
+        const actualQuoteLength = endIndex - startIndex;
+        console.log('[SourceDetailPanel] Highlight found at index:', startIndex, 'length:', actualQuoteLength);
+
+        const beforeQuote = content.substring(0, startIndex);
+        const quotePart = content.substring(startIndex, endIndex);
+        const afterQuote = content.substring(endIndex);
+
+        return (
+            <>
+                {beforeQuote}
+                <mark
+                    className="bg-yellow-200 dark:bg-yellow-800/80 text-black dark:text-white font-semibold px-1 py-0.5 rounded-sm"
+                    data-highlighted="true"
+                >
+                    {quotePart}
+                </mark>
+                {afterQuote}
+            </>
+        );
+    }, [showFullContentWithHighlight, evidence?.quote, content]);
+
+    // 處理章節導航
+    const handleNavigate = (itemId: string) => {
+        if (!contentRef.current || !contentContainerRef.current) return;
+
+        const contentText = content || '';
+        const lines = contentText.split('\n');
+
+        // 解析對應的章節標題索引
+        const tocItemIndex = parseInt(itemId.split('-')[1]);
+
+        // 找到目標標題在內容中的位置
+        let targetLineIndex = -1;
+        let currentTocIndex = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            // 檢查是否是標題行（目錄格式或 markdown 標題）
+            const isTocItem = line.match(/\[(.*?)\s+\d+\]\(\.\)/) || line.match(/^#{1,3}\s+/);
+
+            if (isTocItem) {
+                if (currentTocIndex === tocItemIndex) {
+                    targetLineIndex = i;
+                    break;
+                }
+                currentTocIndex++;
+            }
+        }
+
+        if (targetLineIndex !== -1) {
+            // 計算目標位置
+            // 使用字符計數來估算更精確的位置
+            const linesBeforeTarget = lines.slice(0, targetLineIndex);
+            const charCountBefore = linesBeforeTarget.join('\n').length;
+
+            // 假設平均每個字符在渲染後約 0.15px 高度（根據字體大小調整）
+            // 這是一個粗略估計，實際效果取決於字體和行高
+            const estimatedPosition = Math.max(0, charCountBefore * 0.15);
+
+            // 平滑滾動到目標位置
+            contentContainerRef.current.scrollTo({
+                top: estimatedPosition,
+                behavior: 'smooth'
+            });
+        }
+    };
 
     return (
         <div className="h-full w-full flex flex-col bg-white dark:bg-black font-mono">
@@ -36,8 +310,19 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                 </div>
             </CardHeader>
 
-            <ScrollArea className="flex-1 p-4">
-                <div className="space-y-6">
+            {/* Table of Contents - 僅對完整內容顯示且沒有頁面導航時 */}
+            {!evidence && !shouldShowPageNavigation && source?.content && !showFullContentWithHighlight && (
+                <TableOfContents
+                    content={source.content}
+                    onNavigate={handleNavigate}
+                />
+            )}
+
+            <div
+                ref={contentContainerRef}
+                className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar overscroll-contain"
+            >
+                <div className="space-y-6 pb-6" ref={contentRef}>
                     {/* Actions for Source (Generate Summary) */}
                     {source && onGenerateSummary && (
                         <Button
@@ -50,27 +335,57 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                         </Button>
                     )}
 
-                    {/* Highlighted Quote / Summary */}
-                    {(evidence?.quote || source?.summary) && (
+                    {/* Highlighted Quote / Summary - Only show if NOT showing full content with highlight */}
+                    {!showFullContentWithHighlight && (evidence?.quote || source?.summary) && (
                         <div className="border-l-2 border-black dark:border-white pl-4 py-2">
                             <h4 className="text-[10px] font-bold uppercase tracking-wider mb-2 text-gray-500">
                                 {evidence ? 'QUOTE' : 'SUMMARY'}
                             </h4>
                             <p className="text-xs leading-relaxed text-foreground">
-                                "{evidence ? evidence.quote : source.summary}"
+                                &ldquo;{evidence ? evidence.quote : source?.summary}&rdquo;
                             </p>
                         </div>
                     )}
 
+                    {/* Info banner when showing full content with highlight */}
+                    {showFullContentWithHighlight && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded-sm">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-yellow-800 dark:text-yellow-200">
+                                📍 Showing full document with highlighted citation
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Page Navigation - Only for PDF with pages */}
+                    {shouldShowPageNavigation && source.pages && (
+                        <PageNavigation
+                            key={source.id}
+                            currentPage={currentPage}
+                            totalPages={source.pages.length}
+                            onPageChange={setCurrentPage}
+                        />
+                    )}
+
                     {/* Context / Segment Content */}
                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                            {evidence ? 'CONTEXT' : 'CONTENT PREVIEW'}
-                        </h4>
-                        <div className="p-4 border border-black/10 dark:border-white/10 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                            {evidence
-                                ? `...${evidence.quote}...\n\n(Full context placeholder)`
-                                : (source?.content?.slice(0, 500) + '...') || "(No content available)"}
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                {showFullContentWithHighlight
+                                    ? (shouldShowPageNavigation ? `PAGE ${currentPage} CONTENT` : 'FULL CONTENT')
+                                    : (evidence ? 'CONTEXT' : shouldShowPageNavigation ? `PAGE ${currentPage} CONTENT` : 'FULL CONTENT')}
+                            </h4>
+                            {content && (
+                                <span className="text-[9px] text-gray-400 uppercase tracking-wider">
+                                    {content.length.toLocaleString()} characters
+                                </span>
+                            )}
+                        </div>
+                        <div className="p-4 border border-black/10 dark:border-white/10 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap max-h-[500px] overflow-y-auto custom-scrollbar">
+                            {showFullContentWithHighlight && highlightContent
+                                ? highlightContent
+                                : (evidence && !showFullContentWithHighlight
+                                    ? `...${evidence.quote}...\n\n(Full context placeholder)`
+                                    : content || "(No content available)")}
                         </div>
                     </div>
 
@@ -79,7 +394,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                         OPEN ORIGINAL PDF
                     </Button>
                 </div>
-            </ScrollArea>
+            </div>
         </div>
     );
 }

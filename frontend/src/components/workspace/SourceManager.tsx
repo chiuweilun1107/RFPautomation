@@ -37,6 +37,8 @@ import { AddSourceDialog } from './AddSourceDialog';
 import { RenameSourceDialog } from './RenameSourceDialog';
 import { sourcesApi } from '@/features/sources/api/sourcesApi';
 import { n8nApi } from '@/features/n8n/api/n8nApi';
+import { createPortal } from "react-dom";
+import { SourceDetailPanel } from "./SourceDetailPanel";
 
 interface Source {
     id: string;
@@ -50,6 +52,7 @@ interface Source {
     source_type?: string;
     origin_url?: string;
     isLinked?: boolean;
+    pages?: Array<{ page: number; content: string; tokens?: number }>;
 }
 
 interface SourceManagerProps {
@@ -84,6 +87,11 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({}); // Fixed: Moved state up
     const fileInputRef = useRef<HTMLInputElement>(null);
     const supabase = createClient();
+
+    // State for Draggable Dialog
+    const [position, setPosition] = useState({ x: 40, y: 150 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
     const toggleSection = (key: string) => {
         setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -139,7 +147,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
             onSelectSource(source);
         } else {
             setSelectedSource(source);
-            setIsDetailOpen(true);
+            // setIsDetailOpen(true); // Disable Sheet
         }
     };
 
@@ -166,7 +174,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
     const fetchSources = async () => {
         const { data: relevantSources } = await supabase
             .from('sources')
-            .select('*')
+            .select('*, pages')
             .or(`project_id.is.null,project_id.eq.${projectId}`)
             .order('created_at', { ascending: false });
 
@@ -197,6 +205,38 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
             supabase.removeChannel(channel);
         };
     }, [projectId]);
+
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isDragging) return;
+            setPosition({
+                x: e.clientX - dragOffset.x,
+                y: e.clientY - dragOffset.y
+            });
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+        };
+
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging, dragOffset]);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragOffset({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        });
+    };
 
     // Cycling Loading Text Effect
     useEffect(() => {
@@ -741,6 +781,38 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                     />
                 )}
             </Card>
+            {/* Draggable Non-modal Dialog for Source Details */}
+            {selectedSource && !isDetailOpen && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="fixed z-[9999] pointer-events-none"
+                    style={{
+                        left: `${position.x}px`,
+                        top: `${position.y}px`,
+                        transition: isDragging ? 'none' : 'all 0.2s ease-out'
+                    }}
+                >
+                    <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-[580px] h-[80vh] flex flex-col shadow-xl">
+                        <div
+                            className="bg-[#FA4028] h-4 cursor-move hover:h-6 transition-all flex items-center justify-center border-b-2 border-black dark:border-white shrink-0"
+                            onMouseDown={handleMouseDown}
+                        >
+                            <div className="flex gap-1.5">
+                                <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+                                <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+                                <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+                            </div>
+                        </div>
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            <SourceDetailPanel
+                                source={selectedSource}
+                                onClose={() => setSelectedSource(null)}
+                                onGenerateSummary={handleGenerateSummary}
+                            />
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </TooltipProvider>
     );
 }

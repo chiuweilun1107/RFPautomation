@@ -9,25 +9,26 @@ import { Loader2, AlertCircle, FileSearch, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { n8nApi } from "@/features/n8n/api/n8nApi";
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RecursiveAssessmentRenderer } from "./RecursiveAssessmentRenderer";
 import { createPortal } from "react-dom";
 
 
 interface AssessmentTableProps {
     projectId: string;
+    onNextStage?: () => void;
 }
 
-export function AssessmentTable({ projectId }: AssessmentTableProps) {
+export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps) {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any | null>(null);
     const [evidences, setEvidences] = useState<Record<string, Evidence>>({});
     const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(null);
+    const [selectedSource, setSelectedSource] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>('summary');
 
     // State for Draggable Dialog
     const [position, setPosition] = useState({ x: 40, y: 150 });
@@ -49,6 +50,8 @@ export function AssessmentTable({ projectId }: AssessmentTableProps) {
 
             if (assessmentData) {
                 console.log("[AssessmentTable] Data found, processing citations...");
+                const keys = Object.keys(assessmentData).filter(k => !['id', 'project_id', 'created_at', 'updated_at', 'model_used', 'criteria'].includes(k));
+                if (keys.length > 0) setActiveTab(keys[0]);
                 setData(assessmentData);
 
                 // Recursive function to collect citations from JSONB
@@ -157,8 +160,32 @@ export function AssessmentTable({ projectId }: AssessmentTableProps) {
         };
     }, [isDragging, dragOffset]);
 
-    const handleCitationClick = (evidence: Evidence) => {
+    const handleCitationClick = async (evidence: Evidence) => {
+        console.log("[AssessmentTable] Citation clicked, fetching full source:", evidence.source_id);
         setSelectedEvidence(evidence);
+
+        // Fetch full source data
+        try {
+            const { data: sourceData, error: sourceError } = await supabase
+                .from('sources')
+                .select('*')
+                .eq('id', evidence.source_id)
+                .maybeSingle();
+
+            if (sourceError) {
+                console.error("[AssessmentTable] Error fetching source:", sourceError);
+                setSelectedSource(null);
+            } else {
+                console.log("[AssessmentTable] Source data fetched:", sourceData);
+                setSelectedSource(sourceData);
+            }
+        } catch (err) {
+            console.error("[AssessmentTable] Catch error fetching source:", err);
+            setSelectedSource(null);
+        }
+
+        // Set popup position (consistent with SourceManager)
+        setPosition({ x: 40, y: 150 });
     };
 
     if (loading) {
@@ -268,67 +295,102 @@ export function AssessmentTable({ projectId }: AssessmentTableProps) {
     const excludedKeys = ['id', 'project_id', 'created_at', 'updated_at', 'model_used', 'criteria'];
     const displayKeys = Object.keys(data).filter(k => !excludedKeys.includes(k));
 
+
+    // Ensure activeTab is valid when data changes
+
+
     return (
         <>
-            <ScrollArea className="h-full w-full rounded-none [&_[data-orientation=vertical]]:hidden">
+            <div className="h-full w-full">
                 <div className="flex w-full min-h-full gap-8 relative font-mono">
                     {/* Main Content Area */}
                     <div className="flex-1">
-                        <Tabs defaultValue="summary" className="w-full">
-                            {/* Sticky Header Container */}
-                            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-8 pb-4 mb-8 border-b border-black/5 dark:border-white/5">
-                                {/* Centered Heading */}
+                        {/* Sticky Header Container */}
+                        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-8 pb-4 mb-8 border-b border-black/5 dark:border-white/5">
+                                {/* Centered Heading Group */}
                                 <div className="flex flex-col items-center mb-8">
-                                    <div className="bg-[#FA4028] text-white px-10 py-4 flex flex-col items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)]">
-                                        <h2 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
-                                            ASSESSMENT_REPORT
-                                        </h2>
+                                    <div className="relative inline-flex items-center">
+                                        <div className="bg-[#FA4028] text-white px-10 py-4 flex flex-col items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)]">
+                                            <h2 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
+                                                ASSESSMENT_REPORT
+                                            </h2>
+                                        </div>
+
+                                        {/* Navigation Arrow - Positioned relative to title box */}
+                                        {onNextStage && (
+                                            <div className="absolute -right-20 top-1/2 -translate-y-1/2">
+                                                <button
+                                                    onClick={onNextStage}
+                                                    className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
+                                                >
+                                                    {/* Custom Brutalist Arrow SVG */}
+                                                    <svg
+                                                        viewBox="0 0 24 24"
+                                                        className="w-6 h-6 fill-none stroke-black dark:stroke-white stroke-[3] transition-transform group-hover:translate-x-1"
+                                                    >
+                                                        <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="square" strokeLinejoin="miter" />
+                                                    </svg>
+
+                                                    {/* Glitch Effect Element */}
+                                                    <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* Centered Tabs List */}
                                 <div className="flex justify-center">
-                                    <TabsList className="h-auto bg-transparent rounded-none p-0 gap-10">
+                                    <div className="h-auto bg-transparent rounded-none p-0 gap-10 flex">
                                         {displayKeys.map((key) => {
                                             const label = data[key]?.label || key.replace(/_/g, ' ').toUpperCase();
                                             const displayLabel = label.split('_')[0];
+                                            const isActive = activeTab === key;
 
                                             return (
-                                                <TabsTrigger
+                                                <button
                                                     key={key}
-                                                    value={key}
-                                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FA4028] data-[state=active]:bg-transparent data-[state=active]:text-[#FA4028] px-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:text-[#FA4028] bg-transparent shadow-none italic opacity-60 data-[state=active]:opacity-100"
+                                                    onClick={() => setActiveTab(key)}
+                                                    className={`
+                                                        rounded-none border-b-2 px-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all bg-transparent shadow-none italic 
+                                                        ${isActive
+                                                            ? 'border-[#FA4028] text-[#FA4028] opacity-100'
+                                                            : 'border-transparent text-foreground hover:text-[#FA4028] opacity-60'
+                                                        }
+                                                    `}
                                                 >
                                                     {displayLabel}
-                                                </TabsTrigger>
+                                                </button>
                                             );
                                         })}
-                                    </TabsList>
+                                    </div>
                                 </div>
-                            </div>
+                        </div>
 
-                            {/* Content Area with Single Focused Card */}
-                            {displayKeys.map((key) => (
-                                <TabsContent key={key} value={key} className="mt-0 outline-none">
+                        {/* Content Area with Single Focused Card */}
+                        {displayKeys.map((key) => {
+                            if (activeTab !== key) return null;
+                            return (
+                                <div key={key} className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
                                     <Card className="rounded-none border-2 border-black dark:border-white bg-background shadow-[12px_12px_0px_0px_rgba(0,0,0,0.05)] dark:shadow-[12px_12px_0px_0px_rgba(255,255,255,0.05)]">
                                         <CardContent className="pt-12 pb-16 px-8 md:px-12">
                                             <div className="max-w-4xl mx-auto">
-                                                <ScrollArea className="h-full w-full rounded-none [&_[data-orientation=vertical]]:hidden">
+                                                <div className="h-full w-full">
                                                     <RecursiveAssessmentRenderer
                                                         data={data[key]?.content || data[key]}
                                                         evidences={evidences}
                                                         onCitationClick={handleCitationClick}
                                                     />
-                                                </ScrollArea>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
-                                </TabsContent>
-                            ))}
-                        </Tabs>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
-            </ScrollArea>
+            </div>
 
             {/* Draggable Non-modal Dialog for Citation Details moved OUTSIDE ScrollArea and into a PORTAL */}
             {selectedEvidence && typeof document !== 'undefined' && createPortal(
@@ -340,9 +402,9 @@ export function AssessmentTable({ projectId }: AssessmentTableProps) {
                         transition: isDragging ? 'none' : 'all 0.2s ease-out'
                     }}
                 >
-                    <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-[580px]">
+                    <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-[580px] h-[80vh] flex flex-col shadow-xl">
                         <div
-                            className="bg-[#FA4028] h-4 cursor-move hover:h-6 transition-all flex items-center justify-center border-b-2 border-black dark:border-white"
+                            className="bg-[#FA4028] h-4 cursor-move hover:h-6 transition-all flex items-center justify-center border-b-2 border-black dark:border-white shrink-0"
                             onMouseDown={handleMouseDown}
                         >
                             <div className="flex gap-1.5">
@@ -351,10 +413,16 @@ export function AssessmentTable({ projectId }: AssessmentTableProps) {
                                 <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
                             </div>
                         </div>
-                        <SourceDetailPanel
-                            evidence={selectedEvidence}
-                            onClose={() => setSelectedEvidence(null)}
-                        />
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            <SourceDetailPanel
+                                evidence={selectedEvidence}
+                                source={selectedSource}
+                                onClose={() => {
+                                    setSelectedEvidence(null);
+                                    setSelectedSource(null);
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>,
                 document.body
