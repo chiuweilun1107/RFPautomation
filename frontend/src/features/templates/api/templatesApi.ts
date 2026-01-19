@@ -34,6 +34,24 @@ export type ParseTemplateResult = z.infer<typeof ParseTemplateResultSchema>;
  */
 export const templatesApi = {
   /**
+   * Get all templates for a project
+   */
+  async getAll(projectId?: string): Promise<Template[]> {
+    // TODO: Implement backend endpoint /api/templates/list or /api/templates
+    // For now, return empty array - templates are queried via Supabase in components
+    return [];
+  },
+
+  /**
+   * Get a single template by ID
+   */
+  async getById(id: string): Promise<Template | null> {
+    // TODO: Implement backend endpoint /api/templates/:id
+    // For now, return null - templates are queried via Supabase in components
+    return null;
+  },
+
+  /**
    * Parse a template file
    */
   async parse(file: File): Promise<ParseTemplateResult> {

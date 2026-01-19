@@ -12,8 +12,8 @@ export function useTemplatesQuery(projectId: string, enabled = true) {
   return useQuery({
     queryKey: ["templates", projectId],
     queryFn: async () => {
-      // TODO: Implement templates API list method
-      return [];
+      const templates = await templatesApi.getAll(projectId);
+      return templates;
     },
     enabled: enabled && !!projectId,
     staleTime: 5 * 60 * 1000, // 5 分钟
@@ -30,8 +30,8 @@ export function useTemplateQuery(templateId: string, enabled = true) {
   return useQuery({
     queryKey: ["template", templateId],
     queryFn: async () => {
-      // TODO: Implement templates.getById() API method
-      return null;
+      const template = await templatesApi.getById(templateId);
+      return template;
     },
     enabled: enabled && !!templateId,
     staleTime: 10 * 60 * 1000, // 10 分钟

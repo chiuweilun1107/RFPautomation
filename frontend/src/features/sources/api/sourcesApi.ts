@@ -53,6 +53,15 @@ export type SummarizeResult = z.infer<typeof SummarizeResultSchema>;
  */
 export const sourcesApi = {
   /**
+   * Get all sources for a project
+   */
+  async getAll(projectId?: string): Promise<Source[]> {
+    // TODO: Implement backend endpoint /api/sources/list or /api/sources
+    // For now, return empty array - sources are queried via Supabase in components
+    return [];
+  },
+
+  /**
    * Create a new source
    */
   async create(input: CreateSourceInput): Promise<Source> {

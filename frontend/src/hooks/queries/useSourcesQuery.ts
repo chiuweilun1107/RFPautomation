@@ -12,8 +12,8 @@ export function useSourcesQuery(projectId: string, enabled = true) {
   return useQuery({
     queryKey: ["sources", projectId],
     queryFn: async () => {
-      // TODO: Implement sources.getAll() or sources.list() API method
-      return [];
+      const sources = await sourcesApi.getAll(projectId);
+      return sources;
     },
     enabled: enabled && !!projectId,
     staleTime: 5 * 60 * 1000, // 5 分钟
