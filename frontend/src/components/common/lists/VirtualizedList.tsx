@@ -94,9 +94,9 @@ export function VirtualizedList<T>({
   // 虚拟化器
   const virtualizer = useVirtualizer({
     count: shouldVirtualize ? filteredItems.length : 0,
-    size: itemHeight,
+    estimateSize: () => itemHeight,
     overscan: 10,
-    getScrollElement: () => document.querySelector("[data-virtual-scroll-container]"),
+    getScrollElement: () => document.querySelector("[data-virtual-scroll-container]") as HTMLElement,
   });
 
   const virtualItems = shouldVirtualize ? virtualizer.getVirtualItems() : [];
@@ -163,7 +163,7 @@ export function VirtualizedList<T>({
           {shouldVirtualize ? (
             <div style={{ height: `${virtualizer.getTotalSize()}px` }}>
               <div style={{ paddingTop, paddingBottom }}>
-                {itemsToRender.map(({ item, index, size }) => (
+                {itemsToRender.map(({ item, index }) => (
                   <div
                     key={keyExtractor(item, index)}
                     data-index={index}

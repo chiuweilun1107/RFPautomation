@@ -51,7 +51,7 @@ export function AccessibleDialog({
   const dialogId = customDialogId || generateId("dialog");
   const titleId = generateId("dialog-title");
   const contentRef = useRef<HTMLDivElement>(null);
-  const focusTrapRef = useFocusTrap(open);
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(open);
 
   // 处理 Escape 键
   useEffect(() => {

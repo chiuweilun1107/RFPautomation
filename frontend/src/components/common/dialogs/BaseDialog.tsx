@@ -171,7 +171,7 @@ export function FormDialog<T extends Record<string, any>>({
 }: Omit<BaseDialogProps, "onConfirm"> & {
   onSubmit: (formData: T) => Promise<void> | void;
   children: (formData: T, setFormData: (data: T) => void) => ReactNode;
-} & {
+  submitText?: string;
   initialData?: T;
 }) {
   const [formData, setFormData] = React.useState<T>(
