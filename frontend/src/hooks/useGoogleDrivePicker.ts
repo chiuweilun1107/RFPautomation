@@ -32,6 +32,9 @@ export function useGoogleDrivePicker({
   // Use ref to avoid circular dependency between connectGoogleDrive and openPicker
   const openPickerRef = useRef<(() => Promise<void>) | null>(null);
 
+  // Prevent double-click or rapid calls
+  const isProcessingRef = useRef(false);
+
   /**
    * Connect to Google Drive (OAuth flow)
    */
@@ -74,10 +77,12 @@ export function useGoogleDrivePicker({
             // Reset state
             setIsConnecting(false);
 
-            // Auto-open picker after successful authorization
+            // Auto-open picker after OAuth window closes (wait 2.5s to ensure window is fully closed)
             setTimeout(() => {
+              // Reset processing flag before auto-opening picker
+              isProcessingRef.current = false;
               openPickerRef.current?.();
-            }, 500);
+            }, 2500);
           }
         };
 
@@ -104,6 +109,14 @@ export function useGoogleDrivePicker({
    * Note: This requires the Google Picker API script to be loaded
    */
   const openPicker = useCallback(async () => {
+    // Prevent double-click or rapid calls
+    if (isProcessingRef.current) {
+      console.log('Picker already opening, ignoring duplicate call');
+      return;
+    }
+
+    isProcessingRef.current = true;
+
     try {
       // Check if google.picker is available
       if (typeof window === 'undefined' || !(window as any).google?.picker) {
@@ -136,6 +149,7 @@ export function useGoogleDrivePicker({
           console.log('No Google Drive connection found, starting OAuth flow...');
           await connectGoogleDrive();
           setIsImporting(false);
+          isProcessingRef.current = false;
           return;
         }
         // Re-throw other errors
@@ -146,6 +160,7 @@ export function useGoogleDrivePicker({
         // Not connected, trigger OAuth flow
         await connectGoogleDrive();
         setIsImporting(false);
+        isProcessingRef.current = false;
         return;
       }
 
@@ -174,18 +189,23 @@ export function useGoogleDrivePicker({
               onError?.('Failed to import file from Google Drive');
             } finally {
               setIsImporting(false);
+              isProcessingRef.current = false;
             }
           } else if (data.action === google.picker.Action.CANCEL) {
             setIsImporting(false);
+            isProcessingRef.current = false;
           }
         })
         .build();
 
       picker.setVisible(true);
+      // Reset processing flag after picker is shown
+      isProcessingRef.current = false;
     } catch (error) {
       console.error('Failed to open picker:', error);
       onError?.('Failed to open Google Drive picker');
       setIsImporting(false);
+      isProcessingRef.current = false;
     }
   }, [projectId, folderId, onSuccess, onError, connectGoogleDrive]);
 

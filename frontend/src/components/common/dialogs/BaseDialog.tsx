@@ -18,7 +18,7 @@ export interface BaseDialogProps {
   /** Dialog 打开状态变化回调 */
   onOpenChange: (open: boolean) => void;
   /** Dialog 标题 */
-  title: string;
+  title: string | ReactNode;
   /** Dialog 描述（可选） */
   description?: string;
   /** Dialog 内容 */
