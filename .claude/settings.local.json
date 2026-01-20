@@ -136,7 +136,8 @@
       "Bash(gcloud:*)",
       "Bash(brew:*)",
       "Bash(export ACCESS_TOKEN:*)",
-      "Bash(PROJECT_ID=\"rfp-automation-20260119\":*)"
+      "Bash(PROJECT_ID=\"rfp-automation-20260119\":*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

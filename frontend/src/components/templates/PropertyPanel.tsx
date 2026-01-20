@@ -14,7 +14,7 @@ import Draggable from 'react-draggable'
 interface PropertyPanelProps {
   component: any
   template: any
-  onComponentUpdate: () => void
+  onComponentUpdate: (updatedComponent: any) => void
   onComponentDelete?: (componentId: string) => void
   onClose?: () => void
 }
@@ -58,14 +58,15 @@ export function PropertyPanel({ component, template, onComponentUpdate, onCompon
   }
 
   const handlePropertyChange = (key: string, value: any) => {
-    setLocalComponent({
+    const updatedComponent = {
       ...localComponent,
       data: {
         ...localComponent.data,
         [key]: value
       }
-    })
-    onComponentUpdate()
+    }
+    setLocalComponent(updatedComponent)
+    onComponentUpdate(updatedComponent)
   }
 
   const handleDelete = async () => {
@@ -182,6 +183,69 @@ export function PropertyPanel({ component, template, onComponentUpdate, onCompon
                         {align === 'both' ? 'Justify' : align.charAt(0).toUpperCase() + align.slice(1)}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1.5 block">Font Family</Label>
+                  <select
+                    value={localComponent?.data?.format?.font_name || ''}
+                    onChange={(e) => handlePropertyChange('format', { ...(localComponent.data?.format || {}), font_name: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="">Default</option>
+                    <option value="標楷體">標楷體 (BiauKai)</option>
+                    <option value="新細明體">新細明體 (PMingLiU)</option>
+                    <option value="微軟正黑體">微軟正黑體 (Microsoft JhengHei)</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Calibri">Calibri</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1.5 block">Font Size (pt)</Label>
+                  <input
+                    type="number"
+                    min="8"
+                    max="72"
+                    value={localComponent?.data?.format?.font_size || ''}
+                    onChange={(e) => handlePropertyChange('format', { ...(localComponent.data?.format || {}), font_size: Number(e.target.value) })}
+                    placeholder="Default"
+                    className="w-full px-3 py-2.5 border border-gray-200 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1.5 block">Text Style</Label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePropertyChange('format', { ...(localComponent.data?.format || {}), bold: !localComponent.data?.format?.bold })}
+                      className={`flex-1 py-2 rounded-lg font-bold transition-all border ${localComponent.data?.format?.bold
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 dark:bg-black border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-blue-600'
+                        }`}
+                    >
+                      B
+                    </button>
+                    <button
+                      onClick={() => handlePropertyChange('format', { ...(localComponent.data?.format || {}), italic: !localComponent.data?.format?.italic })}
+                      className={`flex-1 py-2 rounded-lg italic transition-all border ${localComponent.data?.format?.italic
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 dark:bg-black border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-blue-600'
+                        }`}
+                    >
+                      I
+                    </button>
+                    <button
+                      onClick={() => handlePropertyChange('format', { ...(localComponent.data?.format || {}), underline: !localComponent.data?.format?.underline })}
+                      className={`flex-1 py-2 rounded-lg underline transition-all border ${localComponent.data?.format?.underline
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 dark:bg-black border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-blue-600'
+                        }`}
+                    >
+                      U
+                    </button>
                   </div>
                 </div>
               </div>

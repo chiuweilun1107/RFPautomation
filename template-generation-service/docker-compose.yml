@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  template-generation:
+    build: .
+    container_name: template-generation-service
+    restart: always
+    ports:
+      - "8007:8007"
+    environment:
+      - PORT=8007
+      - NODE_ENV=production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - template-network
+
+networks:
+  template-network:
+    driver: bridge

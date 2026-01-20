@@ -485,7 +485,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
             }
 
             // 2. Call n8n Webhook: Just Generate (It will append/insert new items)
-            const res = await fetch('/webhook/generate-structure-check', {
+            const res = await fetch('/api/webhook/generate-structure-check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ projectId, action: 'append' }) // Always send 'append' or ignore action in backend

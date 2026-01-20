@@ -26,7 +26,7 @@ export default async function Layout({
     if (!project) notFound()
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-zinc-900 overflow-hidden relative font-mono text-black dark:text-white p-4 gap-4">
+        <div className="flex h-screen overflow-hidden relative font-mono text-black dark:text-white p-4 gap-4">
             {/* Left Sidebar: Knowledge Base - Client Component */}
             <KnowledgeSidebar
                 projectId={project.id}
@@ -51,9 +51,7 @@ export default async function Layout({
                 </div>
 
                 <main className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-black p-0">
-                    <div className="h-full">
-                        {children}
-                    </div>
+                    {children}
                 </main>
             </div>
         </div>

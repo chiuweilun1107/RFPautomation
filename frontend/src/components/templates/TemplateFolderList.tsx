@@ -228,7 +228,7 @@ export function TemplateFolderList({
                 </div>
 
                 {/* Custom Folders */}
-                {folders.map((folder) => (
+                {folders.filter(f => f.id !== deletingId).map((folder) => (
                     <div
                         key={folder.id}
                         onClick={() => handleFolderClick(folder.id)}

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { ContentSkeleton } from "@/components/ui/skeletons/ContentSkeleton"
 
 
 interface PresentationPageProps {
@@ -16,9 +17,17 @@ export default function PresentationPage({ params }: PresentationPageProps) {
         params.then(({ id }) => setProjectId(id));
     }, [params]);
 
+    // Show loading skeleton instead of null to prevent hydration mismatch
     if (!projectId) {
-        // Let loading.tsx handle the loading state via Suspense boundary
-        return null;
+        return (
+            <div className="h-full w-full">
+                <div className="flex w-full min-h-full gap-8 relative font-mono text-black dark:text-white pb-20">
+                    <div className="flex-1 px-8 md:px-12">
+                        <ContentSkeleton />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (

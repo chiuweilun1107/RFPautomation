@@ -9,6 +9,8 @@ import { EditableTable } from "./EditableTable"
 import { EditableImage } from './EditableImage'
 import { VariableRenderer } from './VariableRenderer'
 import { DroppableZone } from "./DroppableZone"
+import { HeaderSection } from "./HeaderSection"
+import { FooterSection } from "./FooterSection"
 
 
 
@@ -30,6 +32,32 @@ export function EditorCanvas({
   const { setNodeRef, isOver } = useDroppable({
     id: 'editor-canvas',
   })
+
+  // 計算編號索引的輔助函數
+  const calculateNumberingIndices = (components: any[]) => {
+    // 追蹤每個 (numId, level) 組合的當前編號索引
+    const numberingCounters = new Map<string, number>()
+
+    return components.map(comp => {
+      if (comp.data?.format?.numbering) {
+        const { numId, level } = comp.data.format.numbering
+        const key = `${numId}-${level}`
+
+        // 獲取或初始化計數器
+        const currentIndex = numberingCounters.get(key) || 0
+        numberingCounters.set(key, currentIndex + 1)
+
+        return {
+          ...comp,
+          data: {
+            ...comp.data,
+            numberingIndex: currentIndex
+          }
+        }
+      }
+      return comp
+    })
+  }
 
   // 渲染元件邏輯：優先使用 structure，若無則降級為舊邏輯
   const renderComponents = () => {
@@ -54,7 +82,7 @@ export function EditorCanvas({
             components.push({
               type: 'paragraph', // EditableParagraph 處理一般段落/欄位
               data: { ...fieldData, index: index },
-              id: item.id
+              id: `paragraph-${index}`
             })
           }
         } else if (item.type === 'paragraph') {
@@ -65,8 +93,8 @@ export function EditorCanvas({
           if (paraData) {
             components.push({
               type: 'paragraph',
-              data: { ...paraData, index: index },
-              id: item.id
+              data: { ...paraData, index: paraData.index ?? index },
+              id: `paragraph-${paraData.index ?? index}`
             })
           } else if (item.text || item.runs) {
             // Fallback: Use data directly from structure item (legacy/fallback)
@@ -79,7 +107,7 @@ export function EditorCanvas({
                 style: typeof item.style === 'string' ? item.style : "Normal",
                 runs: item.runs
               },
-              id: item.id
+              id: `paragraph-${index}`
             })
           }
         } else if (item.type === 'table') {
@@ -89,8 +117,8 @@ export function EditorCanvas({
           if (tableData) {
             components.push({
               type: 'table',
-              data: { ...tableData, index: index, defaultFontSize: template.doc_default_size },
-              id: item.id
+              data: { ...tableData, index: tableData.index ?? index, defaultFontSize: template.doc_default_size },
+              id: `table-${tableData.index ?? index}`
             })
           }
         } else if (item.type === 'image') {
@@ -193,7 +221,8 @@ export function EditorCanvas({
       })
     }
 
-    return components
+    // 計算編號索引後返回
+    return calculateNumberingIndices(components)
   }
 
   // 將元件按照 'page_break' 分組
@@ -228,11 +257,11 @@ export function EditorCanvas({
   } : {}
 
   return (
-    <div className="h-full w-full overflow-y-auto scrollbar-hide p-12 bg-[#F9F9FB] dark:bg-gray-950/50 flex flex-col items-center">
+    <div className="h-full w-full overflow-y-auto scrollbar-hide p-12 bg-muted/20 flex flex-col items-center">
       {pages.map((pageComponents, pageIdx) => (
         <div key={`page-${pageIdx}`} className="mb-8 last:mb-0 relative">
           {/* Page Label */}
-          <div className="absolute -left-16 top-0 text-[10px] font-mono text-gray-400 select-none uppercase tracking-widest [writing-mode:vertical-lr]">
+          <div className="absolute -left-16 top-0 text-[10px] font-mono text-muted-foreground select-none uppercase tracking-widest [writing-mode:vertical-lr] border-l border-black dark:border-white pl-2 h-16 opacity-50">
             Page {pageIdx + 1}
           </div>
 
@@ -241,18 +270,28 @@ export function EditorCanvas({
             ref={pageIdx === 0 ? setNodeRef : undefined} // Only first page for drop ref for now, or simplify
             style={paperStyle}
             className={`
-              bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-white/5 relative
+              bg-white dark:bg-black shadow-none border border-black dark:border-white relative
               transition-all duration-200 ease-in-out
               ${!mainSection ? 'max-w-4xl min-h-[1123px] p-16' : ''}
-              ${isOver && pageIdx === 0 ? 'ring-2 ring-[#FA4028]/20 bg-blue-50/5' : ''}
+              ${isOver && pageIdx === 0 ? 'ring-2 ring-black dark:ring-white ring-offset-2' : ''}
             `}
           >
             <div>
+              {/* 渲染頁首 */}
+              {template.headers_footers && Array.isArray(template.headers_footers) && template.headers_footers[0] && (
+                <HeaderSection
+                  headerData={template.headers_footers[0].headers}
+                  pageNumber={pageIdx + 1}
+                  isFirstPage={pageIdx === 0}
+                  isEvenPage={(pageIdx + 1) % 2 === 0}
+                />
+              )}
+
               {pageComponents.length > 0 ? (
                 pageComponents.map((component, idx) => (
                   <div
                     key={`${component.type}-${component.id}-${idx}`}
-                    id={`${component.type}-${component.id}`}
+                    id={component.id}
                     className="relative group"
                   >
                     {/* Drop Zone */}
@@ -304,7 +343,7 @@ export function EditorCanvas({
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center min-h-[200px] text-gray-300">
+                <div className="flex flex-col items-center justify-center min-h-[200px] text-muted-foreground">
                   {/* Empty page placeholder if needed */}
                 </div>
               )}
@@ -316,16 +355,28 @@ export function EditorCanvas({
                   onDrop={() => onComponentChange()}
                 />
               )}
+
+              {/* 渲染頁尾 */}
+              {template.headers_footers && Array.isArray(template.headers_footers) && template.headers_footers[0] && (
+                <FooterSection
+                  footerData={template.headers_footers[0].footers}
+                  pageNumber={pageIdx + 1}
+                  isFirstPage={pageIdx === 0}
+                  isEvenPage={(pageIdx + 1) % 2 === 0}
+                />
+              )}
             </div>
           </div>
         </div>
       ))}
 
       {allComponents.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-[800px] text-gray-300 dark:text-gray-700">
-          <div className="text-7xl mb-6 opacity-20">📄</div>
-          <p className="text-xl font-serif font-medium mb-2 text-gray-400">空白文件</p>
-          <p className="text-sm text-gray-400">從左側拖曳元件開始設計</p>
+        <div className="flex flex-col items-center justify-center h-[800px] text-muted-foreground font-mono">
+          <div className="w-16 h-16 border border-dashed border-black dark:border-white mb-6 flex items-center justify-center opacity-20">
+            <span className="text-2xl">+</span>
+          </div>
+          <p className="text-xl font-bold uppercase tracking-widest mb-2 text-foreground break-all">[ EMPTY CAN A S ]</p>
+          <p className="text-xs uppercase tracking-wider">DRAG COMPONENTS FROM LIBRARY</p>
         </div>
       )}
     </div>

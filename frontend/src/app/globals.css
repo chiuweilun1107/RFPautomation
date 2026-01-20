@@ -231,4 +231,11 @@
       background: oklch(0.58 0.23 27.5); /* Swiss Red on hover */
     }
   }
+
+  /* Template text rendering - Force inline font styles to override inherited fonts */
+  /* Reset font inheritance for template text spans */
+  .template-text-run {
+    /* Reset to initial to break inheritance chain */
+    font-family: initial;
+  }
 }

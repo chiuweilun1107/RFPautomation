@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  onlyoffice-parsing:
+    build: .
+    container_name: onlyoffice-parsing-service
+    restart: always
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+      - NODE_ENV=production
+      - ONLYOFFICE_SERVER=5.78.118.41
+      - SSH_KEY=/root/.ssh/id_hetzner_migration
+    volumes:
+      - ~/.ssh:/root/.ssh:ro  # 掛載 SSH 密鑰（只讀）
+      - ./logs:/app/logs
+    networks:
+      - parsing-network
+
+networks:
+  parsing-network:
+    driver: bridge

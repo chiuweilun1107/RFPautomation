@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { ContentSkeleton } from "@/components/ui/skeletons/ContentSkeleton";
 
 const AssessmentTable = dynamic(
     () => import("@/components/workspace/AssessmentTable").then((mod) => ({ default: mod.AssessmentTable })),
@@ -22,9 +23,13 @@ export default function AssessmentPage({ params }: AssessmentPageProps) {
         params.then(({ id }) => setProjectId(id));
     }, [params]);
 
-    // Let loading.tsx handle the loading state via Suspense boundary
+    // Show loading skeleton instead of null to prevent hydration mismatch
     if (!projectId) {
-        return null;
+        return (
+            <div className="h-full flex flex-col">
+                <ContentSkeleton />
+            </div>
+        );
     }
 
     return (

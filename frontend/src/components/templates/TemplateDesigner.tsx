@@ -19,8 +19,9 @@ interface TemplateDesignerProps {
   template: Template
 }
 
-export function TemplateDesigner({ template }: TemplateDesignerProps) {
+export function TemplateDesigner({ template: initialTemplate }: TemplateDesignerProps) {
   const router = useRouter()
+  const [template, setTemplate] = React.useState(initialTemplate)
   const [viewMode, setViewMode] = React.useState<'design' | 'preview'>('design')
   const [selectedComponent, setSelectedComponent] = React.useState<TemplateComponent | null>(null)
   const [showSaveDialog, setShowSaveDialog] = React.useState(false)
@@ -28,6 +29,7 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
   const [deletedComponents, setDeletedComponents] = React.useState<string[]>([])
   const [isLibraryCollapsed, setIsLibraryCollapsed] = React.useState(false)
+  const lastHighlightedElementRef = React.useRef<HTMLElement | null>(null)
 
   const handleBack = () => {
     if (hasUnsavedChanges) {
@@ -49,7 +51,23 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
 
   const handleUpdateOriginal = async (designConfig: Template['design_config']) => {
     try {
-      await templatesApi.update(template.id, { ...template, design_config: designConfig } as any);
+      // 直接調用 Supabase 更新 paragraphs 和 parsed_tables
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+
+      const { error } = await supabase
+        .from('templates')
+        .update({
+          paragraphs: template.paragraphs,
+          parsed_tables: template.parsed_tables,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', template.id)
+
+      if (error) {
+        throw error
+      }
+
       toast.success('範本已更新')
       setShowSaveDialog(false)
       setHasUnsavedChanges(false)
@@ -85,12 +103,34 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
   }
 
   const handleComponentClick = (id: number, type: string) => {
-    // 1. 設定選取狀態
+    // 1. 移除上一個元素的高亮
+    if (lastHighlightedElementRef.current) {
+      lastHighlightedElementRef.current.classList.remove('ring-2', 'ring-[#FA4028]', 'ring-offset-2')
+    }
+
+    // 2. 找到新元素並添加高亮
+    const componentId = `${type}-${id}` // 例如: paragraph-0, table-1
+
+    setTimeout(() => {
+      const element = document.getElementById(componentId)
+      if (element) {
+        // 添加高亮效果（一直維持）
+        element.classList.add('ring-2', 'ring-[#FA4028]', 'ring-offset-2')
+        // 儲存到 ref
+        lastHighlightedElementRef.current = element
+        // 滾動到元素位置
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else {
+        console.warn('Element not found:', componentId)
+      }
+    }, 100)
+
+    // 3. 設定選取狀態（用於右側屬性面板）
     if (type === 'paragraph') {
       const targetPara = template.paragraphs?.find(p => p.index === id)
       if (targetPara) {
         setSelectedComponent({
-          id: String(id),
+          id: componentId,
           type: 'paragraph',
           data: targetPara
         })
@@ -99,39 +139,23 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
       const targetTable = template.parsed_tables?.find(t => t.index === id)
       if (targetTable) {
         setSelectedComponent({
-          id: String(id),
+          id: componentId,
           type: 'table',
           data: targetTable
         })
       }
     }
-
-    // 2. 捲動到目標位置
-    setTimeout(() => {
-      const elementId = `${type}-${id}` // 例如: paragraph-0, table-1
-      const element = document.getElementById(elementId)
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        // 添加短暫的高亮效果
-        element.classList.add('ring-2', 'ring-[#FA4028]', 'ring-offset-2')
-        setTimeout(() => {
-          element.classList.remove('ring-2', 'ring-[#FA4028]', 'ring-offset-2')
-        }, 1500)
-      } else {
-        console.warn('Element not found:', elementId)
-      }
-    }, 100)
   }
 
   return (
     <>
       {/* Header */}
-      {/* Main Container - Two Block Layout */}
-      <div className="flex h-screen bg-[#F2F3F5] dark:bg-black p-4 gap-4 overflow-hidden">
+      {/* Main Container - Separated Panels Layout */}
+      <div className="flex h-screen bg-transparent p-6 gap-6 overflow-hidden font-sans">
 
-        {/* Left Block - Component Library */}
-        <aside className={`transition-all duration-300 ease-in-out ${isLibraryCollapsed ? 'w-0' : 'w-[280px]'} relative z-10 group/sidebar`}>
-          <div className={`h-full w-[280px] bg-white dark:bg-gray-900 rounded-2xl shadow-sm flex flex-col overflow-hidden border border-transparent dark:border-white/10 transition-all duration-300 ${isLibraryCollapsed ? 'opacity-0 invisible' : 'opacity-100 visible'}`}>
+        {/* Left Block - Component Library - Swiss Bordered Card */}
+        <aside className={`transition-all duration-300 ease-in-out ${isLibraryCollapsed ? 'w-[60px]' : 'w-[280px]'} relative z-10 group/sidebar border-2 border-black dark:border-white bg-background`}>
+          <div className={`h-full w-full flex flex-col overflow-hidden transition-all duration-300`}>
             <ComponentLibraryPanel
               template={template}
               onDragStart={() => { }}
@@ -140,65 +164,48 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
               onToggleCollapse={() => setIsLibraryCollapsed(!isLibraryCollapsed)}
             />
           </div>
-
-          {/* Floating Toggle Button when collapsed - Matches ProjectWorkspaceLayout */}
-          {isLibraryCollapsed && (
-            <button
-              onClick={() => setIsLibraryCollapsed(false)}
-              className="absolute left-0 top-6 z-50 p-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-gray-400 hover:text-blue-600 group flex flex-col items-center gap-1"
-              style={{ transform: 'translateX(-50%)' }}
-              title="展開側邊欄"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
         </aside>
 
+        {/* Right Block - Main Content (Header + Canvas) - Swiss Bordered Card */}
+        <main className="flex-1 bg-background flex flex-col overflow-hidden relative z-0 border-2 border-black dark:border-white">
 
-
-        {/* Right Block - Main Content (Header + Canvas) */}
-        <main className="flex-1 bg-white dark:bg-gray-900 rounded-2xl shadow-sm flex flex-col overflow-hidden relative z-0 border border-transparent dark:border-white/10">
-
-          {/* Internal Header */}
-          <header className="h-14 flex items-center justify-between px-6 border-b border-gray-100 dark:border-white/5 shrink-0">
+          {/* Internal Header - Swiss Bordered */}
+          <header className="h-14 flex items-center justify-between px-6 border-b-2 border-black dark:border-white shrink-0 bg-background">
             <div className="flex items-center gap-3">
               <div className="flex flex-col justify-center">
-                <span className="text-[10px] uppercase font-bold text-blue-600 tracking-wider leading-none mb-1">
-                  Drafting
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1 font-mono">
+                  [ DRAFTING ]
                 </span>
-                <h1 className="text-lg font-bold text-[#00063D] dark:text-white font-serif leading-none">
+                <h1 className="text-lg font-bold text-foreground font-mono leading-none tracking-tighter uppercase">
                   {template.name}
                 </h1>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2">
+              {/* Action Buttons - Swiss Sharp */}
+              <div className="flex items-center gap-0 border-2 border-black dark:border-white">
                 <Button
                   variant="ghost"
                   onClick={handleBack}
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="rounded-none h-9 px-4 font-mono text-xs hover:bg-muted text-muted-foreground hover:text-foreground border-r-2 border-black dark:border-white last:border-r-0"
                 >
-                  取消
+                  [ CANCEL ]
                 </Button>
 
                 <Button
                   onClick={handleSave}
-                  className="bg-[#00063D] hover:bg-[#00063D]/90 text-white shadow-md h-9 px-6 rounded-lg font-medium"
+                  className="rounded-none h-9 px-6 font-mono text-xs bg-foreground text-background hover:bg-muted-foreground hover:text-white"
                   disabled={!hasUnsavedChanges}
                 >
-                  儲存
+                  [ SAVE ]
                 </Button>
               </div>
             </div>
           </header>
 
-          {/* Editor Canvas Container - The "Paper on Desk" Area */}
-          <div className="flex-1 relative overflow-hidden bg-gray-50/50 dark:bg-transparent">
+          {/* Editor Canvas Container */}
+          <div className="flex-1 relative overflow-hidden bg-muted/20">
             <EditorCanvas
               template={template}
               selectedComponent={selectedComponent}
@@ -214,7 +221,27 @@ export function TemplateDesigner({ template }: TemplateDesignerProps) {
           <PropertyPanel
             component={selectedComponent}
             template={template}
-            onComponentUpdate={() => setHasUnsavedChanges(true)}
+            onComponentUpdate={(updatedComponent) => {
+              // 更新 template 中對應的段落或表格資料
+              if (updatedComponent.type === 'paragraph') {
+                setTemplate(prev => ({
+                  ...prev,
+                  paragraphs: prev.paragraphs?.map(p =>
+                    p.index === updatedComponent.data.index ? updatedComponent.data : p
+                  )
+                }))
+              } else if (updatedComponent.type === 'table') {
+                setTemplate(prev => ({
+                  ...prev,
+                  parsed_tables: prev.parsed_tables?.map(t =>
+                    t.index === updatedComponent.data.index ? updatedComponent.data : t
+                  )
+                }))
+              }
+              // 同步更新 selectedComponent
+              setSelectedComponent(updatedComponent)
+              setHasUnsavedChanges(true)
+            }}
             onClose={() => setSelectedComponent(null)}
           />
         )}

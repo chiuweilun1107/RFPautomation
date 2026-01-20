@@ -10,6 +10,7 @@ interface ParagraphInfo {
   style?: string
   format?: any
   runs?: any[]
+  numberingIndex?: number // 在清單層級中的編號索引
 }
 
 interface EditableParagraphProps {
@@ -19,17 +20,50 @@ interface EditableParagraphProps {
   onEdit: () => void
 }
 
+// 生成中文編號文字
+function getChineseNumbering(level: number, index: number): string {
+  // 正式大寫中文數字（用於第一層：壹、貳、參...）
+  const formal = ['壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖', '拾']
+  // 一般中文數字（用於第二層：一、二、三...）
+  const informal = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+
+  if (level === 0) {
+    // 第一層：壹、貳、參...
+    if (index < formal.length) {
+      return formal[index] + '、'
+    }
+    return `${index + 1}、` // 超過10個就用阿拉伯數字
+  } else if (level === 1) {
+    // 第二層：一、二、三...
+    if (index < informal.length) {
+      return informal[index] + '、'
+    }
+    return `${index + 1}、` // 超過10個就用阿拉伯數字
+  } else if (level === 2) {
+    // 第三層：(1) (2) (3)...
+    return `(${index + 1})`
+  } else {
+    // 其他層級：使用阿拉伯數字
+    return `${index + 1}.`
+  }
+}
+
 // 統一的字體映射函數
 function getFontFamily(fontName?: string, cjkFontName?: string): string {
   const fontMap: Record<string, string> = {
-    '標楷體': 'BiauKaiTC, BiauKaiHK, DFKai-SB, KaiTi, STKaiti, serif',
-    'DFKai-SB': 'DFKai-SB, BiauKaiTC, BiauKaiHK, KaiTi, STKaiti, serif',
-    '新細明體': 'PMingLiU, MingLiU, "Apple LiSung", serif',
-    '微軟正黑體': '"Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif',
-    'Times New Roman': '"Times New Roman", Times, serif',
-    'Arial': 'Arial, Helvetica, sans-serif',
-    'Calibri': 'Calibri, "Helvetica Neue", sans-serif',
-    'Verdana': 'Verdana, Geneva, sans-serif'
+    '標楷體': '"BiauKai TC", "BiauKai HK", "標楷體-繁", "標楷體-港澳", "Kaiti TC", STKaiti, DFKai-SB, KaiTi, serif',
+    'DFKai-SB': 'DFKai-SB, "BiauKai TC", "BiauKai HK", "標楷體-繁", "Kaiti TC", STKaiti, KaiTi, serif',
+    'BiauKai': '"BiauKai TC", "BiauKai HK", "標楷體-繁", DFKai-SB, STKaiti, serif',
+    'BiauKaiTC': '"BiauKai TC", BiauKaiTC, "標楷體-繁", DFKai-SB, STKaiti, serif',
+    'BiauKaiHK': '"BiauKai HK", BiauKaiHK, "標楷體-港澳", DFKai-SB, STKaiti, serif',
+    '楷體': '"Kaiti TC", "Kaiti SC", STKaiti, KaiTi, "楷體-繁", DFKai-SB, serif',
+    'KaiTi': '"Kaiti TC", "Kaiti SC", STKaiti, KaiTi, "楷體-繁", DFKai-SB, serif',
+    '新細明體': 'PMingLiU, MingLiU, "Apple LiSung", "PingFang TC", serif',
+    '微軟正黑體': '"Microsoft JhengHei", "PingFang TC", "Heiti TC", "Noto Sans TC", sans-serif',
+    'Times New Roman': '"Times New Roman", Times, Georgia, serif',
+    'Arial': 'Arial, Helvetica, "PingFang TC", sans-serif',
+    'Calibri': 'Calibri, "Helvetica Neue", Arial, sans-serif',
+    'Verdana': 'Verdana, Geneva, Arial, sans-serif'
   }
 
   // 1. 如果有指定的字體，優先處理
@@ -45,8 +79,8 @@ function getFontFamily(fontName?: string, cjkFontName?: string): string {
     families.push(fontMap[cjkFontName] || `"${cjkFontName}"`)
   }
 
-  // 預設後備
-  families.push('var(--font-noto-serif)', 'serif')
+  // 預設後備 (移除未定義的 CSS 變量)
+  families.push('serif')
 
   return families.join(', ')
 }
@@ -54,6 +88,56 @@ function getFontFamily(fontName?: string, cjkFontName?: string): string {
 export function EditableParagraph({ paragraph, isSelected, onClick, onEdit }: EditableParagraphProps) {
   const [isEditing, setIsEditing] = React.useState(false)
   const [content, setContent] = React.useState(paragraph.text)
+
+  // 檢查是否有 Tab Leader 配置
+  const hasTabLeader = paragraph.format?.tab_stops &&
+    Array.isArray(paragraph.format.tab_stops) &&
+    paragraph.format.tab_stops.length > 0 &&
+    paragraph.format.tab_stops.some((ts: any) => ts.leader && ts.leader !== 'none')
+
+  // 處理帶有 Tab Leader 的文本
+  const renderTextWithTabLeader = (text: string, runFormat?: any) => {
+    if (!hasTabLeader || !text.includes('\t')) {
+      // 沒有 Tab Leader 或沒有 Tab 字符，直接返回普通渲染
+      return <VariableRenderer text={text} />
+    }
+
+    // 分割文本，處理 Tab 字符
+    const parts = text.split('\t')
+    const tabStop = paragraph.format.tab_stops.find((ts: any) => ts.leader && ts.leader !== 'none')
+
+    // 獲取 leader 樣式
+    const leaderChar = tabStop?.leader === 'dot' ? '.' :
+                       tabStop?.leader === 'hyphen' ? '-' :
+                       tabStop?.leader === 'underscore' ? '_' : '.'
+
+    return (
+      <>
+        {parts.map((part, idx) => (
+          <React.Fragment key={idx}>
+            <VariableRenderer text={part} />
+            {idx < parts.length - 1 && (
+              <span
+                className="tab-leader"
+                style={{
+                  display: 'inline-block',
+                  flex: 1,
+                  borderBottom: leaderChar === '.' ? '1px dotted currentColor' :
+                               leaderChar === '-' ? '1px dashed currentColor' :
+                               '1px solid currentColor',
+                  marginLeft: '0.5em',
+                  marginRight: '0.5em',
+                  marginBottom: '0.3em',
+                  opacity: 0.4,
+                  minWidth: '50px'
+                }}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </>
+    )
+  }
 
   // 將 Word 樣式轉換為 CSS 樣式
   const getParagraphStyle = (): React.CSSProperties => {
@@ -75,12 +159,16 @@ export function EditableParagraph({ paragraph, isSelected, onClick, onEdit }: Ed
       style.textAlign = alignMap[paragraph.format.alignment] || alignMap[paragraph.format.alignment.toLowerCase()] || 'left'
     }
 
-    // 縮排
+    // 縮排 (支持 camelCase 和 snake_case)
     if (paragraph.format?.indentation) {
       const ind = paragraph.format.indentation
-      if (ind.firstLine > 0) style.textIndent = `${ind.firstLine}pt`
-      if (ind.left > 0) style.paddingLeft = `${ind.left}pt`
-      if (ind.right > 0) style.paddingRight = `${ind.right}pt`
+      const firstLine = ind.firstLine || ind.first_line || 0
+      const left = ind.left || 0
+      const right = ind.right || 0
+
+      if (firstLine > 0) style.textIndent = `${firstLine}pt`
+      if (left > 0) style.paddingLeft = `${left}pt`
+      if (right > 0) style.paddingRight = `${right}pt`
     }
 
     // 行距與段間距
@@ -123,38 +211,38 @@ export function EditableParagraph({ paragraph, isSelected, onClick, onEdit }: Ed
   const getRunStyle = (runFormat?: any): React.CSSProperties => {
     const style: React.CSSProperties = {}
 
-    if (!runFormat) return style
-
-    // 字體處理 (優先使用 Run 內部的指定字體)
-    if (runFormat.font || runFormat.fontCJK) {
+    // 字體處理 (優先使用 Run 內部的指定字體，否則繼承段落字體)
+    if (runFormat?.font || runFormat?.fontCJK) {
       style.fontFamily = getFontFamily(runFormat.font, runFormat.fontCJK)
     } else if (paragraph.format?.font_name || paragraph.format?.font_name_cjk) {
       // 繼承段落字體
       style.fontFamily = getFontFamily(paragraph.format.font_name, paragraph.format.font_name_cjk)
     }
 
-    // 字體大小
-    if (runFormat.size) {
+    // 字體大小 (優先使用 Run 的大小，否則繼承段落大小)
+    if (runFormat?.size) {
       style.fontSize = `${runFormat.size}pt`
+    } else if (paragraph.format?.font_size) {
+      style.fontSize = `${paragraph.format.font_size}pt`
     }
 
     // 顏色
-    if (runFormat.color && runFormat.color !== 'auto') {
+    if (runFormat?.color && runFormat.color !== 'auto') {
       style.color = `#${runFormat.color}`
     }
 
-    // 粗體
-    if (runFormat.bold) {
+    // 粗體 (Run 或段落級別)
+    if (runFormat?.bold || paragraph.format?.bold) {
       style.fontWeight = 'bold'
     }
 
-    // 斜體
-    if (runFormat.italic) {
+    // 斜體 (Run 或段落級別)
+    if (runFormat?.italic || paragraph.format?.italic) {
       style.fontStyle = 'italic'
     }
 
-    // 底線
-    if (runFormat.underline) {
+    // 底線 (Run 或段落級別)
+    if (runFormat?.underline || paragraph.format?.underline) {
       style.textDecoration = 'underline'
     }
 
@@ -207,18 +295,35 @@ export function EditableParagraph({ paragraph, isSelected, onClick, onEdit }: Ed
         />
       ) : (
         <div
-          style={getParagraphStyle()}
+          style={{
+            ...getParagraphStyle(),
+            display: hasTabLeader ? 'flex' : 'block',
+            alignItems: 'baseline'
+          }}
           className="min-h-[1.15em] text-gray-900 dark:text-gray-100"
           onDoubleClick={() => setIsEditing(true)}
         >
+          {/* 渲染編號（如果有） */}
+          {paragraph.format?.numbering && typeof paragraph.numberingIndex === 'number' && (
+            <span
+              style={getRunStyle(undefined)}
+              className="numbering-prefix"
+            >
+              {getChineseNumbering(paragraph.format.numbering.level, paragraph.numberingIndex)}
+            </span>
+          )}
+
+          {/* 渲染段落文字 */}
           {paragraph.runs && paragraph.runs.length > 0 ? (
             paragraph.runs.map((run, idx) => (
-              <span key={idx} style={getRunStyle(run.format)}>
-                <VariableRenderer text={run.text} />
+              <span key={idx} style={getRunStyle(run.format)} className="template-text-run">
+                {renderTextWithTabLeader(run.text, run.format)}
               </span>
             ))
           ) : (
-            <VariableRenderer text={paragraph.text} />
+            <span style={getRunStyle(undefined)} className="template-text-run">
+              {renderTextWithTabLeader(paragraph.text)}
+            </span>
           )}
         </div>
       )}

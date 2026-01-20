@@ -28,9 +28,15 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Fetch projects with realtime updates
   const { projects, loading, deleteProject } = useProjects();
+
+  // Prevent hydration mismatch by only rendering after mount
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Handle filtering and pagination
   const {
@@ -95,8 +101,8 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Prevent hydration mismatch - always show consistent structure on initial render
+  if (!isMounted || loading) {
     return <ProjectListSkeleton />;
   }
 

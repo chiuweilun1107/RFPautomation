@@ -146,6 +146,26 @@ export interface Template {
   created_at?: string;
   updated_at?: string;
   user_id?: string;
+  // Advanced parsing features (v2)
+  headers_footers?: Array<{
+    section_index: number;
+    headers?: {
+      default?: { paragraphs?: any[]; images?: any[]; tables?: any[] };
+      first_page?: { paragraphs?: any[]; images?: any[]; tables?: any[] };
+      even_page?: { paragraphs?: any[]; images?: any[]; tables?: any[] };
+    };
+    footers?: {
+      default?: { paragraphs?: any[]; tables?: any[] };
+      first_page?: { paragraphs?: any[]; tables?: any[] };
+      even_page?: { paragraphs?: any[]; tables?: any[] };
+    };
+  }>;
+  styles_definitions?: any[];
+  footnotes_endnotes?: any;
+  charts?: any[];
+  text_boxes?: any[];
+  comments?: any[];
+  revisions?: any;
 }
 
 // Template Structure (for hierarchical content)

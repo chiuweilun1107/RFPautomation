@@ -99,6 +99,208 @@ def get_length_in_points(length_obj) -> Optional[float]:
 def get_local_tag(tag):
     return tag.split('}')[-1] if '}' in tag else tag
 
+
+def extract_header_footer_paragraphs(hf_element, images: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    提取頁首/頁尾中的段落內容
+    """
+    paragraphs = []
+    try:
+        for para_idx, para in enumerate(hf_element.paragraphs):
+            text = para.text.strip()
+            para_style = extract_paragraph_style(para)
+            runs_list = extract_runs(para, images)
+
+            paragraphs.append({
+                "id": str(uuid.uuid4()),
+                "text": text,
+                "style": para.style.name if para.style else "Normal",
+                "format": para_style,
+                "runs": runs_list,
+                "index": para_idx
+            })
+    except Exception as e:
+        print(f"Error extracting header/footer paragraphs: {e}")
+
+    return paragraphs
+
+def extract_header_footer_tables(hf_element, images: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    提取頁首/頁尾中的表格（包含文字和圖片）
+    """
+    tables = []
+    try:
+        for table_idx, table in enumerate(hf_element.tables):
+            table_data = {
+                "id": str(uuid.uuid4()),
+                "index": table_idx,
+                "rows": len(table.rows),
+                "columns": len(table.columns)
+            }
+            # Extract table content (including images in cells)
+            rows_data = []
+            for r_idx, row in enumerate(table.rows):
+                cells = []
+                for c_idx, cell in enumerate(row.cells):
+                    cell_text = cell.text.strip()
+                    cell_data = {
+                        "text": cell_text,
+                        "row": r_idx,
+                        "col": c_idx
+                    }
+
+                    # Extract images from cell paragraphs
+                    cell_images = []
+                    for para in cell.paragraphs:
+                        # Check for images tagged in this paragraph's elements
+                        for elem in para._element.iterdescendants():
+                            img_id = elem.get('temp_img_id')
+                            if img_id and img_id in images:
+                                # Copy all image data including format/alignment
+                                img_data = {
+                                    "id": img_id,
+                                    "url": images[img_id].get("url"),
+                                    "width": images[img_id].get("width"),
+                                    "height": images[img_id].get("height")
+                                }
+                                # Include format if present (contains alignment info)
+                                if images[img_id].get("format"):
+                                    img_data["format"] = images[img_id]["format"]
+                                # Include floating flag if present
+                                if images[img_id].get("is_floating"):
+                                    img_data["is_floating"] = images[img_id]["is_floating"]
+                                cell_images.append(img_data)
+
+                    if cell_images:
+                        cell_data["images"] = cell_images
+
+                    cells.append(cell_data)
+                rows_data.append({"cells": cells})
+
+            table_data["rows_data"] = rows_data
+            tables.append(table_data)
+    except Exception as e:
+        print(f"Error extracting header/footer tables: {e}")
+
+    return tables
+
+def extract_headers_footers(doc: Document, images: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    提取所有 section 的頁首和頁尾
+    """
+    headers_footers_data = []
+
+    for section_idx, section in enumerate(doc.sections):
+        section_hf = {
+            "section_index": section_idx,
+            "headers": {},
+            "footers": {}
+        }
+
+        # Extract Headers
+        try:
+            if section.header:
+                section_hf["headers"]["default"] = {
+                    "paragraphs": extract_header_footer_paragraphs(section.header, images),
+                    "tables": extract_header_footer_tables(section.header, images)
+                }
+        except Exception as e:
+            print(f"Error extracting headers for section {section_idx}: {e}")
+
+        # Extract Footers
+        try:
+            if section.footer:
+                section_hf["footers"]["default"] = {
+                    "paragraphs": extract_header_footer_paragraphs(section.footer, images),
+                    "tables": extract_header_footer_tables(section.footer, images)
+                }
+        except Exception as e:
+            print(f"Error extracting footers for section {section_idx}: {e}")
+
+        headers_footers_data.append(section_hf)
+
+    return headers_footers_data
+
+def extract_styles_definitions(doc: Document) -> List[Dict[str, Any]]:
+    """
+    提取文檔中的所有樣式定義
+    """
+    styles_list = []
+
+    try:
+        for style in doc.styles:
+            style_data = {
+                "id": style.style_id,
+                "name": style.name,
+                "type": str(style.type),
+                "builtin": style.builtin,
+                "hidden": style.hidden,
+            }
+            styles_list.append(style_data)
+
+    except Exception as e:
+        print(f"Error extracting styles definitions: {e}")
+
+    return styles_list
+
+def extract_numbering_definitions(doc: Document) -> Dict[str, Any]:
+    """
+    提取 numbering.xml 中的完整編號定義
+    """
+    numbering_defs = {
+        "num_id_mapping": {},  # numId -> abstractNumId
+        "abstract_nums": {}     # abstractNumId -> 完整定義
+    }
+
+    try:
+        if not hasattr(doc.part, 'numbering_part') or doc.part.numbering_part is None:
+            return numbering_defs
+
+        numbering_part = doc.part.numbering_part
+        numbering_root = numbering_part.element
+
+        # 1. 提取 num 元素（numId -> abstractNumId 映射）
+        for num in numbering_root.findall(qn('w:num')):
+            num_id = num.get(qn('w:numId'))
+            abstract_num_ref = num.find(qn('w:abstractNumId'))
+            if num_id and abstract_num_ref is not None:
+                abstract_num_id = abstract_num_ref.get(qn('w:val'))
+                numbering_defs["num_id_mapping"][num_id] = abstract_num_id
+
+        # 2. 提取 abstractNum 元素
+        for abstract_num in numbering_root.findall(qn('w:abstractNum')):
+            abstract_num_id = abstract_num.get(qn('w:abstractNumId'))
+            if not abstract_num_id:
+                continue
+
+            levels = {}
+            for lvl in abstract_num.findall(qn('w:lvl')):
+                ilvl = lvl.get(qn('w:ilvl'))
+                if ilvl is None:
+                    continue
+
+                level_data = {"ilvl": ilvl}
+
+                # Format
+                num_fmt = lvl.find(qn('w:numFmt'))
+                if num_fmt is not None:
+                    level_data["format"] = num_fmt.get(qn('w:val'))
+
+                # Text
+                lvl_text = lvl.find(qn('w:lvlText'))
+                if lvl_text is not None:
+                    level_data["text"] = lvl_text.get(qn('w:val'))
+
+                levels[ilvl] = level_data
+
+            numbering_defs["abstract_nums"][abstract_num_id] = {"levels": levels}
+
+    except Exception as e:
+        print(f"Error extracting numbering definitions: {e}")
+
+    return numbering_defs
+
+
 def extract_section_properties(doc: Document) -> List[Dict[str, Any]]:
     sections_data = []
     for i, section in enumerate(doc.sections):
@@ -204,165 +406,226 @@ def extract_images_from_doc(doc: Document, template_id: str) -> List[Dict[str, A
         # Helper to get local tag name without namespace
         def get_local_tag(tag):
              return tag.split('}')[-1]
+
+        # Collect all elements to scan: body + all headers/footers
+        # Store tuples of (element, part) to get correct related_parts for each element
+        elements_to_scan = [(doc.element.body, doc.part)]
+        for section in doc.sections:
+            if section.header:
+                elements_to_scan.append((section.header._element, section.header.part))
+            if section.footer:
+                elements_to_scan.append((section.footer._element, section.footer.part))
+
         # Iterate ALL descendants to find potential image containers
         # We look for 'drawing' (modern) and 'pict' (legacy/fallback)
-        for i, elem in enumerate(doc.element.body.iterdescendants()):
-            tag = get_local_tag(elem.tag)
-            
-            if tag not in ['drawing', 'pict']:
-                continue
-                
-            try:
-                rId = None
-                width_pt = 0
-                height_pt = 0
-                
-                if tag == 'drawing':
-                    # Find blip (ignoring namespace via tag name)
-                    for child in elem.iterdescendants():
-                        if get_local_tag(child.tag) == 'blip':
-                            # Check attribs aggressively
-                            for k, v in child.attrib.items():
-                                if k.endswith('embed') or k.endswith('link') or k.endswith('id'):
-                                    rId = v
-                                    break
-                            if rId: break
-                            
-                    # Dimensions
-                    for child in elem.iterdescendants():
-                        if get_local_tag(child.tag) == 'extent':
-                            cx = int(child.get('cx', 0))
-                            cy = int(child.get('cy', 0))
-                            width_pt = cx / 12700
-                            height_pt = cy / 12700
-                            break
-                            
-                elif tag == 'pict':
-                    # Find imagedata
-                    for child in elem.iterdescendants():
-                        if get_local_tag(child.tag) == 'imagedata':
-                             for k, v in child.attrib.items():
-                                if k.endswith('id'):
-                                    rId = v
-                                    break
-                             if rId: break
-                    
-                    # Dimensions logic omitted for brevity, handled by frontend auto-size
+        for container, container_part in elements_to_scan:
+            for i, elem in enumerate(container.iterdescendants()):
+                tag = get_local_tag(elem.tag)
 
-                if not rId or rId not in doc.part.related_parts:
+                if tag not in ['drawing', 'pict']:
                     continue
-                    
-                image_part = doc.part.related_parts[rId]
-                image_bytes = image_part.blob
-                content_type = image_part.content_type
-                
-                ext = content_type.split('/')[-1] if '/' in content_type else 'png'
-                filename = f"parsed_image_{uuid.uuid4()}.{ext}"
-                path = f"template_assets/{template_id}/{filename}"
-                
-                supabase.storage.from_(bucket_name).upload(path, image_bytes, {
-                    "content-type": content_type,
-                    "upsert": "false"
-                })
-                
-                public_url = supabase.storage.from_(bucket_name).get_public_url(path)
-                
-                # Find parent paragraph using tag check instead of isinstance(CT_P)
-                # This avoids import/proxy class issues
-                p_element = elem
-                while p_element is not None and not p_element.tag.endswith('}p'):
-                    p_element = p_element.getparent()
-                
-                # Mark paragraph with temp_id for robust matching
-                para_temp_id = None
-                alignment = None
-                if p_element is not None:
-                    para_temp_id = p_element.get('temp_id')
-                    if not para_temp_id:
-                        para_temp_id = str(uuid.uuid4())
-                        p_element.set('temp_id', para_temp_id)
-                    
-                    # Try to find alignment from pPr -> jc
-                    # p_element is a CT_P
-                    pPr = p_element.find(qn('w:pPr'))
-                    if pPr is not None:
-                         jc = pPr.find(qn('w:jc'))
-                         if jc is not None:
-                             alignment = jc.get(qn('w:val'))
 
-                # Find matching paragraph index in doc.paragraphs
-                para_index = -1
-                if p_element is not None:
-                    for idx, para in enumerate(doc.paragraphs):
-                        # Use temp_id for matching
-                        if para._element.get('temp_id') == para_temp_id:
-                            para_index = idx
-                            # Robust Alignment Extraction using python-docx
-                            # This handles direction formatting + style inheritance
-                            try:
-                                if para.alignment == WD_ALIGN_PARAGRAPH.CENTER:
-                                    alignment = 'center'
-                                elif para.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
-                                    alignment = 'right'
-                                elif para.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
-                                    alignment = 'justify'
-                                elif para.alignment == WD_ALIGN_PARAGRAPH.LEFT:
-                                    alignment = 'left'
-                            except:
-                                pass
-                            break
-                
-                # Check for Floating Alignment (wp:anchor -> wp:positionH -> wp:align)
-                # elem is drawing/pict.
-                is_floating = False
-                floating_align = None
                 try:
-                    # Search specifically for wp:anchor
-                    # drawing -> anchor
-                    for child in elem.iterdescendants():
-                         if child.tag.endswith('anchor'):
-                             is_floating = True
-                             # Look for align
-                             for grand in child.iterdescendants():
-                                 if grand.tag.endswith('align'):
-                                     if grand.text in ['center', 'right', 'left']:
-                                         floating_align = grand.text
-                                     break
-                             break
-                except:
-                    pass
+                    rId = None
+                    width_pt = 0
+                    height_pt = 0
 
-                # If floating align found, OVERRIDE paragraph alignment
-                if floating_align:
-                    alignment = floating_align
+                    if tag == 'drawing':
+                        # Find blip (ignoring namespace via tag name)
+                        for child in elem.iterdescendants():
+                            if get_local_tag(child.tag) == 'blip':
+                                # Check attribs aggressively
+                                for k, v in child.attrib.items():
+                                    if k.endswith('embed') or k.endswith('link') or k.endswith('id'):
+                                        rId = v
+                                        break
+                                if rId: break
+                            
+                        # Dimensions
+                        for child in elem.iterdescendants():
+                            if get_local_tag(child.tag) == 'extent':
+                                cx = int(child.get('cx', 0))
+                                cy = int(child.get('cy', 0))
+                                width_pt = cx / 12700
+                                height_pt = cy / 12700
+                                break
+                            
+                    elif tag == 'pict':
+                        # Find imagedata
+                        for child in elem.iterdescendants():
+                            if get_local_tag(child.tag) == 'imagedata':
+                                 for k, v in child.attrib.items():
+                                    if k.endswith('id'):
+                                        rId = v
+                                        break
+                                 if rId: break
+                    
+                        # Dimensions logic omitted for brevity, handled by frontend auto-size
 
-                img_id = str(uuid.uuid4())
+                    if not rId or rId not in container_part.related_parts:
+                        continue
+
+                    image_part = container_part.related_parts[rId]
+                    image_bytes = image_part.blob
+                    content_type = image_part.content_type
+
+                    # 安全地提取副檔名，只接受圖片類型
+                    if '/' in content_type:
+                        ext = content_type.split('/')[-1]
+                        # 確保是有效的圖片副檔名
+                        if ext not in ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'tiff', 'webp', 'svg+xml']:
+                            # 根據圖片二進制數據判斷類型
+                            if image_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+                                ext = 'png'
+                            elif image_bytes[:2] == b'\xff\xd8':
+                                ext = 'jpeg'
+                            elif image_bytes[:6] in (b'GIF87a', b'GIF89a'):
+                                ext = 'gif'
+                            else:
+                                ext = 'png'  # 預設為 png
+                        # 處理 svg+xml 的情況
+                        if ext == 'svg+xml':
+                            ext = 'svg'
+                    else:
+                        ext = 'png'
+
+                    filename = f"parsed_image_{uuid.uuid4()}.{ext}"
+                    path = f"template_assets/{template_id}/{filename}"
+
+                    # 根據副檔名設置正確的 Content-Type
+                    content_type_map = {
+                        'png': 'image/png',
+                        'jpeg': 'image/jpeg',
+                        'jpg': 'image/jpeg',
+                        'gif': 'image/gif',
+                        'bmp': 'image/bmp',
+                        'tiff': 'image/tiff',
+                        'webp': 'image/webp',
+                        'svg': 'image/svg+xml'
+                    }
+                    correct_content_type = content_type_map.get(ext, 'image/png')
+
+                    supabase.storage.from_(bucket_name).upload(path, image_bytes, {
+                        "content-type": correct_content_type,
+                        "upsert": "false"
+                    })
                 
-                # IMPORTANT: Tag the element with this ID so we can find it during structure traversal
-                # elem is 'drawing' or 'pict'
-                elem.set('temp_img_id', img_id)
-                if is_floating:
-                     elem.set('is_floating', 'true')
-
-                images.append({
-                    "id": img_id,
-                    "url": public_url,
-                    "width": width_pt,
-                    "height": height_pt,
-                    "index": len(images), 
-                    "paragraph_index": para_index,
-                    "para_temp_id": para_temp_id, 
-                    "format": {"alignment": alignment} if alignment else {},
-                    "content_type": content_type,
-                    "is_floating": is_floating
-                })
-                print(f"Uploaded image to {public_url} (para_index: {para_index}, temp_id: {para_temp_id})")
+                    public_url = supabase.storage.from_(bucket_name).get_public_url(path)
                 
-            except Exception as e:
-                print(f"Failed to process image element {tag}: {e}")
-                import traceback
-                traceback.print_exc()
-                continue
+                    # Find parent paragraph using tag check instead of isinstance(CT_P)
+                    # This avoids import/proxy class issues
+                    p_element = elem
+                    while p_element is not None and not p_element.tag.endswith('}p'):
+                        p_element = p_element.getparent()
+                
+                    # Mark paragraph with temp_id for robust matching
+                    para_temp_id = None
+                    alignment = None
+                    if p_element is not None:
+                        para_temp_id = p_element.get('temp_id')
+                        if not para_temp_id:
+                            para_temp_id = str(uuid.uuid4())
+                            p_element.set('temp_id', para_temp_id)
+                    
+                        # Try to find alignment from pPr -> jc
+                        # p_element is a CT_P
+                        pPr = p_element.find(qn('w:pPr'))
+                        if pPr is not None:
+                             jc = pPr.find(qn('w:jc'))
+                             if jc is not None:
+                                 alignment = jc.get(qn('w:val'))
+
+                    # Find matching paragraph index in doc.paragraphs
+                    para_index = -1
+                    if p_element is not None:
+                        for idx, para in enumerate(doc.paragraphs):
+                            # Use temp_id for matching
+                            if para._element.get('temp_id') == para_temp_id:
+                                para_index = idx
+                                # Robust Alignment Extraction using python-docx
+                                # This handles direction formatting + style inheritance
+                                try:
+                                    if para.alignment == WD_ALIGN_PARAGRAPH.CENTER:
+                                        alignment = 'center'
+                                    elif para.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
+                                        alignment = 'right'
+                                    elif para.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
+                                        alignment = 'justify'
+                                    elif para.alignment == WD_ALIGN_PARAGRAPH.LEFT:
+                                        alignment = 'left'
+                                except:
+                                    pass
+                                break
+                
+                    # Check for Floating Alignment (wp:anchor -> wp:positionH -> wp:align/posOffset)
+                    # elem is drawing/pict.
+                    is_floating = False
+                    floating_align = None
+                    try:
+                        # Search specifically for wp:anchor
+                        # drawing -> anchor
+                        for child in elem.iterdescendants():
+                             if child.tag.endswith('anchor'):
+                                 is_floating = True
+                                 # Look for align element (explicit alignment)
+                                 for grand in child.iterdescendants():
+                                     if grand.tag.endswith('align'):
+                                         if grand.text in ['center', 'right', 'left']:
+                                             floating_align = grand.text
+                                         break
+
+                                 # If no align found, check posOffset (absolute position)
+                                 if not floating_align:
+                                     for grand in child.iterdescendants():
+                                         if grand.tag.endswith('posOffset'):
+                                             try:
+                                                 offset = int(grand.text)
+                                                 # Negative offset = left, positive = right
+                                                 # For header tables, negative offset usually means left side
+                                                 if offset < 0:
+                                                     floating_align = 'left'
+                                                 elif offset > 100000:  # Far right
+                                                     floating_align = 'right'
+                                             except:
+                                                 pass
+                                             break
+                                 break
+                    except:
+                        pass
+
+                    # For images: ONLY use image-specific alignment (wp:align or wp:posOffset)
+                    # Do NOT fall back to paragraph alignment
+                    # This is critical because paragraph alignment != image position
+                    # Example: paragraph may be right-aligned but image positioned left via posOffset
+                    image_alignment = floating_align  # Will be None if not found - that's correct!
+
+                    img_id = str(uuid.uuid4())
+
+                    # IMPORTANT: Tag the element with this ID so we can find it during structure traversal
+                    # elem is 'drawing' or 'pict'
+                    elem.set('temp_img_id', img_id)
+                    if is_floating:
+                         elem.set('is_floating', 'true')
+
+                    images.append({
+                        "id": img_id,
+                        "url": public_url,
+                        "width": width_pt,
+                        "height": height_pt,
+                        "index": len(images),
+                        "paragraph_index": para_index,
+                        "para_temp_id": para_temp_id,
+                        "format": {"alignment": image_alignment} if image_alignment else {},
+                        "content_type": content_type,
+                        "is_floating": is_floating
+                    })
+                    print(f"Uploaded image to {public_url} (para_index: {para_index}, temp_id: {para_temp_id})")
+                
+                except Exception as e:
+                    print(f"Failed to process image element {tag}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
 
                     
     except Exception as e:
@@ -1297,11 +1560,20 @@ def _process_docx_file(file_path: str, filename: str, template_id: str = None) -
         
         sections = extract_section_properties(doc)
         images = extract_images_from_doc(doc, template_id) # Extract images first
+
+        # Convert images list to dict for lookups
+        images_dict = {img['id']: img for img in images}
+
+        # Extract headers/footers, styles, and numbering
+        headers_footers = extract_headers_footers(doc, images_dict)
+        styles_definitions = extract_styles_definitions(doc)
+        numbering_definitions = extract_numbering_definitions(doc)
+
         fields = detect_fillable_fields(doc)
-        
+
         # Pass images to table detection
-        tables = detect_fillable_tables(doc, images) 
-        
+        tables = detect_fillable_tables(doc, images)
+
         # 4. 建立線性結構
         structure, paragraphs = build_document_structure(doc, fields, tables, images)
 
@@ -1333,8 +1605,11 @@ def _process_docx_file(file_path: str, filename: str, template_id: str = None) -
             "fields": fields,
             "tables": tables,
             "images": images,
-            "structure": structure, 
+            "structure": structure,
             "paragraphs": paragraphs, # New Field
+            "headers_footers": headers_footers,  # New: Headers and footers
+            "styles_definitions": styles_definitions,  # New: Styles
+            "numbering_definitions": numbering_definitions,  # New: Numbering
             "styles": {
                 "default_font": "微軟正黑體",
                 "default_size": 12,

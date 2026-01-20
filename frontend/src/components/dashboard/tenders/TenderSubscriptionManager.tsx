@@ -37,7 +37,12 @@ export function TenderSubscriptionManager() {
     const [newKeyword, setNewKeyword] = React.useState("")
     const [newTime, setNewTime] = React.useState("09:00")
     const [editingId, setEditingId] = React.useState<number | null>(null)
+    const [mounted, setMounted] = React.useState(false)
     const supabase = createClient()
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const fetchSubscriptions = async () => {
         try {
@@ -169,6 +174,17 @@ export function TenderSubscriptionManager() {
         } catch (error) {
             console.error('Error deleting subscription:', error)
         }
+    }
+
+    // Prevent hydration mismatch by only rendering on client
+    if (!mounted) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-center p-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+            </div>
+        )
     }
 
     return (

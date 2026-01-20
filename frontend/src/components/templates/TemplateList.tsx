@@ -230,7 +230,7 @@ export function TemplateList({
         <>
             {viewMode === 'grid' ? (
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {templates.map((template) => (
+                    {templates.filter(t => t.id !== deletingId).map((template) => (
                         <Card
                             key={template.id}
                             onClick={() => handleTemplateClick(template)}
@@ -317,7 +317,7 @@ export function TemplateList({
                     </div>
 
                     <div className="divide-y divide-black/10 dark:divide-white/10">
-                        {templates.map((template) => (
+                        {templates.filter(t => t.id !== deletingId).map((template) => (
                             <div
                                 key={template.id}
                                 onClick={() => handleTemplateClick(template)}

@@ -31,11 +31,16 @@ export function DashboardSidebar({ className, userEmail, isCollapsed, onToggle }
     const pathname = usePathname()
     const [open, setOpen] = React.useState(false)
     const [routes, setRoutes] = React.useState<Array<any>>([])
+    const [mounted, setMounted] = React.useState(false)
 
     // Handle controlled vs uncontrolled state for collapse
     // If props are provided, use them; otherwise default to false (expanded)
     // Note: The parent DashboardClientLayout will usually control this.
     const collapsed = isCollapsed ?? false
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
 
     React.useEffect(() => {
         // Compute routes with active state after mount to ensure server/client consistency
@@ -198,19 +203,21 @@ export function DashboardSidebar({ className, userEmail, isCollapsed, onToggle }
                 <SidebarContent />
             </aside>
 
-            {/* Mobile Sidebar (Sheet) */}
-            <Sheet open={open} onOpenChange={setOpen}>
-                <div className="lg:hidden absolute left-4 top-4 z-50">
-                    <SheetTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-none border-black dark:border-white bg-background">
-                            <Menu className="h-6 w-6" />
-                        </Button>
-                    </SheetTrigger>
-                </div>
-                <SheetContent side="left" className="p-0 w-72 border-r border-black dark:border-white bg-background">
-                    <SidebarContent />
-                </SheetContent>
-            </Sheet>
+            {/* Mobile Sidebar (Sheet) - Only render on client to avoid hydration mismatch */}
+            {mounted && (
+                <Sheet open={open} onOpenChange={setOpen}>
+                    <div className="lg:hidden absolute left-4 top-4 z-50">
+                        <SheetTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-10 w-10 rounded-none border-black dark:border-white bg-background">
+                                <Menu className="h-6 w-6" />
+                            </Button>
+                        </SheetTrigger>
+                    </div>
+                    <SheetContent side="left" className="p-0 w-72 border-r border-black dark:border-white bg-background">
+                        <SidebarContent />
+                    </SheetContent>
+                </Sheet>
+            )}
         </>
     )
 }

@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CitationRenderer } from "./CitationRenderer";
 import { Evidence } from "./CitationBadge";
 import { SourceDetailPanel } from "./SourceDetailPanel";
-import { Loader2, AlertCircle, FileSearch, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, FileSearch, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
     const [error, setError] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [activeTab, setActiveTab] = useState<string>('summary');
+    const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
 
     // State for Draggable Dialog
     const [position, setPosition] = useState({ x: 40, y: 150 });
@@ -294,69 +295,86 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
     return (
         <>
             <div className="h-full w-full">
-                <div className="flex w-full min-h-full gap-8 relative font-mono">
+                <div className="flex w-full min-h-full gap-8 relative font-mono text-black dark:text-white pb-20">
                     {/* Main Content Area */}
                     <div className="flex-1">
                         {/* Sticky Header Container */}
-                        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-8 pb-4 mb-8 border-b border-black/5 dark:border-white/5">
-                                {/* Centered Heading Group */}
-                                <div className="flex flex-col items-center mb-8">
+                        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-4 pb-0 mb-4 border-b border-black/5 dark:border-white/5 transition-all duration-300">
+                            {/* Collapse Toggle Button */}
+                            <div className="absolute top-4 right-8 z-30">
+                                <button
+                                    onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                                    className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+                                >
+                                    {isHeaderExpanded ? (
+                                        <ChevronUp className="w-5 h-5 text-black/40 dark:text-white/40" />
+                                    ) : (
+                                        <ChevronDown className="w-5 h-5 text-black/40 dark:text-white/40" />
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Collapsible Title Area */}
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderExpanded ? 'max-h-[200px] opacity-100 mb-8' : 'max-h-0 opacity-0 mb-0'}`}>
+                                <div className="flex flex-col items-center">
                                     <div className="relative inline-flex items-center">
+                                        {/* Title Block */}
                                         <div className="bg-[#FA4028] text-white px-10 py-4 flex flex-col items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)]">
                                             <h2 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
-                                                ASSESSMENT_REPORT
+                                                PROJECT_ASSESSMENT
                                             </h2>
                                         </div>
 
-                                        {/* Navigation Arrow - Positioned relative to title box */}
+                                        {/* Next Navigation Arrow */}
                                         {onNextStage && (
                                             <div className="absolute -right-20 top-1/2 -translate-y-1/2">
                                                 <button
                                                     onClick={onNextStage}
                                                     className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
                                                 >
-                                                    {/* Custom Brutalist Arrow SVG */}
                                                     <svg
                                                         viewBox="0 0 24 24"
                                                         className="w-6 h-6 fill-none stroke-black dark:stroke-white stroke-[3] transition-transform group-hover:translate-x-1"
                                                     >
                                                         <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="square" strokeLinejoin="miter" />
                                                     </svg>
-
-                                                    {/* Glitch Effect Element */}
                                                     <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
                                                 </button>
                                             </div>
                                         )}
                                     </div>
+                                    <p className="mt-4 text-[10px] uppercase tracking-[0.2em] font-bold opacity-50">
+                                        Stage 01 // Requirement Analysis & Strategy
+                                    </p>
                                 </div>
+                            </div>
 
-                                {/* Centered Tabs List */}
-                                <div className="flex justify-center">
-                                    <div className="h-auto bg-transparent rounded-none p-0 gap-10 flex">
-                                        {displayKeys.map((key) => {
-                                            const label = data[key]?.label || key.replace(/_/g, ' ').toUpperCase();
-                                            const displayLabel = label.split('_')[0];
-                                            const isActive = activeTab === key;
+                            {/* Centered Tabs List - Always Visible */}
+                            <div className="flex justify-center w-full overflow-x-auto pb-2">
+                                <div className="h-auto bg-transparent rounded-none p-0 gap-10 flex">
+                                    {displayKeys.map((key) => {
+                                        const label = data[key]?.label || key.replace(/_/g, ' ').toUpperCase();
+                                        const displayLabel = label.split('_')[0];
+                                        const isActive = activeTab === key;
 
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    onClick={() => setActiveTab(key)}
-                                                    className={`
-                                                        rounded-none border-b-2 px-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all bg-transparent shadow-none italic 
-                                                        ${isActive
-                                                            ? 'border-[#FA4028] text-[#FA4028] opacity-100'
-                                                            : 'border-transparent text-foreground hover:text-[#FA4028] opacity-60'
-                                                        }
-                                                    `}
-                                                >
-                                                    {displayLabel}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => setActiveTab(key)}
+                                                className={`
+                                                rounded-none border-b-2 px-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all bg-transparent shadow-none italic 
+                                                ${isActive
+                                                        ? 'border-[#FA4028] text-[#FA4028] opacity-100'
+                                                        : 'border-transparent text-foreground hover:text-[#FA4028] opacity-60'
+                                                    }
+                                            `}
+                                            >
+                                                {displayLabel}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
+                            </div>
                         </div>
 
                         {/* Content Area with Single Focused Card */}

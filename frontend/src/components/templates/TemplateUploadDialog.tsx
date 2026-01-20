@@ -51,7 +51,14 @@ export function TemplateUploadDialog({
             if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
             // 2. Call n8n Webhook with file path
-            const response = await fetch("/webhook/process-proposal-template", {
+            // Snapshot existing IDs first
+            const { data: initialSections } = await supabase
+                .from('sections')
+                .select('id')
+                .eq('project_id', projectId);
+            const initialSectionIds = new Set((initialSections || []).map(s => s.id));
+
+            const response = await fetch("/api/webhook/process-proposal-template", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -70,6 +77,37 @@ export function TemplateUploadDialog({
             }
 
             const result = await response.json();
+
+            // Wait a moment for eventual consistency / DB transaction lag
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Tag newly created sections as 'template'
+            const { data: finalSections } = await supabase
+                .from('sections')
+                .select('id, generation_method, is_modified')
+                .eq('project_id', projectId);
+
+            if (finalSections) {
+                // Method A: ID Snapshot Comparison
+                const newIds = finalSections
+                    .filter(s => !initialSectionIds.has(s.id))
+                    .map(s => s.id);
+
+                // Method B: Aggressive Tagging Fallback
+                const untaggedIds = finalSections
+                    .filter(s => s.generation_method === 'manual' && !s.is_modified)
+                    .map(s => s.id);
+
+                const idsToUpdate = Array.from(new Set([...newIds, ...untaggedIds]));
+
+                if (idsToUpdate.length > 0) {
+                    await supabase
+                        .from('sections')
+                        .update({ generation_method: 'template' })
+                        .in('id', idsToUpdate);
+                }
+            }
+
             toast.success(`成功從範本生成 ${result.count || 0} 個章節`);
             onSuccess();
             onClose();
@@ -113,56 +151,56 @@ export function TemplateUploadDialog({
             }
         >
             <div className="grid gap-8">
-                        <div className="grid w-full items-center gap-3">
-                            <Label htmlFor="template-file" className="text-sm font-black uppercase tracking-widest text-[#FA4028]">選擇檔案 (.DOCX)</Label>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start text-left font-mono font-bold rounded-none border-2 border-black hover:bg-gray-100 uppercase"
-                                    onClick={() => document.getElementById("template-file")?.click()}
-                                >
-                                    {file ? (
-                                        <>
-                                            <FileText className="mr-2 h-4 w-4" />
-                                            {file.name}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Upload className="mr-2 h-4 w-4" />
-                                            CLICK TO SELECT FILE
-                                        </>
-                                    )}
-                                </Button>
-                                <input
-                                    id="template-file"
-                                    type="file"
-                                    accept=".docx"
-                                    className="hidden"
-                                    onChange={handleFileChange}
-                                />
-                            </div>
-                            {file && (
-                                <p className="text-[10px] font-mono font-black text-emerald-600 flex items-center mt-1 uppercase italic bg-emerald-50 p-1 border border-emerald-200">
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    {file.name} ({(file.size / 1024).toFixed(0)} KB) // READY_FOR_UPLOAD
-                                </p>
+                <div className="grid w-full items-center gap-3">
+                    <Label htmlFor="template-file" className="text-sm font-black uppercase tracking-widest text-[#FA4028]">選擇檔案 (.DOCX)</Label>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-mono font-bold rounded-none border-2 border-black hover:bg-gray-100 uppercase"
+                            onClick={() => document.getElementById("template-file")?.click()}
+                        >
+                            {file ? (
+                                <>
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    {file.name}
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    CLICK TO SELECT FILE
+                                </>
                             )}
-                        </div>
-
-                        <div className="grid gap-4 bg-gray-50 dark:bg-zinc-900 p-4 border-2 border-dashed border-black">
-                            <Label className="text-sm font-black uppercase tracking-widest">生成模式 // MODE</Label>
-                            <RadioGroup defaultValue="replace" onValueChange={(v) => setMode(v as any)} className="gap-4">
-                                <div className="flex items-center space-x-3 cursor-pointer group">
-                                    <RadioGroupItem value="replace" id="r1" className="rounded-none border-2 border-black data-[state=checked]:bg-[#FA4028] data-[state=checked]:text-white" />
-                                    <Label htmlFor="r1" className="font-mono text-xs font-bold cursor-pointer group-hover:text-[#FA4028] uppercase">覆蓋現有章節 (REPLACE_ALL)</Label>
-                                </div>
-                                <div className="flex items-center space-x-3 cursor-pointer group">
-                                    <RadioGroupItem value="append" id="r2" className="rounded-none border-2 border-black data-[state=checked]:bg-[#FA4028] data-[state=checked]:text-white" />
-                                    <Label htmlFor="r2" className="font-mono text-xs font-bold cursor-pointer group-hover:text-[#FA4028] uppercase">加在現有章節後 (APPEND_ONLY)</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
+                        </Button>
+                        <input
+                            id="template-file"
+                            type="file"
+                            accept=".docx"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
                     </div>
-            </BaseDialog>
+                    {file && (
+                        <p className="text-[10px] font-mono font-black text-emerald-600 flex items-center mt-1 uppercase italic bg-emerald-50 p-1 border border-emerald-200">
+                            <FileText className="h-3 w-3 mr-1" />
+                            {file.name} ({(file.size / 1024).toFixed(0)} KB) // READY_FOR_UPLOAD
+                        </p>
+                    )}
+                </div>
+
+                <div className="grid gap-4 bg-gray-50 dark:bg-zinc-900 p-4 border-2 border-dashed border-black">
+                    <Label className="text-sm font-black uppercase tracking-widest">生成模式 // MODE</Label>
+                    <RadioGroup defaultValue="replace" onValueChange={(v) => setMode(v as any)} className="gap-4">
+                        <div className="flex items-center space-x-3 cursor-pointer group">
+                            <RadioGroupItem value="replace" id="r1" className="rounded-none border-2 border-black data-[state=checked]:bg-[#FA4028] data-[state=checked]:text-white" />
+                            <Label htmlFor="r1" className="font-mono text-xs font-bold cursor-pointer group-hover:text-[#FA4028] uppercase">覆蓋現有章節 (REPLACE_ALL)</Label>
+                        </div>
+                        <div className="flex items-center space-x-3 cursor-pointer group">
+                            <RadioGroupItem value="append" id="r2" className="rounded-none border-2 border-black data-[state=checked]:bg-[#FA4028] data-[state=checked]:text-white" />
+                            <Label htmlFor="r2" className="font-mono text-xs font-bold cursor-pointer group-hover:text-[#FA4028] uppercase">加在現有章節後 (APPEND_ONLY)</Label>
+                        </div>
+                    </RadioGroup>
+                </div>
+            </div>
+        </BaseDialog>
     );
 }

@@ -8,19 +8,23 @@ interface AddChapterMethodDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSelectMethod: (method: 'manual' | 'ai' | 'template') => void;
+    title?: string;
+    context?: 'chapter' | 'section';
 }
 
 export function AddChapterMethodDialog({
     open,
     onOpenChange,
     onSelectMethod,
+    title = "ADD_NEW_CHAPTER",
+    context = 'chapter',
 }: AddChapterMethodDialogProps) {
 
     return (
         <BaseDialog
             open={open}
             onOpenChange={onOpenChange}
-            title="ADD_NEW_CHAPTER"
+            title={title}
             description="// SELECT_METHOD"
             maxWidth="2xl"
             showFooter={false}
@@ -34,7 +38,7 @@ export function AddChapterMethodDialog({
                     <PenTool className="w-10 h-10 mb-3 stroke-[1.5]" />
                     <h3 className="text-lg font-black uppercase tracking-tighter mb-2">MANUAL<br />ENTRY</h3>
                     <p className="text-[10px] font-mono opacity-60 text-center uppercase leading-tight">
-                        Create a blank chapter row manually
+                        {context === 'chapter' ? 'Create a blank chapter row manually' : 'Create a blank section row'}
                     </p>
                 </button>
 
@@ -44,9 +48,9 @@ export function AddChapterMethodDialog({
                     className="group relative flex flex-col items-center justify-center p-4 border-2 border-black dark:border-white bg-white dark:bg-black hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028] transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
                 >
                     <Sparkles className="w-10 h-10 mb-3 stroke-[1.5]" />
-                    <h3 className="text-lg font-black uppercase tracking-tighter mb-2">AI<br />GENERATION</h3>
+                    <h3 className="text-lg font-black uppercase tracking-tighter mb-2">AI<br />{context === 'chapter' ? 'GENERATION' : 'MARKER'}</h3>
                     <p className="text-[10px] font-mono opacity-60 text-center uppercase leading-tight">
-                        Auto-generate structure from requirements
+                        {context === 'chapter' ? 'Auto-generate structure from requirements' : 'Mark for AI drafting (Writing Stage)'}
                     </p>
                 </button>
 
@@ -58,7 +62,7 @@ export function AddChapterMethodDialog({
                     <FileText className="w-10 h-10 mb-3 stroke-[1.5]" />
                     <h3 className="text-lg font-black uppercase tracking-tighter mb-2">TEMPLATE<br />IMPORT</h3>
                     <p className="text-[10px] font-mono opacity-60 text-center uppercase leading-tight">
-                        Import structure from DOCX file
+                        {context === 'chapter' ? 'Import structure from DOCX file' : 'Mark for Template Upload'}
                     </p>
                 </button>
             </div>

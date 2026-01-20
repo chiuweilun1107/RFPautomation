@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { DownloadCloud, FileSignature, ShieldCheck, ArrowRight, ArrowLeft, FileText, AlertTriangle, Users, AlertOctagon } from "lucide-react";
+import { DownloadCloud, FileSignature, ShieldCheck, ArrowRight, ArrowLeft, FileText, AlertTriangle, Users, AlertOctagon, ChevronUp, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,6 +16,7 @@ export function TenderLaunch({ projectId, onNextStage, onPrevStage }: TenderLaun
     const [loading, setLoading] = useState(true);
     const [redLines, setRedLines] = useState<any>(null);
     const [teamReqs, setTeamReqs] = useState<any[]>([]);
+    const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
 
     const supabase = createClient();
 
@@ -44,68 +45,85 @@ export function TenderLaunch({ projectId, onNextStage, onPrevStage }: TenderLaun
 
     // Loading state is handled by page-level loading.tsx
     return (
-        <ScrollArea className="h-full w-full rounded-none [&_[data-orientation=vertical]]:hidden">
+        <div className="h-full w-full">
             <div className="flex w-full min-h-full gap-8 relative font-mono text-black dark:text-white pb-20">
                 {/* Main Content Area */}
-                <div className="flex-1 px-8 md:px-12">
+                <div className="flex-1">
 
                     {/* Sticky Header Container */}
-                    <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-8 pb-4 mb-12 border-b border-black/5 dark:border-white/5">
-                        <div className="flex flex-col items-center">
-                            <div className="relative inline-flex items-center">
-                                {/* Back Navigation Arrow */}
-                                {onPrevStage && (
-                                    <div className="absolute -left-20 top-1/2 -translate-y-1/2">
-                                        <button
-                                            onClick={onPrevStage}
-                                            className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
-                                        >
-                                            <svg
-                                                viewBox="0 0 24 24"
-                                                className="w-6 h-6 fill-none stroke-black dark:stroke-white stroke-[3] transition-transform group-hover:-translate-x-1"
-                                            >
-                                                <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="square" strokeLinejoin="miter" />
-                                            </svg>
-                                            <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
-                                        </button>
-                                    </div>
+                    <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-4 pb-0 mb-12 border-b border-black/5 dark:border-white/5 transition-all duration-300">
+                        {/* Collapse Toggle Button */}
+                        <div className="absolute top-4 right-8 z-30">
+                            <button
+                                onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                                className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+                            >
+                                {isHeaderExpanded ? (
+                                    <ChevronUp className="w-5 h-5 text-black/40 dark:text-white/40" />
+                                ) : (
+                                    <ChevronDown className="w-5 h-5 text-black/40 dark:text-white/40" />
                                 )}
+                            </button>
+                        </div>
 
-                                <div className="bg-[#FA4028] text-white px-10 py-4 flex flex-col items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)]">
-                                    <h2 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
-                                        TENDER_LAUNCH
-                                    </h2>
+                        {/* Collapsible Title Area */}
+                        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderExpanded ? 'max-h-[200px] opacity-100 mb-8' : 'max-h-0 opacity-0 mb-0'}`}>
+                            <div className="flex flex-col items-center">
+                                <div className="relative inline-flex items-center">
+                                    {/* Back Navigation Arrow */}
+                                    {onPrevStage && (
+                                        <div className="absolute -left-20 top-1/2 -translate-y-1/2">
+                                            <button
+                                                onClick={onPrevStage}
+                                                className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
+                                            >
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    className="w-6 h-6 fill-none stroke-black dark:stroke-white stroke-[3] transition-transform group-hover:-translate-x-1"
+                                                >
+                                                    <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="square" strokeLinejoin="miter" />
+                                                </svg>
+                                                <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-[#FA4028] text-white px-10 py-4 flex flex-col items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)]">
+                                        <h2 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
+                                            TENDER_LAUNCH
+                                        </h2>
+                                    </div>
+
+                                    {/* Next Navigation Arrow */}
+                                    {onNextStage && (
+                                        <div className="absolute -right-20 top-1/2 -translate-y-1/2">
+                                            <button
+                                                onClick={onNextStage}
+                                                className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
+                                            >
+                                                {/* Custom Brutalist Arrow SVG */}
+                                                <svg
+                                                    viewBox="0 0 24 24"
+                                                    className="w-6 h-6 fill-none stroke-black dark:stroke-white stroke-[3] transition-transform group-hover:translate-x-1"
+                                                >
+                                                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="square" strokeLinejoin="miter" />
+                                                </svg>
+
+                                                {/* Glitch Effect Element */}
+                                                <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-
-                                {/* Next Navigation Arrow */}
-                                {onNextStage && (
-                                    <div className="absolute -right-20 top-1/2 -translate-y-1/2">
-                                        <button
-                                            onClick={onNextStage}
-                                            className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
-                                        >
-                                            {/* Custom Brutalist Arrow SVG */}
-                                            <svg
-                                                viewBox="0 0 24 24"
-                                                className="w-6 h-6 fill-none stroke-black dark:stroke-white stroke-[3] transition-transform group-hover:translate-x-1"
-                                            >
-                                                <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="square" strokeLinejoin="miter" />
-                                            </svg>
-
-                                            {/* Glitch Effect Element */}
-                                            <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
-                                        </button>
-                                    </div>
-                                )}
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-[0.3em] mt-4">
+                                    Phase: 02 // Document_Acquisition & Team_Formation
+                                </p>
                             </div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.3em] mt-4">
-                                Phase: 02 // Document_Acquisition & Team_Formation
-                            </p>
                         </div>
                     </div>
 
                     {/* Dashboard Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
 
                         {/* Column 1: Team Analysis (Dynamic from DB) */}
                         <div className="space-y-6">
@@ -190,6 +208,6 @@ export function TenderLaunch({ projectId, onNextStage, onPrevStage }: TenderLaun
                     </div>
                 </div>
             </div>
-        </ScrollArea>
+        </div>
     );
 }

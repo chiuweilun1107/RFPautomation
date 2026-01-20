@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, Circle, ChevronDown, Sparkles, Loader2, Wand2, Edit3 } from "lucide-react"
+import { CheckCircle2, Circle, ChevronDown, Sparkles, Loader2, Wand2, Edit3, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { TaskEditorSheet } from "./TaskEditorSheet"
@@ -11,6 +11,8 @@ import ReactMarkdown from "react-markdown"
 import { SourceDetailSheet } from "@/components/workspace/SourceDetailSheet"
 import { createClient } from "@/lib/supabase/client"
 import { ragApi } from "@/features/rag/api/ragApi"
+import { templatesApi } from "@/features/templates/api/templatesApi"
+import { Upload } from "lucide-react"
 
 // Types based on the schema
 interface Task {
@@ -51,6 +53,7 @@ interface Section {
     title?: string
     tasks: Task[]
     children?: Section[]
+    template_file_url?: string // 上傳的模版文件連結
 }
 
 interface SectionListProps {
@@ -116,11 +119,11 @@ export function SectionList({ sections, projectId }: SectionListProps) {
 
     if (!sections || sections.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-lg border-gray-200 dark:border-zinc-800 m-8">
-                <h3 className="mt-2 text-lg font-semibold">尚無章節</h3>
-                <p className="text-sm text-muted-foreground text-gray-500 max-w-sm mx-auto mt-2">
-                    文件尚未解析完成，或沒有識別到任何章節。
-                    如果狀態仍為「處理中」，請稍候。
+            <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-black dark:border-white m-8 font-mono">
+                <h3 className="mt-2 text-xl font-black uppercase tracking-tighter italic">No_Sections_Found</h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest max-w-sm mx-auto mt-4">
+                    The document parsing sequence is incomplete or no chapters were identified.
+                    Awaiting further data ingestion.
                 </p>
             </div>
         )
@@ -228,46 +231,140 @@ interface SectionCardProps {
 function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, onEditTask, onViewSource, loadingSourceId }: SectionCardProps) {
     const [isEditing, setIsEditing] = React.useState(false)
     const [localDraft, setLocalDraft] = React.useState(section.content_draft || '')
-    const hasDraft = localDraft && localDraft.trim().length > 0
+    const [localTemplateUrl, setLocalTemplateUrl] = React.useState(section.template_file_url || null)
+    const [activeView, setActiveView] = React.useState<'draft' | 'template'>('draft')
 
-    // 當 section.content_draft 更新時同步
+    // Check if we have content for views
+    const hasDraft = localDraft && localDraft.trim().length > 0;
+    const hasTemplate = !!localTemplateUrl;
+
+    // Default to template view if only template exists and no draft
+    React.useEffect(() => {
+        if (hasTemplate && !hasDraft && activeView !== 'template') {
+            setActiveView('template')
+        }
+    }, [hasTemplate, hasDraft, activeView])
+
+    // Sync props to local state if they change (e.g. after SWR revalidation)
     React.useEffect(() => {
         setLocalDraft(section.content_draft || '')
     }, [section.content_draft])
 
+    React.useEffect(() => {
+        if (section.template_file_url) {
+            setLocalTemplateUrl(section.template_file_url)
+        }
+    }, [section.template_file_url])
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+    const [isUploading, setIsUploading] = React.useState(false)
+    const router = useRouter()
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.name.endsWith('.docx')) {
+            toast.error('僅支援 .docx 格式')
+            return
+        }
+
+        setIsUploading(true)
+        try {
+            const supabase = createClient()
+
+            // 1. Upload to Supabase Storage
+            toast.info('正在上傳文件...')
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${section.id}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`
+            const filePath = `section-templates/${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('raw-files')
+                .upload(filePath, file)
+
+            if (uploadError) throw uploadError
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('raw-files')
+                .getPublicUrl(filePath)
+
+            // 2. Update Section template_file_url
+            const { error: updateError } = await supabase
+                .from('sections')
+                .update({
+                    template_file_url: publicUrl
+                })
+                .eq('id', section.id)
+
+            if (updateError) throw updateError
+
+            toast.success('文件上傳成功！')
+            if (fileInputRef.current) fileInputRef.current.value = ''
+
+            // Optimistic Update
+            setLocalTemplateUrl(publicUrl)
+
+            // Switch to template view
+            setActiveView('template')
+
+            router.refresh()
+
+        } catch (error: any) {
+            console.error('Upload failed object:', error)
+            console.error('Upload failed message:', error.message)
+            console.error('Upload failed details:', JSON.stringify(error))
+            toast.error(`上傳失敗: ${error.message || '未知錯誤'}`)
+        } finally {
+            setIsUploading(false)
+        }
+    }
+
     return (
-        <div className="border rounded-lg bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+        <div className="border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[10px_10px_0px_0px_rgba(255,255,255,0.15)]">
             {/* Section Header */}
             <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800/50"
+                className="flex items-center justify-between p-5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
                 onClick={onToggle}
             >
-                <div className="flex items-center gap-3">
-                    <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                <div className="flex items-center gap-4">
+                    <ChevronDown className={`h-5 w-5 text-black dark:text-white transition-transform duration-300 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <h3 className="font-black text-lg uppercase tracking-tight italic">
                         {section.content || section.title}
                     </h3>
-                    {hasDraft && (
-                        <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
-                            <Sparkles className="w-3 h-3" />
-                            已生成
-                        </span>
-                    )}
+                    <div className="flex gap-2">
+                        {hasDraft && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#FA4028] bg-[#FA4028]/10 px-3 py-1">
+                                <Sparkles className="w-3 h-3" />
+                                DRAFT
+                            </span>
+                        )}
+                        {hasTemplate && (
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-100 px-3 py-1">
+                                <FileText className="w-3 h-3" />
+                                TEMPLATE
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    {hasDraft && (
+                <div className="flex items-center gap-3">
+                    {/* Only show Edit button in Draft view */}
+                    {hasDraft && activeView === 'draft' && (
                         <Button
                             size="sm"
                             variant="ghost"
+                            className="rounded-none border border-black/10 dark:border-white/10 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black font-bold uppercase text-[10px]"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 setIsEditing(!isEditing)
                             }}
                         >
-                            <Edit3 className="w-4 h-4 mr-2" />
-                            {isEditing ? '完成' : '編輯'}
+                            <Edit3 className="w-3 h-3 mr-2" />
+                            {isEditing ? 'COMMIT' : 'EDIT'}
                         </Button>
                     )}
+
                     <Button
                         size="sm"
                         variant={hasDraft ? "outline" : "default"}
@@ -276,105 +373,192 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                             onGenerate()
                         }}
                         disabled={isGenerating}
-                        className="shrink-0"
+                        className={`rounded-none border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest transition-all ${hasDraft
+                            ? "bg-transparent hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+                            : "bg-[#FA4028] text-white hover:bg-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                            }`}
                     >
                         {isGenerating ? (
                             <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                生成中...
+                                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                PROCESSING...
                             </>
                         ) : (
                             <>
-                                <Wand2 className="w-4 h-4 mr-2" />
-                                {hasDraft ? '重新生成' : 'AI 生成草稿'}
+                                <Wand2 className="w-3 h-3 mr-2" />
+                                {hasDraft ? 'REGENERATE' : 'GENERATE_AI_DRAFT'}
                             </>
                         )}
                     </Button>
+
+                    {/* Upload Template Button */}
+                    <div className="relative">
+                        <input
+                            type="file"
+                            accept=".docx"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                        />
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                fileInputRef.current?.click()
+                            }}
+                            disabled={isUploading || isGenerating}
+                            className="rounded-none border-2 border-dashed border-black dark:border-white font-bold uppercase text-[10px] tracking-widest bg-transparent hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black ml-2"
+                        >
+                            {isUploading ? (
+                                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                            ) : (
+                                <Upload className="w-3 h-3 mr-2" />
+                            )}
+                            {isUploading ? 'UPLOADING...' : 'UPLOAD_DOCX'}
+                        </Button>
+                    </div>
                 </div>
             </div>
 
             {/* Expandable Content */}
             {isExpanded && (
-                <div className="border-t">
-                    {/* Draft Content */}
-                    {isEditing && hasDraft ? (
-                        <div className="p-4">
-                            <DraftEditor
-                                sectionId={section.id}
-                                initialContent={localDraft}
-                                onSave={(content) => setLocalDraft(content)}
-                            />
-                        </div>
-                    ) : hasDraft ? (
-                        <div className="p-4 bg-gray-50/50 dark:bg-zinc-800/30">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Sparkles className="w-4 h-4 text-blue-500" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI 草稿</span>
-                            </div>
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 bg-white dark:bg-zinc-900 p-4 rounded-lg border">
-                                <ReactMarkdown>{localDraft}</ReactMarkdown>
-                            </div>
-                            {/* 引用來源 - 可點擊查看詳情 */}
-                            {section.draft_sources && section.draft_sources.length > 0 && (
-                                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">參考來源 ({section.draft_sources.length})</span>
-                                        <span className="text-xs text-blue-500/70">點擊查看詳情</span>
+                <div className="border-t-2 border-black/10 dark:border-white/10">
+
+                    {/* Render Tabs if we have reasons to switch or clear indications */}
+                    <div className="flex border-b border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 px-4 pt-2 gap-2">
+                        <button
+                            onClick={() => setActiveView('draft')}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-t-sm ${activeView === 'draft'
+                                ? 'bg-white dark:bg-black border-x border-t border-black/10 dark:border-white/10 text-[#FA4028] translate-y-[1px]'
+                                : 'text-black/40 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
+                                }`}
+                        >
+                            AI_GENERATED_DRAFT
+                        </button>
+                        <button
+                            onClick={() => setActiveView('template')}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-t-sm ${activeView === 'template'
+                                ? 'bg-white dark:bg-black border-x border-t border-black/10 dark:border-white/10 text-blue-600 translate-y-[1px]'
+                                : 'text-black/40 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5'
+                                }`}
+                        >
+                            UPLOADED_TEMPLATE
+                        </button>
+                    </div>
+
+                    <div className="bg-white dark:bg-black min-h-[400px]">
+                        {/* VIEW: AI DRAFT */}
+                        {activeView === 'draft' && (
+                            isEditing && hasDraft ? (
+                                <div className="p-6">
+                                    <DraftEditor
+                                        sectionId={section.id}
+                                        initialContent={localDraft}
+                                        onSave={(content) => setLocalDraft(content)}
+                                    />
+                                </div>
+                            ) : hasDraft ? (
+                                <div className="p-6 bg-black/[0.02] dark:bg-white/[0.02]">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Sparkles className="w-4 h-4 text-[#FA4028]" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40 dark:text-white/40">AI_GENERATED_CONTENT</span>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {section.draft_sources.map((source, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => onViewSource(source)}
-                                                disabled={loadingSourceId === source.id}
-                                                className="inline-flex items-center px-2 py-1 rounded text-xs bg-white dark:bg-zinc-800 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:border-blue-400 transition-colors cursor-pointer disabled:opacity-50"
-                                                title={`相似度: ${source.similarity ? (source.similarity * 100).toFixed(1) + '%' : 'N/A'} - 點擊查看詳情`}
-                                            >
-                                                {loadingSourceId === source.id ? (
-                                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                                ) : (
-                                                    <span className="mr-1">📄</span>
-                                                )}
-                                                {source.title || source.source_title || `來源 ${idx + 1}`}
-                                            </button>
-                                        ))}
+                                    <div className="prose prose-sm dark:prose-invert max-w-none text-black dark:text-white bg-white dark:bg-black p-8 border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]">
+                                        <ReactMarkdown>{localDraft}</ReactMarkdown>
+                                    </div>
+                                    {/* Sources */}
+                                    {section.draft_sources && section.draft_sources.length > 0 && (
+                                        <div className="mt-6 p-4 border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <FileText className="w-4 h-4 text-[#FA4028]" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">KNOWLEDGE_SOURCES ({section.draft_sources.length})</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {section.draft_sources.map((source, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        onClick={() => onViewSource(source)}
+                                                        disabled={loadingSourceId === source.id}
+                                                        className="inline-flex items-center px-3 py-1.5 rounded-none text-[10px] font-bold bg-white dark:bg-black border border-black dark:border-white text-black dark:text-white hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028] transition-all disabled:opacity-50"
+                                                    >
+                                                        {loadingSourceId === source.id ? (
+                                                            <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                                        ) : (
+                                                            <span className="mr-2">📄</span>
+                                                        )}
+                                                        {source.title || source.source_title || `SOURCE_${idx + 1}`}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="p-12 text-center h-full flex flex-col justify-center items-center">
+                                    <Wand2 className="w-10 h-10 mx-auto mb-4 opacity-10 text-black dark:text-white" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-30">No_Draft_Generated</p>
+                                    <p className="text-[8px] uppercase tracking-widest mt-2 opacity-20">Click GENERATE_AI_DRAFT to start.</p>
+                                </div>
+                            )
+                        )}
+
+                        {/* VIEW: TEMPLATE */}
+                        {activeView === 'template' && (
+                            localTemplateUrl ? (
+                                <div className="p-6">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <FileText className="w-4 h-4 text-blue-600" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40 dark:text-white/40">UPLOADED_TEMPLATE_PREVIEW</span>
+                                        <a href={localTemplateUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-600 hover:underline">
+                                            下載原始檔案
+                                        </a>
+                                    </div>
+                                    <div className="w-full aspect-[3/4] min-h-[600px] border border-gray-200 shadow-sm bg-white">
+                                        <iframe
+                                            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(localTemplateUrl)}`}
+                                            width="100%"
+                                            height="100%"
+                                            frameBorder="0"
+                                            title="Document Preview"
+                                        >
+                                            This browser does not support PDFs. Please download the PDF to view it:
+                                            <a href={localTemplateUrl}>Download PDF</a>
+                                        </iframe>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="p-8 text-center text-gray-400">
-                            <Wand2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">尚未生成草稿</p>
-                            <p className="text-xs mt-1">點擊「AI 生成草稿」按鈕來生成內容</p>
-                        </div>
-                    )}
+                            ) : (
+                                <div className="p-12 text-center h-full flex flex-col justify-center items-center">
+                                    <Upload className="w-10 h-10 mx-auto mb-4 opacity-10 text-black dark:text-white" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-30">No_Template_Uploaded</p>
+                                    <p className="text-[8px] uppercase tracking-widest mt-2 opacity-20">Upload a .docx file to see preview.</p>
+                                </div>
+                            )
+                        )}
+                    </div>
 
                     {/* Tasks (if any) */}
                     {section.tasks && section.tasks.length > 0 && (
-                        <div className="border-t p-4">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">需求項目</h4>
+                        <div className="border-t-2 border-black/10 dark:border-white/10 p-6 bg-white dark:bg-black">
+                            <h4 className="text-[10px] font-black text-black/40 dark:text-white/40 uppercase tracking-[0.2em] mb-4">Functional_Requirements</h4>
                             <div className="space-y-2">
                                 {section.tasks.map(task => (
                                     <div
                                         key={task.id}
-                                        className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 cursor-pointer"
+                                        className="flex items-center justify-between p-4 border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] hover:bg-[#FA4028]/5 transition-colors cursor-pointer"
                                         onClick={() => onEditTask(task)}
                                     >
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-4">
                                             {task.status === 'approved' ? (
                                                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                                             ) : (
-                                                <Circle className="w-4 h-4 text-gray-300" />
+                                                <Circle className="w-4 h-4 text-black/20 dark:text-white/20" />
                                             )}
-                                            <span className="text-sm">
-                                                {task.title || task.requirement_text || '未命名項目'}
+                                            <span className="text-xs font-bold uppercase tracking-tight">
+                                                {task.title || task.requirement_text || 'UNNAMED_REQUIREMENT'}
                                             </span>
                                         </div>
-                                        <span className="text-xs text-gray-400">{task.status}</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest opacity-40">{task.status}</span>
                                     </div>
                                 ))}
                             </div>
@@ -383,5 +567,6 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                 </div>
             )}
         </div>
+
     )
 }

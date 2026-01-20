@@ -29,12 +29,17 @@ export function CreateProjectDialog({
     const [agency, setAgency] = React.useState("")
     const [deadline, setDeadline] = React.useState("")
     const [files, setFiles] = React.useState<File[]>([])
+    const [mounted, setMounted] = React.useState(false)
     const router = useRouter()
     const supabase = createClient()
 
     // Support both controlled and uncontrolled usage
     const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
     const setOpen = controlledOnOpenChange || setInternalOpen;
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -141,6 +146,11 @@ export function CreateProjectDialog({
         } finally {
             setIsLoading(false)
         }
+    }
+
+    // Prevent hydration mismatch by only rendering trigger on client
+    if (!mounted) {
+        return null
     }
 
     return (

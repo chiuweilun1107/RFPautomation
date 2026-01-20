@@ -30,16 +30,16 @@ services:
     networks:
       - rfp-network
 
-  paddleocr-service:
-    build:
-      context: ./paddleocr-service
-    container_name: paddleocr-service
-    ports:
-      - "8006:8000"
-    environment:
-      - PYTHONUNBUFFERED=1
-    networks:
-      - rfp-network
+  # paddleocr-service:
+  #   build:
+  #     context: ./paddleocr-service
+  #   container_name: paddleocr-service
+  #   ports:
+  #     - "8006:8000"
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   networks:
+  #     - rfp-network
 
   parsing-service:
     build:

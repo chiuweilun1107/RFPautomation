@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Suspense } from "react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -11,22 +12,30 @@ interface DashboardClientLayoutProps {
 }
 
 export function DashboardClientLayout({ children, userEmail }: DashboardClientLayoutProps) {
-    // Initialize state from localStorage if available, default to false (expanded)
-    const [isCollapsed, setIsCollapsed] = React.useState(false)
-    const [isFullScreenPage, setIsFullScreenPage] = React.useState(false)
     const pathname = usePathname()
 
-    React.useEffect(() => {
-        // Calculate isFullScreenPage after mount to ensure server/client consistency
-        // This prevents hydration mismatch since pathname is null on server but has value on client
-        setIsFullScreenPage(pathname?.includes('/design') || pathname?.includes('/assessment') || false)
+    // Initialize isFullScreenPage state (default false to match server)
+    const [isFullScreenPage, setIsFullScreenPage] = React.useState(false)
 
-        // Initialize sidebar collapse state from localStorage
+    // Update isFullScreenPage on client side based on pathname
+    // All workspace pages under /dashboard/[id]/* should be fullscreen
+    React.useEffect(() => {
+        if (pathname) {
+            const isWorkspacePage = /^\/dashboard\/[^/]+\/(assessment|launch|planning|writing|review|handover|design)/.test(pathname)
+            setIsFullScreenPage(isWorkspacePage)
+        }
+    }, [pathname])
+
+    // Initialize sidebar collapse state (this only affects client-side rendering after hydration)
+    const [isCollapsed, setIsCollapsed] = React.useState(false)
+
+    React.useEffect(() => {
+        // Initialize sidebar collapse state from localStorage after mount
         const saved = localStorage.getItem("sidebar-collapsed")
         if (saved) {
             setIsCollapsed(JSON.parse(saved))
         }
-    }, [pathname])
+    }, [])
 
 
     const toggleSidebar = () => {
@@ -61,11 +70,13 @@ export function DashboardClientLayout({ children, userEmail }: DashboardClientLa
                 >
                     <div
                         className={cn(
-                            "mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500",
+                            "mx-auto",
                             isFullScreenPage ? "max-w-full h-full" : "max-w-7xl"
                         )}
                     >
-                        {children}
+                        <Suspense fallback={null}>
+                            {children}
+                        </Suspense>
                     </div>
                 </main>
             </div>

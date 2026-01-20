@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { ContentSkeleton } from "@/components/ui/skeletons/ContentSkeleton";
 
 // Lazy load the heavy TenderPlanning component
 const TenderPlanning = dynamic(
@@ -22,13 +23,17 @@ export default function PlanningPage({ params }: PlanningPageProps) {
         params.then(({ id }) => setProjectId(id));
     }, [params]);
 
-    // Let loading.tsx handle the loading state via Suspense boundary
+    // Show loading skeleton instead of null to prevent hydration mismatch
     if (!projectId) {
-        return null;
+        return (
+            <div className="h-full flex flex-col">
+                <ContentSkeleton />
+            </div>
+        );
     }
 
     return (
-        <div className="h-full w-full bg-background">
+        <div className="h-full flex flex-col">
             <TenderPlanning
                 projectId={projectId}
                 onPrevStage={() => router.push(`/dashboard/${projectId}/launch`)}
