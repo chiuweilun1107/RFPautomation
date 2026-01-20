@@ -25,12 +25,7 @@ interface Chapter {
 }
 
 // Fallback initial outline if none exists
-const DEFAULT_OUTLINE: Chapter[] = [
-    { id: "1", title: "壹、計畫緣起與目的", sections: ["1.1 計畫緣起", "1.2 專案目標"] },
-    { id: "2", title: "貳、專案管理與執行團隊", sections: ["2.1 組織架構", "2.2 人力配置"] },
-    { id: "3", title: "參、服務建議書內容", sections: ["3.1 核心服務說明", "3.2 執行方法"] },
-    { id: "4", title: "肆、預期效益", sections: [] },
-];
+const DEFAULT_OUTLINE: Chapter[] = [];
 
 export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPlanningProps) {
     const [loading, setLoading] = useState(true);
@@ -349,7 +344,7 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                                     variant="outline"
                                     onClick={handleAddChapterClick}
                                     disabled={generating}
-                                    className="w-full py-6 border-dashed border-2 border-black/20 hover:border-[#FA4028] hover:text-[#FA4028] rounded-none uppercase tracking-widest font-bold"
+                                    className="w-full py-6 border-dashed border-2 border-black/20 hover:border-[#FA4028] hover:bg-[#FA4028] hover:text-white rounded-none uppercase tracking-widest font-bold"
                                 >
                                     {generating ? (
                                         <>
