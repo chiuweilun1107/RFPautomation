@@ -28,18 +28,15 @@ export function useProjects() {
   const [error, setError] = useState<Error | null>(null);
   const supabase = createClient();
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          project_assessments(*)
-        `)
-        .order('updated_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      // 使用我們的加速 API
+      const response = await fetch(`/api/projects/accelerated${forceRefresh ? '?refresh=true' : ''}`);
+      const { data, error: fetchError } = await response.json();
+
+      if (fetchError) throw new Error(fetchError);
 
       // Map assessment data to project fields if missing
       const mappedData = (data as any[])?.map(p => {
@@ -95,7 +92,7 @@ export function useProjects() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'projects' },
         () => {
-          fetchProjects();
+          fetchProjects(true);
         }
       )
       .subscribe();

@@ -97,6 +97,16 @@ services:
     networks:
       - rfp-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis-local
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    networks:
+      - rfp-network
+    restart: unless-stopped
+
 volumes:
   n8n_data:
     external: true
