@@ -35,8 +35,12 @@ __pycache__/
 .venv/
 venv/
 
-# n8n 備份
+# n8n 備份與資料
 *.bak
+n8n_data/*.sqlite-shm
+n8n_data/*.sqlite-wal
+n8n_data/*.journal
+n8n_data/n8nEventLog*
 
 # 日誌
 *.log
