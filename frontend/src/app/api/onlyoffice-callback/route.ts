@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       // 從 key 中提取 ID 和類型
       // key 格式: "template_{id}_{timestamp}" 或 "section_{id}_{timestamp}"
       const templateMatch = key.match(/^template_([a-f0-9-]+)_\d+$/);
-      const sectionMatch = key.match(/^section_([a-f0-9-]+)_\d+$/);
+      const sectionMatch = key.match(/^section_([a-f0-9-]+)_(?:\d+|stable)$/);
 
       let entityType: 'template' | 'section' | null = null;
       let entityId: string | null = null;

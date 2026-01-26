@@ -6,24 +6,35 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        // Use environment variable for n8n base URL
-        const n8nBaseUrl = process.env.N8N_BASE_URL || 'http://localhost:5679';
-        const webhookUrl = `${n8nBaseUrl}/webhook/process-proposal-template`;
+        // [MIGRATION] Reroute to WF01 (Ingestion)
+        // Original Body: { projectId, filePath, fileName, mode }
+        // WF01 Expects: { title (path), type, projectId, source_id? }
 
-        console.log('[Proxy] Calling n8n Template Processing:', webhookUrl);
+        const n8nUrl = process.env.N8N_INGEST_WEBHOOK || 'http://localhost:5678/webhook/ingest';
 
-        const response = await fetch(webhookUrl, {
+        console.log('[Proxy] Forwarding Template Parsing to WF01 (Ingestion):', n8nUrl);
+
+        // Adapt payload for WF01
+        const wf01Payload = {
+            title: body.filePath,      // WF01 uses 'title' as the file path/url
+            type: 'template',          // Mark as template so WF01 logic can distinguish if needed
+            projectId: body.projectId,
+            originalFileName: body.fileName,
+            mode: body.mode            // Pass mode (replace/append) for downstream logic
+        };
+
+        const response = await fetch(n8nUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
+            body: JSON.stringify(wf01Payload),
         });
 
         // Read response as text first to avoid JSON parsing errors
         const responseText = await response.text();
-        console.log('[Proxy] n8n response text:', responseText);
+        console.log('[Proxy] WF01 response text:', responseText);
 
         if (!response.ok) {
-            console.error('[Proxy] n8n error:', responseText);
+            console.error('[Proxy] WF01 error:', responseText);
             return NextResponse.json(
                 { error: responseText || 'Workflow failed' },
                 { status: response.status }

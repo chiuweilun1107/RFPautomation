@@ -71,7 +71,7 @@ export function TableOfContentsGenerator({ projectId, sections }: TableOfContent
       'Verdana': 'Verdana, Geneva, Arial, sans-serif'
     }
 
-    let families = []
+    const families = []
 
     if (fontName) {
       families.push(fontMap[fontName] || `"${fontName}"`)
