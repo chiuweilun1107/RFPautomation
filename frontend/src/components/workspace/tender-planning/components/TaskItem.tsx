@@ -7,6 +7,7 @@
 
 import { useState, memo } from "react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { DraggableTaskPopup } from "./DraggableTaskPopup";
 import type { Task, Section } from "../types";
 
@@ -33,15 +34,42 @@ const renderSummary = (text: any): string => {
 };
 
 /**
- * Clickable task list item with status badge
+ * Clickable task list item with status badge and pre-fetching
  */
 function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [prefetchedContent, setPrefetchedContent] = useState<string | null>(null);
+    const [isPrefetching, setIsPrefetching] = useState(false);
+    const supabase = createClient();
+
+    // Prefetch content on hover
+    const prefetchContent = async () => {
+        if (prefetchedContent || isPrefetching || !task?.id) return;
+        setIsPrefetching(true);
+        try {
+            const { data } = await supabase
+                .from('task_contents')
+                .select('content')
+                .eq('task_id', task.id)
+                .order('version', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (data?.content) {
+                setPrefetchedContent(data.content);
+            }
+        } catch (err) {
+            // Silently ignore prefetch errors
+        } finally {
+            setIsPrefetching(false);
+        }
+    };
 
     return (
         <>
             <div
                 onClick={() => setIsOpen(true)}
+                onMouseEnter={prefetchContent}
                 className="pl-4 border-l-2 border-black/5 dark:border-white/5 py-2 text-xs group cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-r-sm"
             >
                 <div className="flex justify-between items-start gap-4">
@@ -71,6 +99,7 @@ function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemPro
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
                 handleGenerateContent={handleGenerateContent}
+                initialContent={prefetchedContent}
             />
         </>
     );

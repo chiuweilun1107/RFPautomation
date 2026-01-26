@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Task, Section } from "../types";
 import { CitationBadge, Evidence } from "@/components/workspace/CitationBadge";
+import { CitationRenderer } from "@/components/workspace/CitationRenderer";
 import { SourceDetailPanel } from "@/components/workspace/SourceDetailPanel";
-import { collectTaskCitations } from "../utils/citationUtils";
-import { appendSourceToRequirement } from "../utils/requirementSourceFormatter";
+import { convertCitationMarksToNumbers } from "../utils/citationTextParser";
 
 interface DraggableTaskPopupProps {
     /** Task data to display */
@@ -31,24 +31,14 @@ interface DraggableTaskPopupProps {
     onClose: () => void;
     /** Content generation handler */
     handleGenerateContent: (task: any, section: any) => void;
+    /** Initial content if prefetched */
+    initialContent?: string | null;
 }
-
-/**
- * Render requirement text safely, handling both string and structured data
- */
-const renderRequirementText = (text: any): string => {
-    if (typeof text === 'string') return text;
-    try {
-        return JSON.stringify(text, null, 2);
-    } catch (e) {
-        return String(text);
-    }
-};
 
 /**
  * Brutalist-styled draggable task detail popup
  */
-function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGenerateContent }: DraggableTaskPopupProps) {
+function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGenerateContent, initialContent }: DraggableTaskPopupProps) {
     const nodeRef = React.useRef(null);
     const [copied, setCopied] = React.useState(false);
     const supabase = createClient();
@@ -56,7 +46,7 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
     // Citation states
     const [selectedEvidence, setSelectedEvidence] = React.useState<Evidence | null>(null);
     const [evidences, setEvidences] = React.useState<Record<number, Evidence>>({});
-    const [citationIds, setCitationIds] = React.useState<number[]>([]);
+    const [convertedText, setConvertedText] = React.useState<string>('');
 
     // Citation Window State (Draggable)
     const [selectedSource, setSelectedSource] = React.useState<any | null>(null);
@@ -93,15 +83,29 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
         }
     }, [task?.id]); // Removing supabase from deps as stable
 
-    // Effect: Collect citations
+    // Effect: Sync initialContent when opening
+    React.useEffect(() => {
+        if (isOpen && initialContent && !content) {
+            setContent(initialContent);
+        }
+    }, [isOpen, initialContent, content]);
+
+    // Effect: Convert citation marks to numbers
     React.useEffect(() => {
         if (task) {
-            // Force citations to be an array and cast to any to bypass strict type check against global Task type
-            const { evidences, citationIds } = collectTaskCitations({ ...task, citations: task.citations || [] } as any);
-            setEvidences(evidences);
-            setCitationIds(citationIds);
+            const rawText = typeof task.requirement_text === 'string'
+                ? task.requirement_text
+                : JSON.stringify(task.requirement_text, null, 2);
+
+            const { textWithNumbers, evidences: parsedEvidences } = convertCitationMarksToNumbers(
+                rawText,
+                task.citations || []
+            );
+
+            setConvertedText(textWithNumbers);
+            setEvidences(parsedEvidences);
         }
-    }, [task.id, task.citations]);
+    }, [task.id, task.requirement_text, task.citations]);
 
     // Effect: Handle Citation Window Dragging
     React.useEffect(() => {
@@ -178,6 +182,7 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
     // Effect: Fetch content and subscribe
     React.useEffect(() => {
         if (isOpen && task?.id) {
+            // Immediate fetch
             fetchContent();
 
             // Subscribe to realtime updates for this task's content
@@ -202,7 +207,7 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                 supabase.removeChannel(channel);
             };
         }
-    }, [isOpen, task?.id, fetchContent]);
+    }, [isOpen, task?.id, fetchContent, supabase]);
 
     // Hook Rule: Early returns must happen AFTER hooks
     if (!isOpen) return null;
@@ -284,17 +289,18 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
 
                     <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-zinc-950">
                         <div className="p-8 space-y-8">
-                            {/* Requirement Spec */}
+                            {/* Requirement Spec - 使用 CitationRenderer 渲染內聯徽章 */}
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
                                     <span className="w-1.5 h-4 bg-black dark:bg-white" />
                                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Requirement_Spec</h4>
                                 </div>
-                                <div className="p-5 bg-zinc-50 dark:bg-zinc-900 border-2 border-black/5 dark:border-white/5 font-mono text-sm leading-relaxed whitespace-pre-wrap">
-                                    {appendSourceToRequirement(
-                                        renderRequirementText(task.requirement_text),
-                                        task.citations || []
-                                    )}
+                                <div className="p-5 bg-zinc-50 dark:bg-zinc-900 border-2 border-black/5 dark:border-white/5 font-mono text-sm leading-relaxed">
+                                    <CitationRenderer
+                                        text={convertedText}
+                                        evidences={evidences}
+                                        onCitationClick={(evidence) => handleCitationClick(evidence)}
+                                    />
                                 </div>
                             </div>
 
@@ -319,7 +325,7 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                             )}
 
                             {/* Source References - Digital Badge Display */}
-                            {citationIds.length > 0 && (
+                            {Object.keys(evidences).length > 0 && (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                         <span className="w-1.5 h-4 bg-blue-500" />
@@ -327,20 +333,20 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                                     </div>
                                     <div className="border-2 border-blue-500/20 bg-blue-50/30 dark:bg-blue-950/20 p-5">
                                         {/* Display quote from first citation if available */}
-                                        {evidences[citationIds[0]]?.quote && (
+                                        {evidences[1]?.quote && (
                                             <blockquote className="text-xs italic text-zinc-600 dark:text-zinc-400 border-l-4 border-[#FA4028] pl-4 py-1 mb-4">
-                                                "{evidences[citationIds[0]].quote}"
+                                                "{evidences[1].quote}"
                                             </blockquote>
                                         )}
                                         <div className="flex flex-wrap gap-2 items-center">
                                             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mr-2">
-                                                Citations:
+                                                All_Citations:
                                             </span>
-                                            {citationIds.map((citId) => (
+                                            {Object.values(evidences).map((evidence) => (
                                                 <CitationBadge
-                                                    key={citId}
-                                                    evidence={evidences[citId]}
-                                                    onClick={(evidence) => handleCitationClick(evidence)}
+                                                    key={evidence.id}
+                                                    evidence={evidence}
+                                                    onClick={(ev) => handleCitationClick(ev)}
                                                 />
                                             ))}
                                         </div>
