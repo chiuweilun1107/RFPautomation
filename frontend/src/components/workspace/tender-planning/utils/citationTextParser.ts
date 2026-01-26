@@ -23,20 +23,42 @@ const SOURCE_ITEM_PATTERN = /([^,]+?)\s+P\.(\d+)/g;
 /**
  * Parse source information from citation text
  *
- * @param citationText - Example: "3-需求說明書.docx P.1, RFP.xlsx P.5"
+ * Supports multiple formats:
+ * - "需求說明書 P.1, RFP.xlsx P.5" - multiple full references
+ * - "需求說明書 P.2, P.7" - second reference inherits first title
+ * - "需求說明書 P.1" - single reference
+ *
+ * @param citationText - Example: "3-需求說明書.docx P.1, P.2, RFP.xlsx P.5"
  * @returns Parsed source list with title and page
  */
 function parseCitationText(citationText: string): Array<{ title: string; page: number }> {
   const sources: Array<{ title: string; page: number }> = [];
+  let lastTitle = '';
 
-  // Reset regex lastIndex to ensure correct parsing
-  SOURCE_ITEM_PATTERN.lastIndex = 0;
+  // Split by comma or fullwidth comma, then process each part
+  const parts = citationText.split(/[,，]/);
 
-  let match;
-  while ((match = SOURCE_ITEM_PATTERN.exec(citationText)) !== null) {
-    const title = match[1].trim();
-    const page = parseInt(match[2], 10);
-    sources.push({ title, page });
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    // Try to match "檔案名 P.頁碼" format
+    const fullMatch = /^(.+?)\s+P\.(\d+)/.exec(trimmed);
+    if (fullMatch) {
+      const title = fullMatch[1].trim();
+      const page = parseInt(fullMatch[2], 10);
+      lastTitle = title; // Remember this title for next standalone page references
+      sources.push({ title, page });
+      continue;
+    }
+
+    // Try to match standalone "P.頁碼" format (inherits previous title)
+    const pageOnlyMatch = /^P\.(\d+)/.exec(trimmed);
+    if (pageOnlyMatch && lastTitle) {
+      const page = parseInt(pageOnlyMatch[1], 10);
+      sources.push({ title: lastTitle, page }); // Reuse last title
+      continue;
+    }
   }
 
   return sources;

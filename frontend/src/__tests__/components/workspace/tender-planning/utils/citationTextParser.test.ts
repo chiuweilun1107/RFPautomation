@@ -74,6 +74,29 @@ describe('citationTextParser', () => {
       expect(Object.keys(result.evidences).length).toBe(2);
     });
 
+    it('should handle shorthand page references (inheriting previous title)', () => {
+      const text = '需求 (出處：3-需求說明書.docx P.1, P.2)。';
+      const result = convertCitationMarksToNumbers(text, mockCitations);
+
+      expect(result.textWithNumbers).toBe('需求 [1] [2]。');
+      expect(Object.keys(result.evidences).length).toBe(2);
+      expect(result.evidences[1].source_title).toBe('3-需求說明書.docx');
+      expect(result.evidences[1].page).toBe(1);
+      expect(result.evidences[2].source_title).toBe('3-需求說明書.docx');
+      expect(result.evidences[2].page).toBe(2);
+    });
+
+    it('should handle mixed shorthand and full references', () => {
+      const text = '需求 (出處：3-需求說明書.docx P.1, P.2, RFP.xlsx P.5)。';
+      const result = convertCitationMarksToNumbers(text, mockCitations);
+
+      expect(result.textWithNumbers).toBe('需求 [1] [2] [3]。');
+      expect(Object.keys(result.evidences).length).toBe(3);
+      expect(result.evidences[1].source_title).toBe('3-需求說明書.docx');
+      expect(result.evidences[2].source_title).toBe('3-需求說明書.docx');
+      expect(result.evidences[3].source_title).toBe('RFP.xlsx');
+    });
+
     it('should deduplicate same citations', () => {
       const text = '需求1 (出處：3-需求說明書.docx P.1) 和需求2 (出處：3-需求說明書.docx P.1)。';
       const result = convertCitationMarksToNumbers(text, mockCitations);
