@@ -1,4 +1,4 @@
-import { TemplateDesigner } from "@/components/templates/TemplateDesigner";
+import { TemplateDesignerWrapper } from "@/components/templates/TemplateDesignerWrapper";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
@@ -23,7 +23,7 @@ export default async function TemplateDesignPage({
 
   return (
     <>
-      <TemplateDesigner template={template} />
+      <TemplateDesignerWrapper template={template} />
     </>
   );
 }

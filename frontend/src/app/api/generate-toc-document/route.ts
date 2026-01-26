@@ -16,8 +16,19 @@ export async function POST(request: Request) {
     // 建立 Word 文檔
     const paragraphs: Paragraph[] = []
 
+    interface TitleFormat {
+      font: string;
+      size: number;
+      bold: boolean;
+      italics: boolean;
+      underline: boolean;
+      alignment: typeof AlignmentType[keyof typeof AlignmentType];
+      spacingBefore: number;
+      spacingAfter: number;
+    }
+
     // 添加標題 - 從範本中讀取完整格式
-    let titleFormat: any = {
+    let titleFormat: TitleFormat = {
       font: "Times New Roman",
       size: 32, // 16pt * 2 (docx uses half-points) - 預設備選
       bold: false,
@@ -28,9 +39,24 @@ export async function POST(request: Request) {
       spacingAfter: 400,
     }
 
+    interface TemplateParagraph {
+      text?: string;
+      style?: string;
+      format?: {
+        font_name?: string;
+        font_name_cjk?: string;
+        font_size?: number;
+        bold?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        alignment?: string;
+        spacing?: { before?: number; after?: number };
+      };
+    }
+
     // 從範本中找到「目錄」標題的格式
     if (template?.paragraphs && template.paragraphs.length > 0) {
-      const titlePara = template.paragraphs.find((p: any) =>
+      const titlePara = (template.paragraphs as TemplateParagraph[]).find((p) =>
         p.text?.includes('目錄') || p.style?.toLowerCase().includes('title')
       ) || template.paragraphs[0]
 
@@ -72,9 +98,24 @@ export async function POST(request: Request) {
       })
     )
 
+    interface SectionInput {
+      title: string;
+      level: number;
+      format?: {
+        numbering?: { level?: number };
+        alignment?: string;
+        font_size?: number;
+        font_name?: string;
+        bold?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        spacing?: { before?: number; after?: number };
+      };
+    }
+
     // 添加章節內容 - 模仿範本的 runs 結構
-    sections.forEach((section: any) => {
-      const format: any = section.format || {}
+    sections.forEach((section: SectionInput) => {
+      const format = section.format || {}
 
       // 決定層級：優先使用範本的 numbering.level，否則使用 section.level
       let actualLevel: number
@@ -89,7 +130,7 @@ export async function POST(request: Request) {
       const indent = actualLevel * 720 // 每層縮排 0.5 inch (720 twips)
 
       // 決定對齊方式
-      let alignment: any = AlignmentType.LEFT
+      let alignment: typeof AlignmentType[keyof typeof AlignmentType] = AlignmentType.LEFT
       if (format.alignment === 'center' || format.alignment === 'CENTER') alignment = AlignmentType.CENTER
       else if (format.alignment === 'right' || format.alignment === 'RIGHT') alignment = AlignmentType.RIGHT
       else if (format.alignment === 'both' || format.alignment === 'justify' || format.alignment === 'BOTH' || format.alignment === 'JUSTIFIED') alignment = AlignmentType.JUSTIFIED
@@ -162,7 +203,7 @@ export async function POST(request: Request) {
     const buffer = await Packer.toBuffer(doc)
 
     // 返回文檔
-    return new NextResponse(buffer as any, {
+    return new NextResponse(Buffer.from(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

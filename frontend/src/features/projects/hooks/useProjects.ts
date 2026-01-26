@@ -3,11 +3,22 @@ import { createClient } from '@/lib/supabase/client';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { logger } from '@/lib/errors';
 
+interface AssessmentContent {
+  [key: string]: {
+    text?: string;
+    value?: string | number;
+  };
+}
+
 export interface ProjectAssessment {
   id: string;
   project_id: string;
-  basic_info?: any;
-  dates?: any;
+  basic_info?: {
+    content?: AssessmentContent;
+  };
+  dates?: {
+    content?: AssessmentContent;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -42,7 +53,7 @@ export function useProjects() {
       if (fetchError) throw new Error(fetchError);
 
       // Map assessment data to project fields if missing
-      const mappedData = (data as any[])?.map(p => {
+      const mappedData = (data as Project[])?.map(p => {
         const assessment = Array.isArray(p.project_assessments)
           ? p.project_assessments[0]
           : p.project_assessments;

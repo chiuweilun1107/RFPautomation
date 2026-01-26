@@ -114,7 +114,7 @@ export default function TestOnlyOfficeUploadPage() {
             console.log('[編輯器] 文檔已就緒');
             setEditorReady(true);
           },
-          onError: (event: any) => {
+          onError: (event: { data?: { error?: string; message?: string } }) => {
             console.error('[編輯器] 錯誤:', event);
             setError(`編輯器錯誤: ${JSON.stringify(event)}`);
           },

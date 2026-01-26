@@ -125,8 +125,8 @@ export async function POST(request: Request) {
             message: '網頁內容已優化並添加，正在處理中...'
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('API error:', error);
-        return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal error' }, { status: 500 });
     }
 }

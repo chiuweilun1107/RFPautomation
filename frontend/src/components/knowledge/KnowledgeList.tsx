@@ -6,6 +6,8 @@ import { FileText, Trash2, CheckCircle2, Clock, AlertCircle } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useErrorHandler } from "@/hooks/useErrorHandler"
+import { logger } from "@/lib/errors/logger"
 import {
     Table,
     TableBody,
@@ -51,6 +53,7 @@ export function KnowledgeList({
     viewMode?: 'grid' | 'list',
     isLoading?: boolean
 }) {
+    const { handleDbError } = useErrorHandler();
     const rawDocs = initialDocs as Source[]
 
     // Client-side filtering
@@ -84,7 +87,13 @@ export function KnowledgeList({
                 .from('raw-files')
                 .remove([doc.origin_url])
 
-            if (storageError) console.error("Storage delete failed", storageError)
+            if (storageError) {
+                logger.warn('Storage file delete failed', 'KnowledgeList', {
+                    documentId: doc.id,
+                    originUrl: doc.origin_url,
+                    error: storageError
+                });
+            }
 
             // 2. Delete from DB (Sources)
             const { error: dbError } = await supabase
@@ -95,10 +104,16 @@ export function KnowledgeList({
             if (dbError) throw dbError
 
             toast.success('Document deleted')
+            logger.info('Document deleted successfully', 'KnowledgeList', {
+                documentId: doc.id,
+                documentTitle: doc.title
+            });
             router.refresh()
         } catch (error) {
-            console.error('Delete failed:', error)
-            toast.error('Failed to delete document')
+            handleDbError(error, 'DeleteDocument', {
+                userMessage: 'Failed to delete document',
+                metadata: { documentId: doc.id }
+            });
         } finally {
             setDeletingId(null)
             setDocToDelete(null)

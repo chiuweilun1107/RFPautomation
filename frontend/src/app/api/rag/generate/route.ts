@@ -41,10 +41,17 @@ export async function POST(request: Request) {
         // 處理可能的空回應
         const responseText = await response.text();
 
-        let data: any = {};
+        interface RagResponse {
+            answer?: string;
+            response?: string;
+            draft?: string;
+            sources?: unknown[];
+        }
+
+        let data: RagResponse = {};
         if (responseText && responseText.trim()) {
             try {
-                data = JSON.parse(responseText);
+                data = JSON.parse(responseText) as RagResponse;
             } catch (e) {
                 data = { answer: responseText };
             }
@@ -79,10 +86,11 @@ export async function POST(request: Request) {
             sources
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('[RAG Generate] Error:', error);
+        const message = error instanceof Error ? error.message : 'Failed to generate draft';
         return NextResponse.json(
-            { error: error.message || 'Failed to generate draft' },
+            { error: message },
             { status: 500 }
         );
     }

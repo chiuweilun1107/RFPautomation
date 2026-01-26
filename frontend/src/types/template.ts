@@ -70,6 +70,9 @@ export interface TableCell {
   rowSpan?: number;
   colSpan?: number;
   style?: Record<string, unknown>;
+  row?: number; // Cell row position
+  col?: number; // Cell column position
+  images?: DocumentImage[]; // Images within cell
 }
 
 export interface TableRow {
@@ -83,6 +86,7 @@ export interface DocumentTable {
   name?: string; // Table name
   label?: string; // Display label
   rows: number | TableRow[];
+  rows_data?: TableRow[]; // Legacy: alternative property for rows data
   columns?: TableColumn[];
   cells?: TableCell[];
   rowFormats?: DocumentFormat[];

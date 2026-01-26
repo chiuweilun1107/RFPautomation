@@ -78,7 +78,7 @@ export function SourceSelectionDialog({
             // Default select all
             setSelectedIds(new Set(sourceFiles?.map(s => s.id)))
 
-        } catch (error: any) {
+        } catch (error) {
             console.error("Failed to fetch sources:", error)
             toast.error("Failed to load sources")
         } finally {

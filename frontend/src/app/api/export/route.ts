@@ -96,10 +96,10 @@ export async function GET(req: NextRequest) {
             },
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Export Error:", error);
         return NextResponse.json(
-            { error: error.message || 'Failed to export document' },
+            { error: error instanceof Error ? error.message : 'Failed to export document' },
             { status: 500 }
         );
     }

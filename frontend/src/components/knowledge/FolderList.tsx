@@ -6,6 +6,8 @@ import { Folder, Upload, Trash2, FileText, Clock, Edit2, FolderPlus } from "luci
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { VirtualizedList } from "@/components/common/VirtualizedList"
+import { useErrorHandler } from "@/hooks/useErrorHandler"
+import { logger } from "@/lib/errors/logger"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -48,6 +50,7 @@ interface FolderListProps {
 }
 
 export function FolderList({ folders, onFolderSelect, selectedFolderId, onFolderUpdate, onCreateFolderClick }: FolderListProps) {
+    const { handleDbError } = useErrorHandler()
     const [folderToDelete, setFolderToDelete] = React.useState<Folder | null>(null)
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
     const [editingFolder, setEditingFolder] = React.useState<Folder | null>(null)
@@ -86,14 +89,20 @@ export function FolderList({ folders, onFolderSelect, selectedFolderId, onFolder
 
             if (error) throw error
             toast.success('資料夾已刪除')
-            
+            logger.info('Folder deleted successfully', 'FolderList', {
+                folderId,
+                folderName: folderToDelete.name
+            });
+
             // 通知父組件更新數據
             if (onFolderUpdate) {
                 onFolderUpdate()
             }
         } catch (error) {
-            console.error('Delete failed:', error)
-            toast.error('無法刪除資料夾')
+            handleDbError(error, 'DeleteFolder', {
+                userMessage: '無法刪除資料夾',
+                metadata: { folderId }
+            });
         } finally {
             setDeletingId(null)
             setFolderToDelete(null)
@@ -121,16 +130,23 @@ export function FolderList({ folders, onFolderSelect, selectedFolderId, onFolder
 
             if (error) throw error
             toast.success('資料夾已更新')
+            logger.info('Folder updated successfully', 'FolderList', {
+                folderId: editingFolder.id,
+                oldName: editingFolder.name,
+                newName: editName
+            });
             setIsEditDialogOpen(false)
             setEditingFolder(null)
-            
+
             // 通知父組件更新數據
             if (onFolderUpdate) {
                 onFolderUpdate()
             }
         } catch (error) {
-            console.error('Update failed:', error)
-            toast.error('無法更新資料夾')
+            handleDbError(error, 'UpdateFolder', {
+                userMessage: '無法更新資料夾',
+                metadata: { folderId: editingFolder.id }
+            });
         }
     }
 

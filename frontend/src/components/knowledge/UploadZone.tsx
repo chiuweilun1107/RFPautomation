@@ -8,6 +8,8 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { sourcesApi } from "@/features/sources/api/sourcesApi"
 import { useGoogleDrivePicker } from "@/hooks/useGoogleDrivePicker"
+import { useErrorHandler } from "@/hooks/useErrorHandler"
+import { logger } from "@/lib/errors/logger"
 
 interface UploadZoneProps {
     folders?: any[];
@@ -24,6 +26,7 @@ export function UploadZone({
     onUploadComplete,
     onCloseDialog
 }: UploadZoneProps = {}) {
+    const { handleFileError, handleApiError } = useErrorHandler()
     const router = useRouter()
     const [isDragging, setIsDragging] = React.useState(false)
     const [isUploading, setIsUploading] = React.useState(false)
@@ -72,6 +75,11 @@ export function UploadZone({
         const supabase = createClient()
         let successCount = 0
 
+        logger.info('Starting file upload batch', 'UploadZone', {
+            fileCount: files.length,
+            folderId: selectedFolderId
+        });
+
         for (const file of files) {
             try {
                 // 1. Upload to Storage (raw-files)
@@ -79,7 +87,11 @@ export function UploadZone({
                 const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt || 'bin'}`
                 const filePath = `${fileName}`
 
-                console.log(`Attempting upload: ${filePath}, Size: ${file.size}`)
+                logger.info('Uploading file', 'UploadZone', {
+                    fileName: file.name,
+                    fileSize: file.size,
+                    filePath
+                });
 
                 const { error: uploadError } = await supabase.storage
                     .from('raw-files')
@@ -103,15 +115,26 @@ export function UploadZone({
                 }
 
                 successCount++
+                logger.info('File uploaded successfully', 'UploadZone', {
+                    fileName: file.name,
+                    filePath
+                });
             } catch (error: any) {
-                console.error('Operation Failed:', error)
-                toast.error(`Failed ${file.name}: ${error.message || 'Unknown error'}`)
+                handleFileError(error, 'Upload', file.name, {
+                    userMessage: `Failed ${file.name}`,
+                    metadata: { folderId: selectedFolderId }
+                });
             }
         }
 
         setIsUploading(false)
         if (successCount > 0) {
             toast.success(`Successfully uploaded ${successCount} files`)
+            logger.info('Upload batch completed', 'UploadZone', {
+                successCount,
+                totalFiles: files.length,
+                folderId: selectedFolderId
+            });
             router.refresh()
 
             // Call onUploadComplete callback if provided

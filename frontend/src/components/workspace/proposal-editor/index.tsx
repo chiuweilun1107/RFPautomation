@@ -225,8 +225,8 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         toast.success("章節內容已更新");
         cancelInlineEditSection();
         fetchData();
-      } catch (error: any) {
-        toast.error(`更新失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`更新失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     },
     [supabase, inlineSectionValue, cancelInlineEditSection, fetchData]
@@ -280,8 +280,8 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
 
         toast.success("圖片已刪除");
         fetchData();
-      } catch (error: any) {
-        toast.error(`刪除失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`刪除失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     },
     [supabase, fetchData]

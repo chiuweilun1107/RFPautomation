@@ -3,13 +3,16 @@
 import * as React from "react"
 
 interface VariableRendererProps {
-  text: string
+  text?: string
 }
 
 // 識別變數的正則表達式
 const VARIABLE_REGEX = /\{([^}]+)\}/g
 
 export function VariableRenderer({ text }: VariableRendererProps) {
+  // Handle undefined or empty text
+  if (!text) return null
+
   // 分割文字，識別變數
   const parts = text.split(VARIABLE_REGEX)
   const matches = text.match(VARIABLE_REGEX) || []

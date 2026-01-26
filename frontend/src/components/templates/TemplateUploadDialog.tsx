@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { getErrorMessage } from '@/lib/errorUtils';
 import { BaseDialog } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, FileText } from "lucide-react";
@@ -9,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { logger } from "@/lib/errors/logger";
 
 interface TemplateUploadDialogProps {
     open: boolean;
@@ -23,6 +24,7 @@ export function TemplateUploadDialog({
     projectId,
     onSuccess,
 }: TemplateUploadDialogProps) {
+    const { handleFileError, handleApiError } = useErrorHandler();
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [mode, setMode] = useState<"replace" | "append">("replace");
@@ -38,6 +40,13 @@ export function TemplateUploadDialog({
 
         setIsUploading(true);
         try {
+            logger.info('Starting template upload', 'TemplateUploadDialog', {
+                projectId,
+                fileName: file.name,
+                fileSize: file.size,
+                mode
+            });
+
             // 1. Upload to Supabase Storage directly
             const supabase = createClient();
             const fileExt = file.name.split('.').pop();
@@ -109,11 +118,18 @@ export function TemplateUploadDialog({
             }
 
             toast.success(`成功從範本生成 ${result.count || 0} 個章節`);
+            logger.info('Template upload completed', 'TemplateUploadDialog', {
+                projectId,
+                sectionsCreated: result.count || 0,
+                mode
+            });
             onSuccess();
             onClose();
         } catch (error) {
-            console.error(error);
-            toast.error(getErrorMessage(error) || "上傳失敗");
+            handleFileError(error, 'UploadTemplate', file?.name, {
+                userMessage: '上傳失敗，請重試',
+                metadata: { projectId, mode }
+            });
         } finally {
             setIsUploading(false);
         }

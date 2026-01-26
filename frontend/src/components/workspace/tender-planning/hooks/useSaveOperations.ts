@@ -87,7 +87,7 @@ export function useSaveOperations({
             toast.success("Proposal Outline Saved", {
                 description: "Your changes have been committed to the database."
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error saving outline:", error);
             toast.error("Save Failed", {
                 description: error.message

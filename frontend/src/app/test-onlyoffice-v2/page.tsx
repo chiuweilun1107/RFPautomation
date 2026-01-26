@@ -98,7 +98,7 @@ export default function TestOnlyOfficeV2Page() {
           onDocumentReady: () => {
             console.log('[ONLYOFFICE] 文檔已就緒');
           },
-          onError: (event: any) => {
+          onError: (event: { data?: { error?: string; message?: string } }) => {
             console.error('[ONLYOFFICE] 錯誤:', event);
             setError(`ONLYOFFICE 錯誤: ${JSON.stringify(event)}`);
           },

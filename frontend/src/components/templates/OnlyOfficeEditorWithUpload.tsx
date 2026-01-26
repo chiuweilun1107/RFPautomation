@@ -9,6 +9,8 @@ import { createClient } from '@/lib/supabase/client';
 import { getOnlyOfficeApiScriptUrl } from '@/lib/onlyoffice-config';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnlyOfficeEditorSkeleton } from '@/components/ui/skeletons/OnlyOfficeEditorSkeleton';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { logger } from '@/lib/errors/logger';
 
 interface OnlyOfficeEditorWithUploadProps {
   template: Template;
@@ -28,6 +30,7 @@ export function OnlyOfficeEditorWithUpload({
   onError,
   documentKey,
 }: OnlyOfficeEditorWithUploadProps) {
+  const { handleError, handleFileError } = useErrorHandler();
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +57,11 @@ export function OnlyOfficeEditorWithUpload({
     setShowUpload(false);
 
     try {
-      console.log('[上傳] 處理文件:', file.name);
+      logger.info('Starting file upload', 'OnlyOfficeEditorWithUpload', {
+        fileName: file.name,
+        fileSize: file.size,
+        templateId: template.id
+      });
 
       // 使用字體處理 API
       const formData = new FormData();
@@ -71,17 +78,23 @@ export function OnlyOfficeEditorWithUpload({
       }
 
       const result = await response.json();
-      console.log('[上傳] 成功:', result.url);
-
       setDocumentUrl(result.url);
       setIsProcessing(false);
+
+      logger.info('File uploaded successfully', 'OnlyOfficeEditorWithUpload', {
+        fileName: file.name,
+        documentUrl: result.url,
+        templateId: template.id
+      });
     } catch (err) {
-      console.error('[上傳] 失敗:', err);
-      const errorMsg = err instanceof Error ? err.message : '上傳失敗';
-      setError(errorMsg);
+      const errorInfo = handleFileError(err, 'Upload', file.name, {
+        userMessage: '上傳失敗，請重試',
+        metadata: { templateId: template.id }
+      });
+      setError(errorInfo.message);
       setIsProcessing(false);
       setShowUpload(true);
-      onError?.(errorMsg);
+      onError?.(errorInfo.message);
     }
   };
 
@@ -167,7 +180,7 @@ export function OnlyOfficeEditorWithUpload({
               setIsProcessing(false);
               onDocumentReady?.();
             },
-            onError: (event: any) => {
+            onError: (event: { data?: { error?: string; message?: string } }) => {
               console.error('[編輯器] 錯誤:', event);
               const errorMsg = `編輯器錯誤: ${JSON.stringify(event?.data || event)}`;
               setError(errorMsg);
@@ -194,13 +207,16 @@ export function OnlyOfficeEditorWithUpload({
         editorInstanceRef.current = new window.DocsAPI.DocEditor('onlyoffice-editor-container', config);
 
       } catch (err) {
-        console.error('[編輯器] 初始化失敗:', err);
-        const errorMsg = err instanceof Error ? err.message : '初始化失敗';
-        setError(errorMsg);
+        const errorInfo = handleError(err, {
+          context: 'InitOnlyOfficeEditor',
+          userMessage: '編輯器初始化失敗',
+          metadata: { templateId: template.id }
+        });
+        setError(errorInfo.message);
         setShowUpload(true);
         setIsAutoLoading(false);
         setIsProcessing(false);
-        onError?.(errorMsg);
+        onError?.(errorInfo.message);
       }
     }, 300); // 延遲 300ms 確保 DOM 準備好
 
@@ -276,7 +292,10 @@ export function OnlyOfficeEditorWithUpload({
       }
 
       try {
-        console.log('[自動載入] 開始載入文檔:', template.file_path);
+        logger.info('Auto-loading document', 'OnlyOfficeEditorWithUpload', {
+          templateId: template.id,
+          filePath: template.file_path
+        });
         setIsAutoLoading(true);
         setIsProcessing(true);
 
@@ -285,11 +304,9 @@ export function OnlyOfficeEditorWithUpload({
         // 判斷 file_path 是完整 URL 還是 storage path
         if (template.file_path.startsWith('http://') || template.file_path.startsWith('https://')) {
           // 已經是完整的 URL，直接使用
-          console.log('[自動載入] 使用完整 URL:', template.file_path);
           documentUrl = template.file_path;
         } else {
           // 是 storage path，從 Supabase Storage 獲取公開 URL
-          console.log('[自動載入] 從 storage 獲取 URL:', template.file_path);
           const { data: urlData } = createClient().storage
             .from('documents')
             .getPublicUrl(template.file_path);
@@ -299,7 +316,6 @@ export function OnlyOfficeEditorWithUpload({
           }
 
           documentUrl = urlData.publicUrl;
-          console.log('[自動載入] Storage URL:', documentUrl);
         }
 
         // 驗證 URL 是否可訪問
@@ -308,15 +324,20 @@ export function OnlyOfficeEditorWithUpload({
           throw new Error(`文檔無法訪問 (${response.status})`);
         }
 
-        console.log('[自動載入] 文檔驗證成功，準備載入編輯器');
-
         // 設置文檔 URL，觸發編輯器初始化
         setDocumentUrl(documentUrl);
+
+        logger.info('Document auto-loaded successfully', 'OnlyOfficeEditorWithUpload', {
+          templateId: template.id,
+          documentUrl
+        });
         // 注意：isAutoLoading 和 isProcessing 會在編輯器就緒時關閉
       } catch (err) {
-        console.error('[自動載入] 失敗:', err);
-        const errorMsg = err instanceof Error ? err.message : '自動載入失敗';
-        setError(errorMsg);
+        const errorInfo = handleFileError(err, 'AutoLoad', template.file_path, {
+          userMessage: '自動載入失敗，請手動上傳文件',
+          metadata: { templateId: template.id }
+        });
+        setError(errorInfo.message);
         // 如果自動載入失敗，顯示上傳界面
         setShowUpload(true);
         setIsAutoLoading(false);

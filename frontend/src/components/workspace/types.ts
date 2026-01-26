@@ -10,6 +10,7 @@ export interface Task {
     citations?: { source_id: string; page: number; quote: string; title?: string }[];
     order_index?: number;
     task_images?: TaskImage[];
+    workflow_type?: string;
 }
 
 export interface TaskContent {

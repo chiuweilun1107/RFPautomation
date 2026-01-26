@@ -224,8 +224,8 @@ export const SortableChapterItem = memo(
         // Check generating state
         if (prevGenerating !== nextGenerating) return false;
 
-        // Check sections array length (shallow check)
-        if ((prevChapter.sections?.length || 0) !== (nextChapter.sections?.length || 0)) return false;
+        // Check sections array reference (catches deep updates in immutable state)
+        if (prevChapter.sections !== nextChapter.sections) return false;
 
         // Callbacks are assumed stable via useCallback
         return true;

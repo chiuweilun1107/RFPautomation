@@ -112,7 +112,12 @@ export interface SourceSelectionContext {
     /** Type of entity requesting source selection */
     type: 'chapter' | 'section' | 'task';
     /** Additional context data */
-    data: any;
+    data: {
+        chapterIndex?: number;
+        sectionId?: string;
+        taskId?: string;
+        [key: string]: unknown;
+    };
     /** Callback to execute after source selection */
     next: (sourceIds: string[]) => void;
 }

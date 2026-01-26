@@ -8,12 +8,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, CheckCircle2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface TeamRequirement {
+    role: string;
+    count?: number;
+    certs?: string[];
+    experience?: string;
+    is_full_time?: boolean;
+    min_years?: number;
+}
+
+interface Requirements {
+    red_lines?: {
+        team_requirements?: TeamRequirement[];
+    };
+}
+
+interface Resource {
+    id: string;
+    name: string;
+    certificates?: string[];
+    role?: string;
+    avatar?: string;
+}
+
 interface TeamFormationCardProps {
-    requirements: any;
+    requirements: Requirements;
 }
 
 export function TeamFormationCard({ requirements }: TeamFormationCardProps) {
-    const [resources, setResources] = useState<any[]>([]);
+    const [resources, setResources] = useState<Resource[]>([]);
     const [assignments, setAssignments] = useState<Record<number, string>>({}); // role index -> resource id
     const supabase = createClient();
 
@@ -46,7 +69,7 @@ export function TeamFormationCard({ requirements }: TeamFormationCardProps) {
 
     return (
         <div className="space-y-4">
-            {neededRoles.map((roleReq: any, idx: number) => {
+            {neededRoles.map((roleReq: TeamRequirement, idx: number) => {
                 const assignedId = assignments[idx];
                 const assignedPerson = resources.find(r => r.id === assignedId);
                 const isWarning = assignedPerson && roleReq.certs &&

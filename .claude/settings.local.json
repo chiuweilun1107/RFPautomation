@@ -153,7 +153,10 @@
       "Bash(dig:*)",
       "Bash(redis-cli ping:*)",
       "Bash(docker stats:*)",
-      "Bash(npm ls --depth=0)"
+      "Bash(npm ls --depth=0)",
+      "Bash(./scripts/verify-realtime-implementation.sh:*)",
+      "Bash(./scripts/check-error-handling.sh:*)",
+      "Bash(test:*)"
     ]
   }
 }

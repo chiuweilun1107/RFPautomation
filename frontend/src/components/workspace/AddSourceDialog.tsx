@@ -80,7 +80,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
             } else {
                 toast.info('沒有找到相關來源');
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('AI search failed:', error);
             toast.error(error.message || 'AI 搜索失敗');
         } finally {
@@ -95,7 +95,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
             await sourcesApi.fromUrl(result.url, projectId);
             toast.success('來源已添加');
             onSourceAdded?.();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Add search result failed:', error);
             toast.error('添加失敗');
         } finally {
@@ -132,7 +132,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
             toast.success('文件上傳成功，正在處理中...');
             onSourceAdded?.();
             onOpenChange(false);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Upload failed:', error);
             toast.error('上傳失敗');
         } finally {
@@ -155,7 +155,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
             setUrlInput("");
             onSourceAdded?.();
             onOpenChange(false);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Add URL failed:', error);
             toast.error(error.message || '添加網址失敗');
         } finally {
@@ -182,7 +182,7 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
             setTextTitle("");
             onSourceAdded?.();
             onOpenChange(false);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Add text failed:', error);
             toast.error('添加文字失敗');
         } finally {

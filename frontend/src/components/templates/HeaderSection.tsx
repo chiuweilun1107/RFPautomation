@@ -2,36 +2,10 @@
 
 import * as React from "react"
 import { VariableRenderer } from "./VariableRenderer"
+import type { HeaderFooterContent } from "@/types/template-advanced"
 
-interface HeaderData {
-  paragraphs?: Array<{
-    text: string
-    format?: any
-    runs?: any[]
-  }>
-  images?: Array<{
-    url: string
-    width?: number
-    height?: number
-  }>
-  tables?: Array<{
-    rows: number
-    columns: number
-    rows_data?: Array<{
-      cells: Array<{
-        text: string
-        row: number
-        col: number
-        images?: Array<{
-          id: string
-          url: string
-          width?: number
-          height?: number
-        }>
-      }>
-    }>
-  }>
-}
+// Use the imported type directly
+type HeaderData = HeaderFooterContent
 
 interface HeaderSectionProps {
   headerData?: {

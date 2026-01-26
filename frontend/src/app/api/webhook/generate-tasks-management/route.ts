@@ -43,7 +43,7 @@ export async function POST(request: Request) {
         const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ ...body, workflow_type: 'wf13_article' }),
         });
 
         const responseText = await response.text();
@@ -65,10 +65,10 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json(data);
-    } catch (error: any) {
+    } catch (error) {
         console.error('[Proxy] Error:', error);
         return NextResponse.json(
-            { error: error.message || 'Internal Server Error' },
+            { error: error instanceof Error ? error.message : 'Internal Server Error' },
             { status: 500 }
         );
     }

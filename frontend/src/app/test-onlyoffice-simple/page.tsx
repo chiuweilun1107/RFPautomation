@@ -40,9 +40,9 @@ export default function TestOnlyOfficeSimplePage() {
           onDocumentReady: () => {
             console.log('[SUCCESS] 文檔載入成功！可以開始編輯了！');
           },
-          onError: (event: any) => {
+          onError: (event: { data?: { error?: string; message?: string; errorCode?: string } }) => {
             console.error('[ERROR] ONLYOFFICE 錯誤:', event);
-            setError(`錯誤代碼: ${event.data?.errorCode || 'unknown'}`);
+            setError(`錯誤代碼: ${event.data?.errorCode || event.data?.error || 'unknown'}`);
           },
         },
       };

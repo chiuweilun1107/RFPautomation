@@ -623,15 +623,25 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                 {/* NotebookLM shows list below results panel, so we keep it */}
                 <CardContent className="px-0 space-y-6 flex-1 overflow-y-auto">
                     {filteredSources.length === 0 && sources.length === 0 && searchState === 'idle' && (
-                        <div className="text-center text-gray-400 py-12 text-xs font-mono uppercase tracking-wider border border-dashed border-gray-300 dark:border-gray-700 m-1">
-                            NO SOURCES FOUND
-                            <br />
-                            <span className="text-[10px] opacity-70 mt-2 block">Upload files or use AI Search above</span>
+                        <div className="text-center py-16 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-black/5 dark:bg-white/5 m-1">
+                            <Globe className="h-14 w-14 mx-auto text-black/20 dark:text-white/20 mb-5" strokeWidth={1.5} />
+                            <h3 className="font-black uppercase tracking-tight text-foreground mb-2 text-base">
+                                NO SOURCES FOUND
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground max-w-xs mx-auto leading-relaxed uppercase tracking-wider font-bold">
+                                Upload files or use AI Search above to build your knowledge base.
+                            </p>
                         </div>
                     )}
                     {filteredSources.length === 0 && sources.length > 0 && filterQuery && (
-                        <div className="text-center text-gray-400 py-8 text-xs font-mono uppercase tracking-wider">
-                            NO MATCHES FOR "{filterQuery}"
+                        <div className="text-center py-12">
+                            <Search className="h-12 w-12 mx-auto text-black/30 dark:text-white/30 mb-4" strokeWidth={1.5} />
+                            <h3 className="font-black uppercase tracking-tight text-foreground mb-2 text-sm">
+                                NO MATCHES FOR &quot;{filterQuery}&quot;
+                            </h3>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                                Try adjusting your search query
+                            </p>
                         </div>
                     )}
 

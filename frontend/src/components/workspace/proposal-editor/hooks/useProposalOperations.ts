@@ -35,8 +35,8 @@ export function useProposalOperations(
         if (error) throw error;
         toast.success("章節已添加");
         await fetchData();
-      } catch (error: any) {
-        toast.error(`添加失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`添加失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -57,8 +57,8 @@ export function useProposalOperations(
         if (error) throw error;
         toast.success("章節已更新");
         await fetchData();
-      } catch (error: any) {
-        toast.error(`更新失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`更新失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -83,8 +83,8 @@ export function useProposalOperations(
         if (error) throw error;
         toast.success("章節已刪除");
         await fetchData();
-      } catch (error: any) {
-        toast.error(`刪除失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`刪除失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -109,8 +109,8 @@ export function useProposalOperations(
         if (error) throw error;
         toast.success("任務已添加");
         await fetchData();
-      } catch (error: any) {
-        toast.error(`添加失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`添加失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -131,8 +131,8 @@ export function useProposalOperations(
         if (error) throw error;
         toast.success("任務已更新");
         await fetchData();
-      } catch (error: any) {
-        toast.error(`更新失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`更新失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -165,8 +165,8 @@ export function useProposalOperations(
           };
           return removeTaskRecursive(prev);
         });
-      } catch (error: any) {
-        toast.error(`刪除失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`刪除失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -298,7 +298,7 @@ export function useProposalOperations(
             .eq("id", activeTaskId);
 
           if (error) throw error;
-        } catch (error: any) {
+        } catch (error) {
           toast.error("拖拽更新失敗");
           await fetchData(); // 回滾
         }
@@ -340,8 +340,8 @@ export function useProposalOperations(
         const result = await response.json();
         toast.success(`已生成 ${result.taskCount || 0} 個任務`);
         await fetchData();
-      } catch (error: any) {
-        toast.error(`生成失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`生成失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -380,8 +380,8 @@ export function useProposalOperations(
         } else {
           throw new Error("生成失敗");
         }
-      } catch (error: any) {
-        toast.error(`內容生成失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`內容生成失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -454,8 +454,8 @@ export function useProposalOperations(
 
         toast.success("整合成功且已儲存！");
         await fetchData();
-      } catch (error: any) {
-        toast.error(`整合失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`整合失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
@@ -485,8 +485,8 @@ export function useProposalOperations(
         toast.success("圖片已生成");
         await fetchData();
         return result;
-      } catch (error: any) {
-        toast.error(`圖片生成失敗: ${error.message}`);
+      } catch (error) {
+        toast.error(`圖片生成失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },

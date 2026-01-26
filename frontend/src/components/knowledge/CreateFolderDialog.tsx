@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { getErrorMessage } from '@/lib/errorUtils'
 import { createClient } from "@/lib/supabase/client"
 import { Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
@@ -10,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { BaseDialog } from "@/components/common"
+import { useErrorHandler } from "@/hooks/useErrorHandler"
+import { logger } from "@/lib/errors/logger"
 
 interface CreateFolderDialogProps {
     onFolderCreated?: () => void
@@ -18,6 +19,7 @@ interface CreateFolderDialogProps {
 }
 
 export function CreateFolderDialog({ onFolderCreated, open: controlledOpen, onOpenChange }: CreateFolderDialogProps) {
+    const { handleDbError } = useErrorHandler()
     const [internalOpen, setInternalOpen] = React.useState(false)
     const open = controlledOpen !== undefined ? controlledOpen : internalOpen
     const setOpen = onOpenChange || setInternalOpen
@@ -48,10 +50,14 @@ export function CreateFolderDialog({ onFolderCreated, open: controlledOpen, onOp
                 .single()
 
             if (dbError) {
-                throw new Error(getErrorMessage(dbError) || "Failed to create folder")
+                throw dbError
             }
 
             toast.success("資料夾建立成功！")
+            logger.info('Folder created successfully', 'CreateFolderDialog', {
+                folderName: name,
+                userId: user.id
+            });
             setOpen(false)
             setName("")
             setDescription("")
@@ -60,9 +66,11 @@ export function CreateFolderDialog({ onFolderCreated, open: controlledOpen, onOp
                 onFolderCreated()
             }
         } catch (err) {
-            const errorMessage = getErrorMessage(err) || "建立資料夾失敗，請重試。"
-            setError(errorMessage)
-            toast.error(errorMessage)
+            const errorInfo = handleDbError(err, 'CreateFolder', {
+                userMessage: '建立資料夾失敗，請重試',
+                metadata: { folderName: name }
+            });
+            setError(errorInfo.message)
         } finally {
             setIsLoading(false)
         }

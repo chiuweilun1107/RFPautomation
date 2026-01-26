@@ -5,6 +5,7 @@
 
 import { Section, Task } from "../types";
 import { toast } from "sonner";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export class EventHandlers {
     /**
@@ -31,7 +32,7 @@ export class EventHandlers {
         sectionId: string,
         sections: Section[],
         setSections: (sections: Section[]) => void,
-        supabase: any
+        supabase: SupabaseClient
     ) {
         try {
             const { error } = await supabase
@@ -44,8 +45,8 @@ export class EventHandlers {
             const newSections = sections.filter((s) => s.id !== sectionId);
             setSections(newSections);
             toast.success("Chapter deleted");
-        } catch (error: any) {
-            toast.error(`Delete failed: ${error.message}`);
+        } catch (error) {
+            toast.error(`Delete failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
 
@@ -57,7 +58,7 @@ export class EventHandlers {
         sectionId: string,
         sections: Section[],
         setSections: (sections: Section[]) => void,
-        supabase: any
+        supabase: SupabaseClient
     ) {
         try {
             const { error } = await supabase
@@ -78,8 +79,8 @@ export class EventHandlers {
             });
             setSections(newSections);
             toast.success("Task deleted");
-        } catch (error: any) {
-            toast.error(`Delete failed: ${error.message}`);
+        } catch (error) {
+            toast.error(`Delete failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
 
@@ -89,7 +90,7 @@ export class EventHandlers {
     static async handleDeleteImage(
         imageId: string,
         imageUrl: string,
-        supabase: any,
+        supabase: SupabaseClient,
         onSuccess?: () => void
     ) {
         try {
@@ -114,8 +115,8 @@ export class EventHandlers {
 
             toast.success("Image deleted");
             onSuccess?.();
-        } catch (error: any) {
-            toast.error(`Delete failed: ${error.message}`);
+        } catch (error) {
+            toast.error(`Delete failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
 
@@ -126,7 +127,7 @@ export class EventHandlers {
         type: "section" | "task",
         id: string,
         newValue: string,
-        supabase: any,
+        supabase: SupabaseClient,
         onSuccess?: () => void
     ) {
         if (!newValue.trim()) {
@@ -147,8 +148,8 @@ export class EventHandlers {
 
             toast.success(`${type === "section" ? "Chapter" : "Task"} updated`);
             onSuccess?.();
-        } catch (error: any) {
-            toast.error(`Update failed: ${error.message}`);
+        } catch (error) {
+            toast.error(`Update failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
 
@@ -158,7 +159,7 @@ export class EventHandlers {
     static async handleReorder(
         type: "section" | "task",
         items: (Section | Task)[],
-        supabase: any,
+        supabase: SupabaseClient,
         onSuccess?: () => void
     ) {
         try {
@@ -179,8 +180,8 @@ export class EventHandlers {
 
             toast.success("Reordered successfully");
             onSuccess?.();
-        } catch (error: any) {
-            toast.error(`Reorder failed: ${error.message}`);
+        } catch (error) {
+            toast.error(`Reorder failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
 }

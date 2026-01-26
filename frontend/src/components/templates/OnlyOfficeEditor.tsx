@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import { getOnlyOfficeApiScriptUrl } from '@/lib/onlyoffice-config';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnlyOfficeEditorSkeleton } from '@/components/ui/skeletons/OnlyOfficeEditorSkeleton';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { logger } from '@/lib/errors/logger';
 
 interface OnlyOfficeEditorProps {
   template: Template;
@@ -28,6 +30,7 @@ export function OnlyOfficeEditor({
   onDocumentReady,
   onError,
 }: OnlyOfficeEditorProps) {
+  const { handleError, handleFileError } = useErrorHandler();
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +52,10 @@ export function OnlyOfficeEditor({
 
       try {
         setIsLoading(true);
-        console.log('[編輯器] 獲取文檔 URL:', template.file_path);
+        logger.info('Initializing document', 'OnlyOfficeEditor', {
+          templateId: template.id,
+          filePath: template.file_path
+        });
 
         // 從 Supabase Storage 下載文檔
         const { data: fileData, error: downloadError } = await supabase.storage
@@ -60,7 +66,10 @@ export function OnlyOfficeEditor({
           throw new Error('無法下載文檔: ' + (downloadError?.message || '未知錯誤'));
         }
 
-        console.log('[編輯器] 文檔已下載，大小:', fileData.size);
+        logger.info('Document downloaded', 'OnlyOfficeEditor', {
+          templateId: template.id,
+          fileSize: fileData.size
+        });
 
         // 將 Blob 轉換為 File
         const file = new File([fileData], template.name + '.docx', {
@@ -70,8 +79,6 @@ export function OnlyOfficeEditor({
         // 使用字體處理 API（會處理字體並重新上傳到可訪問的位置）
         const formData = new FormData();
         formData.append('file', file);
-
-        console.log('[編輯器] 處理並上傳文檔...');
 
         const processResponse = await fetch('/api/process-and-upload', {
           method: 'POST',
@@ -84,17 +91,20 @@ export function OnlyOfficeEditor({
         }
 
         const result = await processResponse.json();
-        console.log('[編輯器] 處理完成，URL:', result.url);
-
         setDocumentUrl(result.url);
+        setIsLoading(false);
 
-        setIsLoading(false);
+        logger.info('Document processed successfully', 'OnlyOfficeEditor', {
+          templateId: template.id,
+          documentUrl: result.url
+        });
       } catch (err) {
-        console.error('[編輯器] 初始化失敗:', err);
-        const errorMsg = err instanceof Error ? err.message : '初始化失敗';
-        setError(errorMsg);
+        const errorInfo = handleFileError(err, 'InitDocument', template.file_path, {
+          userMessage: '文檔初始化失敗'
+        });
+        setError(errorInfo.message);
         setIsLoading(false);
-        onError?.(errorMsg);
+        onError?.(errorInfo.message);
       }
     }
 
@@ -106,7 +116,10 @@ export function OnlyOfficeEditor({
     if (!documentUrl || !isScriptLoaded || editorReady) return;
 
     try {
-      console.log('[編輯器] 初始化 ONLYOFFICE...');
+      logger.info('Initializing ONLYOFFICE editor', 'OnlyOfficeEditor', {
+        templateId: template.id,
+        documentUrl
+      });
 
       const config = {
         documentType: 'word',
@@ -137,29 +150,35 @@ export function OnlyOfficeEditor({
         width: '100%',
         events: {
           onDocumentReady: () => {
-            console.log('[編輯器] 文檔已就緒');
+            logger.info('ONLYOFFICE editor ready', 'OnlyOfficeEditor', {
+              templateId: template.id
+            });
             setEditorReady(true);
             onDocumentReady?.();
           },
-          onError: (event: any) => {
-            console.error('[編輯器] 錯誤:', event);
-            const errorMsg = `編輯器錯誤: ${JSON.stringify(event)}`;
-            setError(errorMsg);
-            onError?.(errorMsg);
+          onError: (event: { data?: { error?: string; message?: string } }) => {
+            const errorInfo = handleError(event, {
+              context: 'OnlyOfficeEditorEvent',
+              userMessage: '編輯器錯誤',
+              metadata: { templateId: template.id, event }
+            });
+            setError(errorInfo.message);
+            onError?.(errorInfo.message);
           },
         },
       };
-
-      console.log('[編輯器] 配置:', config);
 
       // @ts-ignore
       new window.DocsAPI.DocEditor('onlyoffice-editor-container', config);
 
     } catch (err) {
-      console.error('[編輯器] 初始化失敗:', err);
-      const errorMsg = err instanceof Error ? err.message : '初始化失敗';
-      setError(errorMsg);
-      onError?.(errorMsg);
+      const errorInfo = handleError(err, {
+        context: 'InitOnlyOfficeEditor',
+        userMessage: '編輯器初始化失敗',
+        metadata: { templateId: template.id }
+      });
+      setError(errorInfo.message);
+      onError?.(errorInfo.message);
     }
   }, [documentUrl, isScriptLoaded, template.id, template.name]);
 

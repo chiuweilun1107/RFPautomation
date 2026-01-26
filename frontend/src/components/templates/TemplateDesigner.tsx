@@ -14,6 +14,8 @@ import { SaveAsDialog } from "./SaveAsDialog"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { templatesApi } from "@/features/templates/api/templatesApi"
+import { useErrorHandler } from "@/hooks/useErrorHandler"
+import { logger } from "@/lib/errors/logger"
 
 
 
@@ -23,6 +25,7 @@ interface TemplateDesignerProps {
 
 export function TemplateDesigner({ template: initialTemplate }: TemplateDesignerProps) {
   const router = useRouter()
+  const { handleError, handleDbError, handleApiError } = useErrorHandler()
   const [template, setTemplate] = React.useState(initialTemplate)
   const [viewMode, setViewMode] = React.useState<'design' | 'preview'>('design')
   const [selectedComponent, setSelectedComponent] = React.useState<TemplateComponent | null>(null)
@@ -45,7 +48,7 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
 
   const handleSave = async () => {
     try {
-      console.log('[保存] 提示用戶保存方式');
+      logger.info('User triggered save', 'TemplateDesigner', { templateId: template.id });
 
       // 檢查是否使用 localhost
       const isLocalhost = typeof window !== 'undefined' &&
@@ -62,8 +65,11 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
       }
 
     } catch (error) {
-      console.error('[保存] 失敗:', error);
-      toast.error('保存失敗');
+      handleError(error, {
+        context: 'TemplateSave',
+        userMessage: '保存失敗，請重試',
+        metadata: { templateId: template.id }
+      });
     }
   }
 
@@ -93,9 +99,17 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
       toast.success('範本已更新')
       setShowSaveDialog(false)
       setHasUnsavedChanges(false)
+
+      logger.info('Template updated successfully', 'TemplateDesigner', {
+        templateId: template.id,
+        paragraphsCount: template.paragraphs?.length || 0,
+        tablesCount: template.parsed_tables?.length || 0
+      });
     } catch (error) {
-      console.error('Update error:', error)
-      toast.error('更新失敗')
+      handleDbError(error, 'UpdateTemplate', {
+        userMessage: '更新失敗，請重試',
+        metadata: { templateId: template.id }
+      });
     }
   }
 
@@ -112,15 +126,26 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
         toast.success('已另存為新範本')
         setShowSaveAsDialog(false)
         setHasUnsavedChanges(false)
+
+        logger.info('Template saved as new', 'TemplateDesigner', {
+          originalTemplateId: template.id,
+          newTemplateName: newTemplate.name
+        });
+
         // 重新導向到範本列表頁面
         router.push('/dashboard/templates')
         router.refresh()
       } else {
-        toast.error(result.error || '另存失敗')
+        throw new Error(result.error || '另存失敗')
       }
     } catch (error) {
-      console.error('Save as new error:', error)
-      toast.error('另存失敗')
+      handleApiError(error, 'SaveAsNewTemplate', {
+        userMessage: '另存失敗，請重試',
+        metadata: {
+          templateId: template.id,
+          newTemplateName: newTemplate.name
+        }
+      });
     }
   }
 

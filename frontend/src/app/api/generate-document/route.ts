@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
             template_id,
             template_name: template.name,
             template_file_path: template.file_path,
-            sections: sections.map((section: any) => ({
+            sections: sections.map((section: { id: string; title: string; content: string }) => ({
                 id: section.id,
                 title: section.title,
                 content: section.content

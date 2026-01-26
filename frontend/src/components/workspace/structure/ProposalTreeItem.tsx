@@ -8,7 +8,7 @@ import { CitationBadge, Evidence } from "../CitationBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Edit2, GripVertical, Check, X, ChevronRight, ChevronDown, FolderPlus, Sparkles, Loader2, FileText, Eye, ListPlus, Image as ImageIcon } from "lucide-react";
+import { Trash2, Edit2, GripVertical, Check, X, ChevronRight, ChevronDown, FolderPlus, Sparkles, Loader2, FileText, Eye, ListPlus, Image as ImageIcon, Database, Feather } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -285,6 +285,18 @@ function ProposalTreeItemComponent({
                                                             >
                                                                 {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                                             </button>
+                                                        )}
+
+                                                        {/* Workflow Badge */}
+                                                        {task.workflow_type === 'wf11_functional' && (
+                                                            <div className="flex items-center justify-center w-5 h-5 rounded bg-indigo-50 dark:bg-indigo-900/30 shrink-0 mr-1" title="系統功能建置 (WF11)">
+                                                                <Database className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                                            </div>
+                                                        )}
+                                                        {task.workflow_type === 'wf13_article' && (
+                                                            <div className="flex items-center justify-center w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-900/30 shrink-0 mr-1" title="行政管理/文章 (WF13)">
+                                                                <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                                            </div>
                                                         )}
 
                                                         {/* Title - always shown */}

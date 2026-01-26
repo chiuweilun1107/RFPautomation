@@ -43,9 +43,22 @@ interface ProposalDialogsProps {
   targetSection: Section | null;
   selectedTaskForImage: Task | null;
   contentGenerationTarget: { task: Task; section: Section } | null;
-  taskConflictContext: any;
-  pendingSubsectionArgs: any;
-  pendingContentGeneration: any;
+  taskConflictContext: {
+    task: Task;
+    section: Section;
+    existingContent: string;
+    newContent: string;
+  } | null;
+  pendingSubsectionArgs: {
+    sectionId: string;
+    title: string;
+    sourceIds: string[];
+  } | null;
+  pendingContentGeneration: {
+    task: Task;
+    section: Section;
+    content: string;
+  } | null;
 
   // 選擇狀態
   selectedSourceIds: string[];
@@ -66,7 +79,12 @@ interface ProposalDialogsProps {
   onGenerateManagement: () => void;
   onGenerateTaskContent: () => void;
   onGenerateSubsections: () => void;
-  onGenerateImage: (options: any) => Promise<void>;
+  onGenerateImage: (options: {
+    prompt?: string;
+    style?: string;
+    size?: string;
+    [key: string]: unknown;
+  }) => Promise<void>;
   onAddSource: () => void;
   onSwitchToAIGeneration: () => void;
 

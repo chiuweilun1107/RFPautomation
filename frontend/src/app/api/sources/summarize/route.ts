@@ -99,9 +99,9 @@ ${contentPreview}
 
         return NextResponse.json({ success: true, summary, topics });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Summarize API error:', error);
-        return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal error' }, { status: 500 });
     }
 }
 

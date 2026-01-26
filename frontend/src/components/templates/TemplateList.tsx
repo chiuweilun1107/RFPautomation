@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { getErrorMessage } from '@/lib/errorUtils';
 import type { Template } from "@/types"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useErrorHandler } from "@/hooks/useErrorHandler"
+import { logger } from "@/lib/errors/logger"
 import { FileText, Download, Trash2, Edit2, Clock, Palette, RotateCcw, Loader2, MoreVertical, Search, LayoutGrid, List as ListIcon, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -71,6 +72,7 @@ export function TemplateList({
     viewMode = 'grid',
     isLoading = false
 }: TemplateListProps) {
+    const { handleError, handleApiError, handleDbError } = useErrorHandler()
     const [templateToDelete, setTemplateToDelete] = React.useState<Template | null>(null)
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
     const [editingTemplate, setEditingTemplate] = React.useState<Template | null>(null)
@@ -105,9 +107,15 @@ export function TemplateList({
             }
 
             toast.success("已觸發重新解析 (WF04)")
+            logger.info('Template reparse triggered', 'TemplateList', {
+                templateId: template.id,
+                templateName: template.name
+            });
         } catch (error) {
-            console.error(error)
-            toast.error("觸發解析失敗")
+            handleApiError(error, 'ReparseTemplate', {
+                userMessage: '觸發解析失敗，請重試',
+                metadata: { templateId: template.id }
+            });
         } finally {
             setTimeout(() => setReparsingId(null), 1000)
         }
@@ -140,12 +148,19 @@ export function TemplateList({
             setIsEditDialogOpen(false)
             setEditingTemplate(null)
 
+            logger.info('Template info updated', 'TemplateList', {
+                templateId: editingTemplate.id,
+                changes: { name: editName, description: editDescription, category: editCategory }
+            });
+
             if (onTemplateUpdate) {
                 onTemplateUpdate()
             }
         } catch (error) {
-            console.error("Update error:", error)
-            toast.error(getErrorMessage(error) || "更新失敗")
+            handleDbError(error, 'UpdateTemplateInfo', {
+                userMessage: '更新失敗，請重試',
+                metadata: { templateId: editingTemplate.id }
+            });
         }
     }
 
@@ -161,7 +176,13 @@ export function TemplateList({
                     .from('raw-files')
                     .remove([templateToDelete.file_path])
 
-                if (storageError) console.error("Storage delete error:", storageError)
+                if (storageError) {
+                    logger.warn('Storage file delete failed', 'TemplateList', {
+                        templateId,
+                        filePath: templateToDelete.file_path,
+                        error: storageError
+                    });
+                }
             }
 
             const { error: dbError } = await supabase
@@ -174,12 +195,19 @@ export function TemplateList({
             toast.success("範本已刪除")
             setTemplateToDelete(null)
 
+            logger.info('Template deleted successfully', 'TemplateList', {
+                templateId,
+                templateName: templateToDelete.name
+            });
+
             if (onTemplateUpdate) {
                 onTemplateUpdate()
             }
         } catch (error) {
-            console.error("Delete error:", error)
-            toast.error(getErrorMessage(error) || "刪除失敗")
+            handleDbError(error, 'DeleteTemplate', {
+                userMessage: '刪除失敗，請重試',
+                metadata: { templateId }
+            });
         } finally {
             setDeletingId(null)
         }
@@ -205,9 +233,17 @@ export function TemplateList({
             a.click()
             URL.revokeObjectURL(url)
             toast.success("範本下載成功")
+
+            logger.info('Template downloaded', 'TemplateList', {
+                templateId: template.id,
+                templateName: template.name
+            });
         } catch (error) {
-            console.error("Download error:", error)
-            toast.error("下載失敗")
+            handleError(error, {
+                context: 'DownloadTemplate',
+                userMessage: '下載失敗，請重試',
+                metadata: { templateId: template.id }
+            });
         }
     }
 
@@ -231,8 +267,14 @@ export function TemplateList({
 
     if (templates.length === 0) {
         return (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                此資料夾尚無範本
+            <div className="text-center py-20 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-black/5 dark:bg-white/5">
+                <FileText className="h-16 w-16 mx-auto text-black/20 dark:text-white/20 mb-6" strokeWidth={1.5} />
+                <h3 className="font-black uppercase tracking-tight text-foreground mb-3 text-lg">
+                    NO TEMPLATES IN FOLDER
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed uppercase tracking-wide font-bold">
+                    This folder is empty. Upload a DOCX template to get started.
+                </p>
             </div>
         )
     }

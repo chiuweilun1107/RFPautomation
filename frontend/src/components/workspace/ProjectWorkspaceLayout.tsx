@@ -9,13 +9,28 @@ import { toast } from "sonner";
 import { ProjectStage } from "@/components/workspace/ProjectWorkflowStepper";
 import { sourcesApi } from "@/features/sources/api/sourcesApi";
 
+interface Source {
+    id: string;
+    title?: string;
+    summary?: string;
+    topics?: string[];
+    [key: string]: unknown;
+}
+
+interface Project {
+    id: string;
+    title: string;
+    status?: string;
+    [key: string]: unknown;
+}
+
 interface ProjectWorkspaceLayoutProps {
-    project: any;
+    project: Project;
     children: React.ReactNode;
 }
 
 export function ProjectWorkspaceLayout({ project, children }: ProjectWorkspaceLayoutProps) {
-    const [selectedSource, setSelectedSource] = useState<any | null>(null);
+    const [selectedSource, setSelectedSource] = useState<Source | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [currentStage, setCurrentStage] = useState(ProjectStage.Assessment);
     const pathname = usePathname();
@@ -39,7 +54,7 @@ export function ProjectWorkspaceLayout({ project, children }: ProjectWorkspaceLa
         try {
             const data = await sourcesApi.summarize(sourceId);
 
-            setSelectedSource((prev: any) => prev ? {
+            setSelectedSource((prev: Source | null) => prev ? {
                 ...prev,
                 summary: data.summary,
                 topics: data.topics
