@@ -7,6 +7,7 @@
 export { useTenderState } from './useTenderState';
 export { useTenderData } from './useTenderData';
 export { useTenderOperations } from './useTenderOperations';
+export * from './useContentGeneration';
 export { useDragDrop } from './useDragDrop';
 export { useDialogState } from './useDialogState';
 export { useAIGeneration } from './useAIGeneration';

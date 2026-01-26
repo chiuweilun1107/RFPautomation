@@ -22,7 +22,8 @@ import {
     useDragDrop,
     useDialogState,
     useAIGeneration,
-    useSaveOperations
+    useSaveOperations,
+    useContentGeneration
 } from "./hooks";
 
 // Components
@@ -58,6 +59,9 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         isHeaderExpanded,
         setIsHeaderExpanded,
     } = useTenderState();
+
+    // Task Filter State
+    const [taskFilter, setTaskFilter] = useState<'all' | 'wf11_functional' | 'wf13_article'>('all');
 
     // Dialog State
     const {
@@ -128,6 +132,18 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         supabase,
         outline,
         setOutline,
+        setGenerating,
+        fetchData
+    });
+
+    // Content Generation (WF12)
+    const {
+        executeContentGeneration,
+        executeSectionContentGeneration
+    } = useContentGeneration({
+        projectId,
+        supabase,
+        outline,
         setGenerating,
         fetchData
     });
@@ -240,6 +256,49 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         }
     };
 
+    const handleGenerateContent = (task: any, section: any) => {
+        setSourceSelectionContext({
+            type: 'task',
+            data: {
+                taskId: task.id,
+                taskText: typeof task.requirement_text === 'string' ? task.requirement_text : JSON.stringify(task.requirement_text),
+                sectionId: section.id,
+                sectionTitle: section.title,
+                mode: 'content_single'
+            },
+            next: (sourceIds) => executeContentGeneration(
+                task.id,
+                typeof task.requirement_text === 'string' ? task.requirement_text : JSON.stringify(task.requirement_text),
+                section.id,
+                section.title,
+                sourceIds
+            )
+        });
+        setIsSourceSelectionOpen(true);
+    };
+
+    const handleGenerateSectionContent = (section: any) => {
+        if (!section.tasks || section.tasks.length === 0) {
+            return;
+        }
+        setSourceSelectionContext({
+            type: 'section',
+            data: {
+                sectionId: section.id,
+                sectionTitle: section.title,
+                tasks: section.tasks,
+                mode: 'content_batch'
+            },
+            next: (sourceIds) => executeSectionContentGeneration(
+                section.id,
+                section.title,
+                section.tasks,
+                sourceIds
+            )
+        });
+        setIsSourceSelectionOpen(true);
+    };
+
     return (
         <div className="h-full w-full">
             <div className="flex w-full min-h-full gap-8 relative font-mono text-black dark:text-white pb-20">
@@ -269,6 +328,10 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                         deleteSection={deleteSection}
                         handleAddSectionClick={handleAddSectionClick}
                         handleAddChapterClick={handleAddChapterClick}
+                        taskFilter={taskFilter} // Pass filter state
+                        setTaskFilter={setTaskFilter} // Pass filter setter
+                        handleGenerateContent={handleGenerateContent}
+                        handleGenerateSectionContent={handleGenerateSectionContent}
                     />
                 </div>
             </div>

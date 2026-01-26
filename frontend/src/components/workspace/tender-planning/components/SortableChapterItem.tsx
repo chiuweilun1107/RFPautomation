@@ -41,6 +41,9 @@ interface SortableChapterItemProps {
     deleteSection: (cIndex: number, sIndex: number) => void;
     /** Trigger add section dialog */
     handleAddSectionClick: (chapterIndex: number) => void;
+    taskFilter: 'all' | 'wf11_functional' | 'wf13_article';
+    handleGenerateContent: (task: any, section: any) => void;
+    handleGenerateSectionContent: (section: any) => void;
 }
 
 /**
@@ -57,7 +60,10 @@ function SortableChapterItemComponent({
     toggleSectionTasks,
     updateSectionTitle,
     deleteSection,
-    handleAddSectionClick
+    handleAddSectionClick,
+    taskFilter,
+    handleGenerateContent,
+    handleGenerateSectionContent
 }: SortableChapterItemProps) {
     const {
         attributes,
@@ -181,6 +187,9 @@ function SortableChapterItemComponent({
                                 deleteSection={deleteSection}
                                 handleGenerateTasks={handleGenerateTasks}
                                 generating={generating}
+                                taskFilter={taskFilter}
+                                handleGenerateContent={handleGenerateContent}
+                                handleGenerateSectionContent={handleGenerateSectionContent}
                             />
                         ))}
                     </SortableContext>
@@ -208,8 +217,11 @@ function SortableChapterItemComponent({
 export const SortableChapterItem = memo(
     SortableChapterItemComponent,
     (prevProps, nextProps) => {
-        const { chapter: prevChapter, cIndex: prevCIndex, generating: prevGenerating } = prevProps;
-        const { chapter: nextChapter, cIndex: nextCIndex, generating: nextGenerating } = nextProps;
+        const { chapter: prevChapter, cIndex: prevCIndex, generating: prevGenerating, taskFilter: prevFilter } = prevProps;
+        const { chapter: nextChapter, cIndex: nextCIndex, generating: nextGenerating, taskFilter: nextFilter } = nextProps;
+
+        // Check filter
+        if (prevFilter !== nextFilter) return false;
 
         // Check chapter identity and core properties
         if (prevChapter.id !== nextChapter.id) return false;

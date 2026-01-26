@@ -38,6 +38,9 @@ interface SortableSectionItemProps {
     handleGenerateTasks: (id: string, title: string, mode: TaskGenerationMode) => void;
     /** Whether AI generation is in progress */
     generating: boolean;
+    taskFilter: 'all' | 'wf11_functional' | 'wf13_article';
+    handleGenerateContent: (task: any, section: any) => void;
+    handleGenerateSectionContent: (section: any) => void;
 }
 
 /**
@@ -53,7 +56,10 @@ function SortableSectionItemComponent({
     updateSectionTitle,
     deleteSection,
     handleGenerateTasks,
-    generating
+    generating,
+    taskFilter,
+    handleGenerateContent,
+    handleGenerateSectionContent
 }: SortableSectionItemProps) {
     const {
         attributes,
@@ -147,6 +153,15 @@ function SortableSectionItemComponent({
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
+                                onClick={() => handleGenerateSectionContent(section)}
+                                disabled={generating || !section.tasks || section.tasks.length === 0}
+                                className="focus:bg-orange-50 focus:text-orange-600 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <FileText className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
+                                BATCH CONTENT GENERATION (WF12)
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
                                 onClick={() => deleteSection(cIndex, sIndex)}
                                 className="focus:bg-red-50 focus:text-red-500 cursor-pointer font-bold text-xs py-2"
                             >
@@ -161,8 +176,18 @@ function SortableSectionItemComponent({
             {/* Task List (Collapsible) */}
             {section.expanded && section.tasks && section.tasks.length > 0 && (
                 <div className="mt-2 ml-7 space-y-2 border-l border-zinc-200 pl-2">
-                    {section.tasks.map((task) => (
-                        <TaskItem key={task.id} task={task} />
+                    {section.tasks.filter(task => {
+                        if (taskFilter === 'all') return true;
+                        if (taskFilter === 'wf11_functional') return task.workflow_type === 'wf11_functional';
+                        if (taskFilter === 'wf13_article') return task.workflow_type === 'wf13_article';
+                        return true;
+                    }).map((task) => (
+                        <TaskItem
+                            key={task.id}
+                            task={task}
+                            section={section}
+                            handleGenerateContent={handleGenerateContent}
+                        />
                     ))}
                 </div>
             )}
@@ -177,8 +202,11 @@ function SortableSectionItemComponent({
 export const SortableSectionItem = memo(
     SortableSectionItemComponent,
     (prevProps, nextProps) => {
-        const { section: prevSection, cIndex: prevCIndex, sIndex: prevSIndex, generating: prevGenerating } = prevProps;
-        const { section: nextSection, cIndex: nextCIndex, sIndex: nextSIndex, generating: nextGenerating } = nextProps;
+        const { section: prevSection, cIndex: prevCIndex, sIndex: prevSIndex, generating: prevGenerating, taskFilter: prevFilter } = prevProps;
+        const { section: nextSection, cIndex: nextCIndex, sIndex: nextSIndex, generating: nextGenerating, taskFilter: nextFilter } = nextProps;
+
+        // Check filter
+        if (prevFilter !== nextFilter) return false;
 
         // Check section identity and core properties
         if (prevSection.id !== nextSection.id) return false;
@@ -193,10 +221,8 @@ export const SortableSectionItem = memo(
         // Check generating state
         if (prevGenerating !== nextGenerating) return false;
 
-        // Check tasks array length (shallow check for performance)
         if ((prevSection.tasks?.length || 0) !== (nextSection.tasks?.length || 0)) return false;
 
-        // Callbacks are assumed stable via useCallback
         return true;
     }
 );

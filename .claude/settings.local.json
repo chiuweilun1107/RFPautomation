@@ -156,7 +156,9 @@
       "Bash(npm ls --depth=0)",
       "Bash(./scripts/verify-realtime-implementation.sh:*)",
       "Bash(./scripts/check-error-handling.sh:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(for:*)",
+      "Bash(do grep -l \"project_assessments\" \"$f\")"
     ]
   }
 }

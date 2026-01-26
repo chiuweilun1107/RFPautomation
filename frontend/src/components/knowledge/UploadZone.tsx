@@ -121,8 +121,7 @@ export function UploadZone({
                 });
             } catch (error: any) {
                 handleFileError(error, 'Upload', file.name, {
-                    userMessage: `Failed ${file.name}`,
-                    metadata: { folderId: selectedFolderId }
+                    userMessage: `Failed ${file.name}`
                 });
             }
         }

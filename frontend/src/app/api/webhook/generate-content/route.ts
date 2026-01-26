@@ -6,12 +6,15 @@ export const maxDuration = 300; // 5 minutes timeout
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        // Use environment variable for n8n webhook URL
-        const n8nUrl = process.env.N8N_DOCUMENT_GENERATE_WEBHOOK || 'http://localhost:5679/webhook/generate-document-v2';
+
+        // Use environment variable for n8n base URL (Standardized)
+        const n8nBaseUrl = process.env.N8N_BASE_URL || 'http://localhost:5679';
+        // Allow specific override, but default to standard naming
+        const n8nUrl = process.env.N8N_DOCUMENT_GENERATE_WEBHOOK || `${n8nBaseUrl}/webhook/generate-content`;
 
         if (!n8nUrl) {
             return NextResponse.json(
-                { error: 'N8N_DOCUMENT_GENERATE_WEBHOOK environment variable not configured' },
+                { error: 'Webhook URL configuration failed' },
                 { status: 500 }
             );
         }

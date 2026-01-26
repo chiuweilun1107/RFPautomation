@@ -10,6 +10,7 @@ import { Trash2, Edit2, GripVertical, Check, X, ChevronRight, ChevronDown, Folde
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"; // Import ToggleGroup
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -110,6 +111,9 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
 
         // 引用
         selectedEvidence, setSelectedEvidence,
+
+        // 篩選器
+        taskFilter, setTaskFilter, // From useProposalState (need to add this to hook or just use local state if not shared)
 
         // 便利函数
         toggleSectionExpansion, toggleTaskExpansion, toggleCategoryExpansion,
@@ -1782,6 +1786,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                 taskContents={taskContents}
                 contentLoading={contentLoading}
                 setSelectedEvidence={setSelectedEvidence}
+                taskFilter={taskFilter} // Pass filter prop
             />
         );
     }, [
@@ -1802,7 +1807,26 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
             <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
                 {/* Header Toolbar */}
                 <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">章節規劃</h2>
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">章節規劃</h2>
+
+                        {/* Task Filter Toggle */}
+                        <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex items-center">
+                            <ToggleGroup type="single" value={taskFilter} onValueChange={(val) => val && setTaskFilter(val as any)}>
+                                <ToggleGroupItem value="all" size="sm" className="h-7 px-3 text-xs data-[state=on]:bg-white dark:data-[state=on]:bg-gray-700 data-[state=on]:shadow-sm transition-all">
+                                    全部
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="wf11_functional" size="sm" className="h-7 px-3 text-xs gap-1.5 data-[state=on]:bg-indigo-50 data-[state=on]:text-indigo-600 dark:data-[state=on]:bg-indigo-900/30 dark:data-[state=on]:text-indigo-400 data-[state=on]:shadow-sm transition-all">
+                                    <Cpu className="w-3 h-3" />
+                                    工程視角
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="wf13_article" size="sm" className="h-7 px-3 text-xs gap-1.5 data-[state=on]:bg-emerald-50 data-[state=on]:text-emerald-600 dark:data-[state=on]:bg-emerald-900/30 dark:data-[state=on]:text-emerald-400 data-[state=on]:shadow-sm transition-all">
+                                    <FileText className="w-3 h-3" />
+                                    管理視角
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                        </div>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"

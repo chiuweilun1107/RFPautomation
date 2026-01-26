@@ -137,7 +137,7 @@ export function KnowledgeList({
 
     if (viewMode === 'grid') {
         return (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {docs.map((doc) => (
                     <Card
                         key={doc.id}
@@ -232,7 +232,8 @@ export function KnowledgeList({
 
     return (
         <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden rounded-none">
-            <Table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <Table className="min-w-[640px]">
                 <TableHeader>
                     <TableRow className="bg-muted border-b border-black dark:border-white hover:bg-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">
                         <TableHead className="text-black dark:text-white py-3">STATUS</TableHead>
@@ -285,6 +286,7 @@ export function KnowledgeList({
                     ))}
                 </TableBody>
             </Table>
+            </div>
 
             <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
                 <AlertDialogContent className="rounded-none border-2 border-black dark:border-white font-mono">

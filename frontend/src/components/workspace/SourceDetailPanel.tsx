@@ -246,6 +246,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         const normalizeForMatching = (str: string) => {
             return str
                 .replace(/\s+/g, '') // Remove ALL whitespace
+                .replace(/[#*|]/g, '') // Remove Markdown characters (#, *, |)
                 .replace(/[，。！？；：、]/g, (m) => { // Normalize Chinese punctuation
                     const map: Record<string, string> = { '，': ',', '。': '.', '！': '!', '？': '?', '；': ';', '：': ':', '、': ',' };
                     return map[m] || m;
@@ -258,7 +259,8 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         const findOriginalPosition = (normalizedIdx: number): number => {
             let normalizedCharCount = 0;
             for (let i = 0; i < content.length; i++) {
-                if (!/\s/.test(content[i])) {
+                // Must skip the same characters that were stripped in normalizeForMatching (\s, #, *, |)
+                if (!/[\s#*|]/.test(content[i])) {
                     if (normalizedCharCount === normalizedIdx) {
                         return i;
                     }
@@ -292,7 +294,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                 // Calculate end position by counting through the last segment
                 let normalizedMatched = 0;
                 for (let i = lastStartPos; i < content.length && normalizedMatched < normalizedLast.length; i++) {
-                    if (!/\s/.test(content[i])) {
+                    if (!/[\s#*|]/.test(content[i])) {
                         normalizedMatched++;
                     }
                     if (normalizedMatched >= normalizedLast.length) {
@@ -313,7 +315,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                 // Calculate end position
                 let normalizedMatched = 0;
                 for (let i = startIndex; i < content.length && normalizedMatched < normalizedQuote.length; i++) {
-                    if (!/\s/.test(content[i])) {
+                    if (!/[\s#*|]/.test(content[i])) {
                         normalizedMatched++;
                     }
                     if (normalizedMatched >= normalizedQuote.length) {

@@ -282,7 +282,7 @@ export function TemplateList({
     return (
         <>
             {viewMode === 'grid' ? (
-                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-4 sm:gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {templates.filter(t => t.id !== deletingId).map((template) => (
                         <Card
                             key={template.id}
@@ -361,14 +361,15 @@ export function TemplateList({
                 </div>
             ) : (
                 <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden rounded-none">
-                    <div className="hidden md:grid grid-cols-[1fr_180px_150px_120px] gap-4 p-4 bg-muted border-b border-black dark:border-white text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic text-black dark:text-white">
+                    <div className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="hidden md:grid grid-cols-[1fr_180px_150px_120px] gap-4 p-4 bg-muted border-b border-black dark:border-white text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic text-black dark:text-white min-w-[640px]">
                         <div>Template_Name</div>
                         <div>Category</div>
                         <div>Created_At</div>
                         <div className="text-right">Ops</div>
                     </div>
 
-                    <div className="divide-y divide-black/10 dark:divide-white/10">
+                    <div className="divide-y divide-black/10 dark:divide-white/10 min-w-[640px]">
                         {templates.filter(t => t.id !== deletingId).map((template) => (
                             <div
                                 key={template.id}
@@ -413,6 +414,7 @@ export function TemplateList({
                                 </div>
                             </div>
                         ))}
+                    </div>
                     </div>
                 </div>
             )}

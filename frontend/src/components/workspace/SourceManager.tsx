@@ -496,22 +496,22 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                             </div>
 
                             {/* Original Add/Filter Actions */}
-                            <div className="flex items-center gap-2 font-mono text-xs">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 font-mono text-xs">
                                 <Button
                                     variant="outline"
-                                    className="flex-1 justify-center border-black dark:border-white h-8 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black uppercase tracking-wider"
+                                    className="w-full sm:flex-1 justify-center border-black dark:border-white h-8 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black uppercase tracking-wider"
                                     onClick={() => setIsAddDialogOpen(true)}
                                 >
                                     <Plus className="w-3 h-3 mr-2" />
                                     Add Source
                                 </Button>
-                                <div className="relative flex-1">
+                                <div className="relative w-full sm:flex-1">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
                                     <Input
                                         placeholder="FILTER..."
                                         value={filterQuery}
                                         onChange={(e) => setFilterQuery(e.target.value)}
-                                        className="pl-8 h-8 rounded-none border-black dark:border-white uppercase tracking-wider text-[10px]"
+                                        className="w-full pl-8 h-8 rounded-none border-black dark:border-white uppercase tracking-wider text-[10px]"
                                     />
                                 </div>
                             </div>
@@ -812,7 +812,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                         transition: isDragging ? 'none' : 'all 0.2s ease-out'
                     }}
                 >
-                    <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-[580px] h-[80vh] flex flex-col shadow-xl">
+                    <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-full sm:w-[580px] max-w-[95vw] h-[80vh] max-h-[90vh] flex flex-col shadow-xl">
                         <div
                             className="bg-[#FA4028] h-4 cursor-move hover:h-6 transition-all flex items-center justify-center border-b-2 border-black dark:border-white shrink-0"
                             onMouseDown={handleMouseDown}

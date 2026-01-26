@@ -8,7 +8,7 @@
 import { useCallback } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import type { Chapter, Section, Task } from '../types';
+import type { Chapter, Section, Task } from '@/components/workspace/types';
 
 interface UseTenderDataProps {
     projectId: string;
@@ -46,11 +46,17 @@ export function useTenderData({
                 const sectionIds = sectionsData.map((s: Section) => s.id);
                 const { data: tasksData } = await supabase
                     .from('tasks')
-                    .select('*')
+                    .select('*') // This automatically includes all columns including citations JSONB
                     .in('section_id', sectionIds)
                     .order('created_at', { ascending: true });
 
-                const tasksBySection = (tasksData || []).reduce((acc: Record<string, Task[]>, task: Task) => {
+                // Normalize tasks: ensure citations is always an array
+                const normalizedTasks = (tasksData || []).map(task => ({
+                    ...task,
+                    citations: task.citations || []
+                }));
+
+                const tasksBySection = normalizedTasks.reduce((acc: Record<string, Task[]>, task: Task) => {
                     if (!acc[task.section_id]) acc[task.section_id] = [];
                     acc[task.section_id].push(task);
                     return acc;
@@ -66,6 +72,7 @@ export function useTenderData({
                     title: root.title,
                     generation_method: root.generation_method,
                     is_modified: root.is_modified,
+                    citations: root.citations || [], // Normalize citations
                     expanded: true, // Default to expanded
                     sections: childSections
                         .filter((child: Section) => child.parent_id === root.id)
@@ -73,6 +80,7 @@ export function useTenderData({
                             ...child,
                             generation_method: child.generation_method || 'manual',
                             is_modified: child.is_modified || false,
+                            citations: child.citations || [], // Normalize citations
                             tasks: tasksBySection[child.id] || []
                         }))
                         .sort((a: Section, b: Section) => (a.order_index || 0) - (b.order_index || 0))

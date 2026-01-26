@@ -8,11 +8,15 @@
 import { useState, memo } from "react";
 import { cn } from "@/lib/utils";
 import { DraggableTaskPopup } from "./DraggableTaskPopup";
-import type { Task } from "../types";
+import type { Task, Section } from "../types";
 
 interface TaskItemProps {
     /** Task data to display */
     task: Task;
+    /** Parent section for context */
+    section: Section;
+    /** Content generation handler */
+    handleGenerateContent: (task: any, section: any) => void;
 }
 
 /**
@@ -31,7 +35,7 @@ const renderSummary = (text: any): string => {
 /**
  * Clickable task list item with status badge
  */
-function TaskItemComponent({ task }: TaskItemProps) {
+function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -61,7 +65,13 @@ function TaskItemComponent({ task }: TaskItemProps) {
                 </div>
             </div>
 
-            <DraggableTaskPopup task={task} isOpen={isOpen} onClose={() => setIsOpen(false)} />
+            <DraggableTaskPopup
+                task={task}
+                section={section}
+                isOpen={isOpen}
+                onClose={() => setIsOpen(false)}
+                handleGenerateContent={handleGenerateContent}
+            />
         </>
     );
 }

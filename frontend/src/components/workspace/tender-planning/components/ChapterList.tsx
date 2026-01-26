@@ -11,6 +11,8 @@ import { Plus, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SortableChapterItem } from "./SortableChapterItem";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Database, FileText, Cpu } from "lucide-react";
 import type { Chapter, TaskGenerationMode } from "../types";
 
 interface ChapterListProps {
@@ -38,6 +40,13 @@ interface ChapterListProps {
     handleAddSectionClick: (chapterIndex: number) => void;
     /** Trigger add chapter dialog */
     handleAddChapterClick: () => void;
+    /** Task Filter State */
+    taskFilter: 'all' | 'wf11_functional' | 'wf13_article';
+    setTaskFilter: (filter: 'all' | 'wf11_functional' | 'wf13_article') => void;
+    /** Generate single task content */
+    handleGenerateContent: (task: any, section: any) => void;
+    /** Generate section content batch */
+    handleGenerateSectionContent: (section: any) => void;
 }
 
 /**
@@ -55,7 +64,11 @@ export function ChapterList({
     updateSectionTitle,
     deleteSection,
     handleAddSectionClick,
-    handleAddChapterClick
+    handleAddChapterClick,
+    taskFilter,
+    setTaskFilter,
+    handleGenerateContent,
+    handleGenerateSectionContent
 }: ChapterListProps) {
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -72,6 +85,22 @@ export function ChapterList({
                         <GripVertical className="h-5 w-5 opacity-40" />
                         SERVICE_PROPOSAL_OUTLINE
                     </CardTitle>
+                    {/* Filter Toggle */}
+                    <div className="bg-black/5 dark:bg-white/10 p-1 rounded-sm flex items-center border border-black/10 dark:border-white/10">
+                        <ToggleGroup type="single" value={taskFilter} onValueChange={(val) => val && setTaskFilter(val as any)}>
+                            <ToggleGroupItem value="all" size="sm" className="h-6 px-2 text-[10px] uppercase font-bold data-[state=on]:bg-white dark:data-[state=on]:bg-black data-[state=on]:text-black dark:data-[state=on]:text-white data-[state=on]:shadow-sm transition-all rounded-sm">
+                                ALL
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="wf11_functional" size="sm" className="h-6 px-2 text-[10px] uppercase font-bold gap-1 active:scale-95 transition-all rounded-sm data-[state=on]:bg-indigo-100 dark:data-[state=on]:bg-indigo-900/50 data-[state=on]:text-indigo-700 dark:data-[state=on]:text-indigo-300">
+                                <Database className="w-3 h-3" />
+                                FUNC
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="wf13_article" size="sm" className="h-6 px-2 text-[10px] uppercase font-bold gap-1 active:scale-95 transition-all rounded-sm data-[state=on]:bg-purple-100 dark:data-[state=on]:bg-purple-900/50 data-[state=on]:text-purple-700 dark:data-[state=on]:text-purple-300">
+                                <FileText className="w-3 h-3" />
+                                CONTENT
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-8 space-y-8">
                     <DndContext
@@ -97,6 +126,9 @@ export function ChapterList({
                                     updateSectionTitle={updateSectionTitle}
                                     deleteSection={deleteSection}
                                     handleAddSectionClick={handleAddSectionClick}
+                                    taskFilter={taskFilter}
+                                    handleGenerateContent={handleGenerateContent}
+                                    handleGenerateSectionContent={handleGenerateSectionContent}
                                 />
                             ))}
                         </SortableContext>

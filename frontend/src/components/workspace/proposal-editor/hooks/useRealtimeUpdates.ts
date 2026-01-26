@@ -10,7 +10,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { createClient } from '../../../../lib/supabase/client';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { UseSectionStateReturn } from './useSectionState';
-import type { Section, Task, Source } from '../types';
+import type { Section, Task, Source, Citation } from '@/components/workspace/types';
 
 // 數據庫 payload 類型
 interface DbSection {
@@ -20,9 +20,7 @@ interface DbSection {
   title?: string;
   content?: string;
   order_index: number;
-  citation_source_id?: string | null;
-  citation_page?: number | null;
-  citation_quote?: string | null;
+  citations: Citation[];
   last_integrated_at?: string | null;
   created_at: string;
 }
@@ -34,9 +32,7 @@ interface DbTask {
   title?: string;
   status: string;
   assigned_to?: string;
-  citation_source_id?: string | null;
-  citation_page?: number | null;
-  citation_quote?: string | null;
+  citations: Citation[];
   order_index?: number;
   created_at: string;
   updated_at: string;
@@ -73,9 +69,7 @@ export function useRealtimeUpdates(
       order_index: dbSection.order_index,
       parent_id: dbSection.parent_id,
       content: dbSection.content,
-      citation_source_id: dbSection.citation_source_id,
-      citation_page: dbSection.citation_page,
-      citation_quote: dbSection.citation_quote,
+      citations: dbSection.citations || [],
       last_integrated_at: dbSection.last_integrated_at,
     };
   }, []);
@@ -89,9 +83,7 @@ export function useRealtimeUpdates(
       title: dbTask.title,
       status: dbTask.status,
       assignee: dbTask.assigned_to,
-      citation_source_id: dbTask.citation_source_id,
-      citation_page: dbTask.citation_page,
-      citation_quote: dbTask.citation_quote,
+      citations: dbTask.citations || [],
       order_index: dbTask.order_index,
     };
   }, []);

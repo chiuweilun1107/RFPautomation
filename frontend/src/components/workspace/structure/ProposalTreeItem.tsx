@@ -78,6 +78,9 @@ interface ProposalTreeItemProps {
 
     setSelectedEvidence: (evidence: Evidence) => void;
     handleDeleteImage: (imageId: string, imageUrl: string) => void;
+
+    // NEW: Filter Prop
+    taskFilter: 'all' | 'wf11_functional' | 'wf13_article';
 }
 
 function ProposalTreeItemComponent({
@@ -122,7 +125,8 @@ function ProposalTreeItemComponent({
     handleDeleteTask,
     taskContents,
     setSelectedEvidence,
-    handleDeleteImage
+    handleDeleteImage,
+    taskFilter = 'all' // Default
 
 }: ProposalTreeItemProps) {
     const isExpanded = expandedSections.has(section.id);
@@ -154,24 +158,19 @@ function ProposalTreeItemComponent({
                     <span className={depth === 0 ? "text-base font-bold" : "text-sm"}>
                         {section.title}
                     </span>
-                    {(section.citation_source_id || section.citation_quote) && (
+                    {section.citations && section.citations.length > 0 && section.citations.slice(0, 3).map((citation, index) => (
                         <CitationBadge
+                            key={index}
                             evidence={{
-                                id: 0,
-                                source_id: section.citation_source_id || '',
-                                page: section.citation_page || 0,
-                                source_title: fullSources[section.citation_source_id || '']?.title || 'Unknown Source',
-                                quote: section.citation_quote || ''
+                                id: index + 1,
+                                source_id: citation.source_id,
+                                page: citation.page,
+                                source_title: citation.title || fullSources[citation.source_id]?.title || 'Unknown Source',
+                                quote: citation.quote || ''
                             }}
-                            onClick={() => setSelectedEvidence({
-                                id: 0,
-                                source_id: section.citation_source_id || '',
-                                page: section.citation_page || 0,
-                                source_title: fullSources[section.citation_source_id || '']?.title || 'Unknown Source',
-                                quote: section.citation_quote || ''
-                            })}
+                            onClick={(evidence) => setSelectedEvidence(evidence)}
                         />
-                    )}
+                    ))}
                     <Badge
                         variant="outline"
                         className={`text-[10px] font-medium border-gray-300 dark:border-gray-700 cursor-pointer transition-colors ${(section.tasks?.length || 0) > 0 && viewMode === 'tasks'
@@ -261,10 +260,25 @@ function ProposalTreeItemComponent({
                     section.tasks && section.tasks.length > 0 && (
                         <div className="ml-8 mt-2 space-y-2">
                             <SortableContext
-                                items={section.tasks.map(t => t.id)}
+                                items={section.tasks.filter(task => {
+                                    if (taskFilter === 'all') return true;
+                                    // Map old/manual tasks if needed or strictly filter
+                                    // Assuming manual tasks don't show in either specific filter, OR
+                                    // if user wants to see "manual" tasks in one of them?
+                                    // For now: Strict filter. wf11 only shows wf11. wf13 only shows wf13.
+                                    // Manual tasks only show in 'all'. 
+                                    if (taskFilter === 'wf11_functional') return task.workflow_type === 'wf11_functional';
+                                    if (taskFilter === 'wf13_article') return task.workflow_type === 'wf13_article';
+                                    return true;
+                                }).map(t => t.id)}
                                 strategy={verticalListSortingStrategy}
                             >
-                                {section.tasks.map((task) => (
+                                {section.tasks.filter(task => {
+                                    if (taskFilter === 'all') return true;
+                                    if (taskFilter === 'wf11_functional') return task.workflow_type === 'wf11_functional';
+                                    if (taskFilter === 'wf13_article') return task.workflow_type === 'wf13_article';
+                                    return true;
+                                }).map((task) => (
                                     <SortableTaskItem key={task.id} id={task.id} sectionId={section.id}>
                                         {({ attributes, listeners, isDragging }) => {
                                             const isExpanded = expandedTaskIds.has(task.id);
@@ -446,8 +460,17 @@ function ProposalTreeItemComponent({
                                                                                                                     if (specificCitation) {
                                                                                                                         const sourceInfo = fullSources[specificCitation.source_id];
                                                                                                                         evidence = { id: 0, source_id: specificCitation.source_id, page: specificCitation.page, source_title: sourceInfo?.title || specificCitation.title || title, quote: specificCitation.quote || '' };
-                                                                                                                    } else if (task.citation_source_id && fullSources[task.citation_source_id]?.title.includes(title)) {
-                                                                                                                        evidence = { id: 0, source_id: task.citation_source_id, page: task.citation_page || pageNum, source_title: fullSources[task.citation_source_id].title, quote: task.citation_quote || '' };
+                                                                                                                    } else if (task.citations && task.citations.length > 0) {
+                                                                                                                        // Try to find matching citation from task.citations array
+                                                                                                                        const matchingCitation = task.citations.find(c =>
+                                                                                                                            fullSources[c.source_id]?.title.includes(title)
+                                                                                                                        );
+                                                                                                                        if (matchingCitation) {
+                                                                                                                            evidence = { id: 0, source_id: matchingCitation.source_id, page: matchingCitation.page || pageNum, source_title: fullSources[matchingCitation.source_id]?.title || matchingCitation.title || title, quote: matchingCitation.quote || '' };
+                                                                                                                        } else {
+                                                                                                                            const source = sources.find(s => s.title === title) || sources.find(s => s.title.includes(title));
+                                                                                                                            evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: title, quote: '' };
+                                                                                                                        }
                                                                                                                     } else {
                                                                                                                         const source = sources.find(s => s.title === title) || sources.find(s => s.title.includes(title));
                                                                                                                         evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: title, quote: '' };
@@ -565,9 +588,9 @@ export const ProposalTreeItem = memo(
         if (prevSection.id !== nextSection.id) return false;
         if (prevSection.title !== nextSection.title) return false;
         if (prevSection.content !== nextSection.content) return false;
-        if (prevSection.citation_source_id !== nextSection.citation_source_id) return false;
-        if (prevSection.citation_quote !== nextSection.citation_quote) return false;
-        if (prevSection.citation_page !== nextSection.citation_page) return false;
+
+        // Compare citations array
+        if (JSON.stringify(prevSection.citations) !== JSON.stringify(nextSection.citations)) return false;
 
         // Compare depth
         if (prevDepth !== nextDepth) return false;
@@ -617,6 +640,9 @@ export const ProposalTreeItem = memo(
         // All other props (callbacks, sources, etc.) are assumed stable
         // Parent components should use useCallback for callbacks
         // and useMemo for complex objects like fullSources
+        // Check taskFilter
+        if (prevProps.taskFilter !== nextProps.taskFilter) return false;
+
         return true;
     }
 );

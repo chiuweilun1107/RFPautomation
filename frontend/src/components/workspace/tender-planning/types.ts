@@ -4,6 +4,8 @@
  * All TypeScript interfaces and types used in the TenderPlanning component.
  */
 
+import type { Citation } from "@/components/workspace/types";
+
 /**
  * Main component props for TenderPlanning
  */
@@ -28,14 +30,14 @@ export interface Task {
     status: string;
     /** Parent section ID this task belongs to */
     section_id: string;
-    /** Optional citation source reference */
-    citation_source_id?: string;
-    /** Optional page number in citation source */
-    citation_page?: number;
-    /** Optional quote from citation source */
-    citation_quote?: string;
+    /** Unified citations array (JSONB format) */
+    citations: Citation[];
     /** Task creation timestamp */
     created_at?: string;
+    /** Whether user has manually modified this task */
+    is_modified?: boolean;
+    /** Type of workflow that generated this task */
+    workflow_type?: 'wf11_functional' | 'wf13_article';
 }
 
 /**
@@ -50,6 +52,8 @@ export interface Section {
     parent_id: string | null;
     /** Order position within parent */
     order_index: number;
+    /** Unified citations array (JSONB format) */
+    citations: Citation[];
     /** How this section was created */
     generation_method?: 'manual' | 'ai_gen' | 'template';
     /** Whether user has manually modified this section */
@@ -70,6 +74,8 @@ export interface Chapter {
     title: string;
     /** Child sections within this chapter */
     sections: Section[];
+    /** Unified citations array (JSONB format) */
+    citations: Citation[];
     /** How this chapter was created */
     generation_method?: 'manual' | 'ai_gen' | 'template';
     /** Whether user has manually modified this chapter */
@@ -86,7 +92,7 @@ export type DialogContext = 'chapter' | 'section';
 /**
  * Generation modes for AI content creation
  */
-export type GenerationMode = 'replace_all' | 'append_only';
+export type GenerationMode = 'append_only' | 'replace_all' | 'content_single' | 'content_batch';
 
 /**
  * Task generation modes

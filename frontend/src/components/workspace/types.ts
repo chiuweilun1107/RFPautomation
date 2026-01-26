@@ -1,16 +1,25 @@
+export interface Citation {
+    source_id: string;
+    page: number;
+    quote?: string;
+    title?: string;
+}
+
 export interface Task {
     id: string;
     requirement_text: string;
     status: string;
     section_id: string;
     assignee?: string;
-    citation_source_id?: string | null;
-    citation_page?: number | null;
-    citation_quote?: string | null;
-    citations?: { source_id: string; page: number; quote: string; title?: string }[];
+
+    // Unified citations JSONB array (no more flat fields)
+    citations: Citation[];
+
     order_index?: number;
     task_images?: TaskImage[];
     workflow_type?: string;
+    created_at?: string;
+    is_modified?: boolean;
 }
 
 export interface TaskContent {
@@ -31,11 +40,14 @@ export interface Section {
     parent_id?: string | null;
     children?: Section[];
     tasks?: Task[];
-    citation_source_id?: string | null;
-    citation_page?: number | null;
-    citation_quote?: string | null;
+
+    // Unified citations JSONB array (no more flat fields)
+    citations: Citation[];
+
     content?: string | null;
     last_integrated_at?: string | null;
+    generation_method?: 'manual' | 'wf11_functional' | 'wf13_article' | string;
+    is_modified?: boolean;
 }
 
 export interface Source {

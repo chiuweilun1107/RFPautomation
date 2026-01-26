@@ -187,6 +187,9 @@ export function useProposalState(initialSections: Section[] = []) {
     setInlineEditingTaskId(null);
   }, []);
 
+  // Task Filter State
+  const [taskFilter, setTaskFilter] = useState<'all' | 'wf11_functional' | 'wf13_article'>('all');
+
   return {
     // 状态
     sections,
@@ -195,6 +198,8 @@ export function useProposalState(initialSections: Section[] = []) {
     expandedCategories,
     loading,
     sectionViewModes,
+    taskFilter,
+    setTaskFilter,
 
     // 编辑状态
     editingSection,
