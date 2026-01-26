@@ -92,11 +92,11 @@ class Logger {
         console.warn(formatted);
         break;
       case LogLevel.INFO:
-        console.info(formatted);
+        console.warn(formatted);
         break;
       case LogLevel.DEBUG:
         if (this.isDevelopment) {
-          console.debug(formatted);
+          console.warn(formatted);
         }
         break;
     }

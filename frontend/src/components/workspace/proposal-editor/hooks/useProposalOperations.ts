@@ -1,358 +1,518 @@
 "use client";
 
 import { useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Section, Task } from "../types";
-import { useAsyncAction } from "@/hooks";
 import { toast } from "sonner";
 
 /**
- * 提案编辑器的所有操作函数 Hook
- * 包括：CRUD 操作、拖拽、生成等
+ * 提案編輯器的所有操作函數 Hook
+ * 包括：章節 CRUD、任務 CRUD、拖拽、生成等
  */
 export function useProposalOperations(
   projectId: string,
-  state: any // ProposalState
+  sections: Section[],
+  setSections: (sections: Section[] | ((prev: Section[]) => Section[])) => void,
+  fetchData: () => Promise<void>
 ) {
-  // ============ 章节操作 ============
+  const supabase = createClient();
+
+  // ============ 章節操作 ============
 
   /**
-   * 添加新章节
+   * 添加新章節
    */
-  const addSection = useAsyncAction(
+  const addSection = useCallback(
     async (title: string, parentId?: string) => {
-      // TODO: 调用 API
-      // const result = await sectionsApi.create({ ... });
-      // state.setSections(prev => [...prev, result]);
-      toast.success("章节已添加");
-      return { id: "new", title, parentId };
+      try {
+        const { error } = await supabase.from("sections").insert({
+          project_id: projectId,
+          title,
+          parent_id: parentId || null,
+          order_index: 0, // Will be updated by database trigger
+        });
+
+        if (error) throw error;
+        toast.success("章節已添加");
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`添加失敗: ${error.message}`);
+        throw error;
+      }
     },
-    {
-      onSuccess: () => toast.success("章节已添加"),
-      onError: (error) => toast.error(`添加失败: ${error.message}`),
-    }
+    [projectId, supabase, fetchData]
   );
 
   /**
-   * 编辑章节
+   * 編輯章節
    */
-  const editSection = useAsyncAction(
+  const editSection = useCallback(
     async (sectionId: string, title: string) => {
-      // TODO: 调用 API
-      toast.success("章节已更新");
-      return { id: sectionId, title };
+      try {
+        const { error } = await supabase
+          .from("sections")
+          .update({ title })
+          .eq("id", sectionId);
+
+        if (error) throw error;
+        toast.success("章節已更新");
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`更新失敗: ${error.message}`);
+        throw error;
+      }
     },
-    {
-      onSuccess: () => toast.success("章节已更新"),
-    }
+    [supabase, fetchData]
   );
 
   /**
-   * 删除章节
+   * 刪除章節
    */
-  const deleteSection = useAsyncAction(
+  const deleteSection = useCallback(
     async (sectionId: string) => {
-      // TODO: 调用 API
-      toast.success("章节已删除");
-      return { id: sectionId };
+      if (!confirm("確定要刪除此章節嗎？這將刪除所有子章節和任務。")) {
+        return;
+      }
+
+      try {
+        const { error } = await supabase
+          .from("sections")
+          .delete()
+          .eq("id", sectionId);
+
+        if (error) throw error;
+        toast.success("章節已刪除");
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`刪除失敗: ${error.message}`);
+        throw error;
+      }
     },
-    {
-      onSuccess: () => toast.success("章节已删除"),
-    }
+    [supabase, fetchData]
   );
 
-  // ============ 任务操作 ============
+  // ============ 任務操作 ============
 
   /**
-   * 添加任务到章节
+   * 添加任務到章節
    */
-  const addTask = useAsyncAction(
-    async (sectionId: string, title: string, sourceIds?: string[]) => {
-      // TODO: 调用 API
-      toast.success("任务已添加");
-      return { id: "new", section_id: sectionId, title };
+  const addTask = useCallback(
+    async (sectionId: string, requirementText: string) => {
+      try {
+        const { error } = await supabase.from("tasks").insert({
+          project_id: projectId,
+          section_id: sectionId,
+          requirement_text: requirementText,
+          status: "pending",
+        });
+
+        if (error) throw error;
+        toast.success("任務已添加");
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`添加失敗: ${error.message}`);
+        throw error;
+      }
     },
-    {
-      onSuccess: () => toast.success("任务已添加"),
-    }
+    [projectId, supabase, fetchData]
   );
 
   /**
-   * 编辑任务
+   * 編輯任務
    */
-  const editTask = useAsyncAction(
-    async (taskId: string, title: string, description?: string) => {
-      // TODO: 调用 API
-      toast.success("任务已更新");
-      return { id: taskId, title, description };
+  const editTask = useCallback(
+    async (taskId: string, requirementText: string) => {
+      try {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ requirement_text: requirementText })
+          .eq("id", taskId);
+
+        if (error) throw error;
+        toast.success("任務已更新");
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`更新失敗: ${error.message}`);
+        throw error;
+      }
     },
-    {
-      onSuccess: () => toast.success("任务已更新"),
-    }
+    [supabase, fetchData]
   );
 
   /**
-   * 删除任务
+   * 刪除任務
    */
-  const deleteTask = useAsyncAction(
+  const deleteTask = useCallback(
     async (taskId: string) => {
-      // TODO: 调用 API
-      toast.success("任务已删除");
-      return { id: taskId };
+      if (!confirm("確定要刪除此任務嗎？")) {
+        return;
+      }
+
+      try {
+        const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+
+        if (error) throw error;
+        toast.success("任務已刪除");
+
+        // 直接更新本地狀態避免完整刷新
+        setSections((prev) => {
+          const removeTaskRecursive = (sections: Section[]): Section[] => {
+            return sections.map((section) => ({
+              ...section,
+              tasks: section.tasks ? section.tasks.filter((t) => t.id !== taskId) : [],
+              children: section.children ? removeTaskRecursive(section.children) : [],
+            }));
+          };
+          return removeTaskRecursive(prev);
+        });
+      } catch (error: any) {
+        toast.error(`刪除失敗: ${error.message}`);
+        throw error;
+      }
     },
-    {
-      onSuccess: () => toast.success("任务已删除"),
-    }
+    [supabase, setSections]
   );
 
   // ============ 拖拽操作 ============
 
   /**
-   * 处理章节拖拽重新排序
+   * 處理拖拽結束事件
    */
-  const handleSectionReorder = useCallback(
-    async (sections: Section[]) => {
-      try {
-        // TODO: 调用 API 更新顺序
-        state.setSections(sections);
-      } catch (error) {
-        toast.error("重新排序失败");
-      }
-    },
-    [state]
-  );
+  const handleDragEnd = useCallback(
+    async (event: any) => {
+      const { active, over } = event;
 
-  /**
-   * 处理任务拖拽重新排序
-   */
-  const handleTaskReorder = useCallback(
-    async (sectionId: string, tasks: Task[]) => {
-      try {
-        // TODO: 调用 API 更新顺序
-        state.setSections((prev: Section[]) => {
-          // 更新对应章节的任务顺序
-          return prev.map((s) => (s.id === sectionId ? { ...s, tasks } : s));
+      if (!over || active.id === over.id) return;
+
+      const activeData = active.data.current;
+      const overData = over.data.current;
+
+      // 任務拖拽
+      if (activeData?.type === "task") {
+        const activeTaskId = active.id as string;
+        const sourceSectionId = activeData.sectionId as string;
+
+        // 確定目標章節
+        let targetSectionId: string;
+        let targetTaskId: string | null = null;
+
+        if (overData?.type === "task") {
+          targetSectionId = overData.sectionId as string;
+          targetTaskId = over.id as string;
+        } else if (overData?.type === "section") {
+          targetSectionId = over.id as string;
+        } else if (overData?.type === "empty-section") {
+          targetSectionId = overData.sectionId as string;
+        } else {
+          targetSectionId = sourceSectionId;
+        }
+
+        // 查找章節
+        const findSection = (nodes: Section[], id: string): Section | null => {
+          for (const node of nodes) {
+            if (node.id === id) return node;
+            if (node.children) {
+              const found = findSection(node.children, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const sourceSection = findSection(sections, sourceSectionId);
+        const targetSection = findSection(sections, targetSectionId);
+
+        if (!sourceSection || !targetSection) return;
+
+        const sourceTasks = [...(sourceSection.tasks || [])];
+        const activeTaskIndex = sourceTasks.findIndex((t) => t.id === activeTaskId);
+        if (activeTaskIndex === -1) return;
+
+        const [movedTask] = sourceTasks.splice(activeTaskIndex, 1);
+
+        let targetTasks: Task[];
+        let insertIndex: number;
+
+        if (sourceSectionId === targetSectionId) {
+          // 同章節重新排序
+          targetTasks = sourceTasks;
+          if (targetTaskId) {
+            insertIndex = targetTasks.findIndex((t) => t.id === targetTaskId);
+            if (insertIndex === -1) insertIndex = targetTasks.length;
+          } else {
+            insertIndex = targetTasks.length;
+          }
+        } else {
+          // 跨章節移動
+          targetTasks = [...(targetSection.tasks || [])];
+          if (targetTaskId) {
+            insertIndex = targetTasks.findIndex((t) => t.id === targetTaskId);
+            if (insertIndex === -1) insertIndex = targetTasks.length;
+          } else {
+            insertIndex = targetTasks.length;
+          }
+        }
+
+        // 插入任務到新位置
+        const taskToInsert = { ...movedTask, section_id: targetSectionId };
+        targetTasks.splice(insertIndex, 0, taskToInsert);
+
+        // 計算新的 order_index
+        const prevTask = targetTasks[insertIndex - 1];
+        const nextTask = targetTasks[insertIndex + 1];
+
+        const prevOrder = prevTask?.order_index ?? (nextTask?.order_index ? nextTask.order_index - 1000 : 0);
+        const nextOrder = nextTask?.order_index ?? prevOrder + 1000;
+
+        const newOrderIndex = (prevOrder + nextOrder) / 2;
+        taskToInsert.order_index = newOrderIndex;
+
+        // 樂觀更新 UI
+        setSections((prev) => {
+          const updateSections = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              const updatedNode = { ...node };
+              if (node.id === sourceSectionId && sourceSectionId !== targetSectionId) {
+                updatedNode.tasks = sourceTasks;
+              }
+              if (node.id === targetSectionId) {
+                updatedNode.tasks = targetTasks;
+              }
+              if (node.children) {
+                updatedNode.children = updateSections(node.children);
+              }
+              return updatedNode;
+            });
+          };
+          return updateSections(prev);
         });
-      } catch (error) {
-        toast.error("重新排序失败");
+
+        // 更新數據庫
+        try {
+          const { error } = await supabase
+            .from("tasks")
+            .update({
+              section_id: targetSectionId,
+              order_index: newOrderIndex,
+            })
+            .eq("id", activeTaskId);
+
+          if (error) throw error;
+        } catch (error: any) {
+          toast.error("拖拽更新失敗");
+          await fetchData(); // 回滾
+        }
+      }
+
+      // 章節拖拽
+      if (activeData?.type === "section") {
+        // TODO: 實現章節拖拽邏輯
       }
     },
-    [state]
+    [sections, setSections, supabase, fetchData]
   );
 
   // ============ 生成操作 ============
 
   /**
-   * 生成任务（使用 AI）
+   * 生成任務（使用 AI）
    */
-  const generateTasks = useAsyncAction(
-    async (sectionId: string, sourceIds: string[], userDescription?: string) => {
-      // TODO: 调用 n8n API
-      state.setGenerating(true);
-      state.setGeneratingSectionId(sectionId);
-
+  const generateTasks = useCallback(
+    async (sectionId: string, sourceIds: string[], userDescription?: string, workflowType: "technical" | "management" = "technical") => {
       try {
-        // 模拟流式生成
-        const tasks: Task[] = [];
-        state.setProgress({ current: 0, total: 3 });
+        const response = await fetch("/api/webhook/generate-tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            sectionId,
+            sourceIds,
+            userDescription,
+            workflowType,
+          }),
+        });
 
-        for (let i = 0; i < 3; i++) {
-          // 模拟 AI 生成
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          tasks.push({
-            id: `task-${i}`,
-            section_id: sectionId,
-            title: `Generated Task ${i + 1}`,
-            requirement_text: `Generated Task ${i + 1}`,
-            status: 'pending',
-            order_index: i,
-          });
-          state.setProgress({ current: i + 1, total: 3 });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "生成失敗");
         }
 
-        toast.success("任务生成成功");
-        return tasks;
-      } finally {
-        state.setGenerating(false);
-        state.setGeneratingSectionId(null);
-        state.setProgress(null);
-      }
-    }
-  );
-
-  /**
-   * 生成小节内容
-   */
-  const generateSubsection = useAsyncAction(
-    async (taskId: string, sourceIds: string[]) => {
-      // TODO: 调用 API
-      state.setIsGeneratingSubsection(true);
-
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        toast.success("小节已生成");
-        return { taskId, content: "Generated content" };
-      } finally {
-        state.setIsGeneratingSubsection(false);
-      }
-    }
-  );
-
-  /**
-   * 生成任务内容
-   */
-  const generateTaskContent = useAsyncAction(
-    async (taskId: string, sourceIds: string[]) => {
-      // TODO: 调用 API
-      state.setGeneratingTaskId(taskId);
-
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        toast.success("内容已生成");
-        return { taskId, content: "Generated content" };
-      } finally {
-        state.setGeneratingTaskId(null);
-      }
-    }
-  );
-
-  // ============ 图片操作 ============
-
-  /**
-   * 为任务生成图片
-   */
-  const generateImage = useAsyncAction(
-    async (taskId: string, prompt: string) => {
-      // TODO: 调用图片生成 API
-      state.setGeneratingTaskId(taskId);
-
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        toast.success("图片已生成");
-        return { taskId, imageUrl: "https://via.placeholder.com/400" };
-      } finally {
-        state.setGeneratingTaskId(null);
-      }
-    }
-  );
-
-  /**
-   * 上传任务图片
-   */
-  const uploadImage = useAsyncAction(
-    async (taskId: string, file: File) => {
-      // TODO: 调用 API 上传
-      state.setGeneratingTaskId(taskId);
-
-      try {
-        // 模拟上传
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        toast.success("图片已上传");
-        return { taskId, imageUrl: "uploaded-url" };
-      } finally {
-        state.setGeneratingTaskId(null);
-      }
-    }
-  );
-
-  // ============ 源文献操作 ============
-
-  /**
-   * 添加源文献到项目
-   */
-  const addSource = useAsyncAction(
-    async (sourceData: any) => {
-      // TODO: 调用 API
-      toast.success("源文献已添加");
-      return { id: "new", ...sourceData };
-    },
-    {
-      onSuccess: () => toast.success("源文献已添加"),
-    }
-  );
-
-  /**
-   * 删除源文献
-   */
-  const deleteSource = useAsyncAction(
-    async (sourceId: string) => {
-      // TODO: 调用 API
-      state.setSources((prev: any[]) => prev.filter((s) => s.id !== sourceId));
-      toast.success("源文献已删除");
-      return { id: sourceId };
-    },
-    {
-      onSuccess: () => toast.success("源文献已删除"),
-    }
-  );
-
-  /**
-   * 链接源文献到任务
-   */
-  const linkSourceToTask = useCallback(
-    async (taskId: string, sourceIds: string[]) => {
-      try {
-        // TODO: 调用 API
-        toast.success("源文献已链接");
-      } catch (error) {
-        toast.error("链接失败");
+        const result = await response.json();
+        toast.success(`已生成 ${result.taskCount || 0} 個任務`);
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`生成失敗: ${error.message}`);
+        throw error;
       }
     },
-    []
+    [projectId, fetchData]
   );
 
-  // ============ 返回所有操作函数 ============
+  /**
+   * 生成任務內容
+   */
+  const generateTaskContent = useCallback(
+    async (taskId: string, sectionId: string, sectionTitle: string, taskText: string, sourceIds: string[], allSections: string[]) => {
+      try {
+        const response = await fetch("/api/webhook/generate-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "task",
+            projectId,
+            sectionId,
+            sectionTitle,
+            taskId,
+            taskText,
+            selectedSourceIds: sourceIds,
+            allSections,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`生成失敗: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          toast.success(`內容生成成功！(${result.wordCount || 0}字)`);
+          return result;
+        } else {
+          throw new Error("生成失敗");
+        }
+      } catch (error: any) {
+        toast.error(`內容生成失敗: ${error.message}`);
+        throw error;
+      }
+    },
+    [projectId]
+  );
+
+  /**
+   * 整合章節內容
+   */
+  const integrateSection = useCallback(
+    async (section: Section, taskContentsMap: Map<string, any>) => {
+      const tasks = section.tasks || [];
+      if (tasks.length === 0) {
+        toast.error("此章節無任務可供整合");
+        return;
+      }
+
+      const taskContentPayload: { title: string; content: string }[] = [];
+      tasks.forEach((task) => {
+        const content = taskContentsMap.get(task.id);
+        if (content && content.content) {
+          taskContentPayload.push({
+            title: task.requirement_text,
+            content: content.content,
+          });
+        }
+      });
+
+      if (taskContentPayload.length === 0) {
+        toast.error("找不到已生成的任務內容，請先為任務生成內容");
+        return;
+      }
+
+      try {
+        toast.info(`正在整合 ${taskContentPayload.length} 篇任務內容...`);
+
+        const response = await fetch("/api/webhook/integrate-chapter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            sectionId: section.id,
+            sectionTitle: section.title,
+            contents: taskContentPayload,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "整合請求失敗");
+        }
+
+        const data = await response.json();
+        const resultText = data.integratedContent || data.content;
+
+        if (!resultText) {
+          throw new Error("API 未返回整合內容");
+        }
+
+        // 保存到數據庫
+        const { error: dbError } = await supabase
+          .from("sections")
+          .update({
+            content: resultText,
+            last_integrated_at: new Date().toISOString(),
+          })
+          .eq("id", section.id);
+
+        if (dbError) throw dbError;
+
+        toast.success("整合成功且已儲存！");
+        await fetchData();
+      } catch (error: any) {
+        toast.error(`整合失敗: ${error.message}`);
+        throw error;
+      }
+    },
+    [projectId, supabase, fetchData]
+  );
+
+  /**
+   * 生成圖片
+   */
+  const generateImage = useCallback(
+    async (taskId: string, options: any) => {
+      try {
+        const response = await fetch("/api/webhook/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            task_id: taskId,
+            ...options,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("圖片生成失敗");
+        }
+
+        const result = await response.json();
+        toast.success("圖片已生成");
+        await fetchData();
+        return result;
+      } catch (error: any) {
+        toast.error(`圖片生成失敗: ${error.message}`);
+        throw error;
+      }
+    },
+    [fetchData]
+  );
+
+  // ============ 返回所有操作函數 ============
 
   return {
-    // 章节操作
-    addSection: addSection.execute,
-    editSection: editSection.execute,
-    deleteSection: deleteSection.execute,
+    // 章節操作
+    addSection,
+    editSection,
+    deleteSection,
 
-    // 任务操作
-    addTask: addTask.execute,
-    editTask: editTask.execute,
-    deleteTask: deleteTask.execute,
+    // 任務操作
+    addTask,
+    editTask,
+    deleteTask,
 
     // 拖拽操作
-    handleSectionReorder,
-    handleTaskReorder,
+    handleDragEnd,
 
     // 生成操作
-    generateTasks: generateTasks.execute,
-    generateSubsection: generateSubsection.execute,
-    generateTaskContent: generateTaskContent.execute,
-
-    // 图片操作
-    generateImage: generateImage.execute,
-    uploadImage: uploadImage.execute,
-
-    // 源文献操作
-    addSource: addSource.execute,
-    deleteSource: deleteSource.execute,
-    linkSourceToTask,
-
-    // 状态信息
-    isLoading:
-      addSection.loading ||
-      editSection.loading ||
-      deleteSection.loading ||
-      addTask.loading ||
-      editTask.loading ||
-      deleteTask.loading ||
-      generateTasks.loading ||
-      generateSubsection.loading ||
-      generateTaskContent.loading ||
-      generateImage.loading ||
-      uploadImage.loading,
-
-    errors: {
-      addSection: addSection.error,
-      editSection: editSection.error,
-      deleteSection: deleteSection.error,
-      addTask: addTask.error,
-      editTask: editTask.error,
-      deleteTask: deleteTask.error,
-      generateTasks: generateTasks.error,
-    },
+    generateTasks,
+    generateTaskContent,
+    integrateSection,
+    generateImage,
   };
 }

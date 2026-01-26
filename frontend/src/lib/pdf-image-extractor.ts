@@ -4,9 +4,57 @@ export interface ExtractedImage {
     extension: 'jpg' | 'png';
 }
 
+interface PDFJSLib {
+    GlobalWorkerOptions: { workerSrc: string };
+    getDocument: (data: ArrayBuffer) => { promise: Promise<PDFDocumentProxy> };
+    OPS: {
+        paintImageXObject: number;
+        paintInlineImageXObject: number;
+        paintFormXObjectBegin: number;
+        paintXObject: number;
+    };
+}
+
+interface PDFDocumentProxy {
+    numPages: number;
+    getPage: (pageNumber: number) => Promise<PDFPageProxy>;
+}
+
+interface PDFPageProxy {
+    pageNumber: number;
+    objs: { get: (name: string) => Promise<ImageObject> };
+    commonObjs: { get: (name: string) => Promise<ImageObject> };
+    getOperatorList: () => Promise<OperatorList>;
+    getViewport: (options: { scale: number }) => Viewport;
+    render: (options: RenderOptions) => { promise: Promise<void> };
+    cleanup: () => void;
+}
+
+interface OperatorList {
+    fnArray: number[];
+    argsArray: unknown[][];
+}
+
+interface ImageObject {
+    data: Uint8ClampedArray;
+    width: number;
+    height: number;
+    operatorList?: OperatorList;
+}
+
+interface Viewport {
+    width: number;
+    height: number;
+}
+
+interface RenderOptions {
+    canvasContext: CanvasRenderingContext2D;
+    viewport: Viewport;
+}
+
 export async function extractImagesFromPDF(file: File): Promise<ExtractedImage[]> {
     // Dynamic import to avoid loading pdfjs-dist during build
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf') as any;
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf') as unknown as PDFJSLib;
 
     // Set worker source (required for pdf.js)
     // Use authoritative CDN for the legacy build to avoid local file serving issues.
@@ -18,7 +66,7 @@ export async function extractImagesFromPDF(file: File): Promise<ExtractedImage[]
     const images: ExtractedImage[]  = [];
 
     // Recursive function to walk operator lists (handles Form XObjects)
-    const walk = async (operatorList: any, page: any, commonObjs: any) => {
+    const walk = async (operatorList: OperatorList, page: PDFPageProxy, commonObjs: PDFPageProxy['commonObjs']) => {
         for (let i = 0; i < operatorList.fnArray.length; i++) {
             const fn = operatorList.fnArray[i];
             const args = operatorList.argsArray[i];
@@ -30,14 +78,14 @@ export async function extractImagesFromPDF(file: File): Promise<ExtractedImage[]
                     let imgObj;
                     try {
                         imgObj = await page.objs.get(imgName);
-                    } catch (e1) {
+                    } catch {
                         if (commonObjs) {
-                            try { imgObj = await commonObjs.get(imgName); } catch (e2) { }
+                            try { imgObj = await commonObjs.get(imgName); } catch { }
                         }
                     }
 
                     if (imgObj) await processImageObject(imgObj, page.pageNumber);
-                } catch (e) {
+                } catch {
                     // console.warn("Image extraction error:", e);
                 }
             }
@@ -54,19 +102,19 @@ export async function extractImagesFromPDF(file: File): Promise<ExtractedImage[]
                 const objName = args[0];
                 try {
                     let obj;
-                    try { obj = await page.objs.get(objName); } catch (e) {
-                        if (commonObjs) try { obj = await commonObjs.get(objName); } catch (e) { }
+                    try { obj = await page.objs.get(objName); } catch {
+                        if (commonObjs) try { obj = await commonObjs.get(objName); } catch { }
                     }
 
                     if (obj && obj.operatorList) {
                         await walk(obj.operatorList, page, commonObjs);
                     }
-                } catch (e) { }
+                } catch { }
             }
         }
     };
 
-    const processImageObject = async (imgObj: any, pageNum: number) => {
+    const processImageObject = async (imgObj: ImageObject, pageNum: number) => {
         if (!imgObj || !imgObj.data) return;
 
         const width = imgObj.width;

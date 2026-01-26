@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { logger } from '@/lib/errors';
 
 export interface ProjectAssessment {
   id: string;
@@ -27,6 +29,7 @@ export function useProjects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const supabase = createClient();
+  const { handleApiError, handleDbError } = useErrorHandler();
 
   const fetchProjects = async (forceRefresh = false) => {
     try {
@@ -56,9 +59,18 @@ export function useProjects() {
 
       setProjects(mappedData || []);
       setError(null);
+
+      logger.info('Projects fetched successfully', 'useProjects', {
+        count: mappedData?.length || 0,
+        forceRefresh,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch projects'));
-      console.error('Error fetching projects:', err);
+      const errorObj = err instanceof Error ? err : new Error('Failed to fetch projects');
+      setError(errorObj);
+      handleApiError(err, 'FetchProjects', {
+        userMessage: 'Failed to load projects. Please try again.',
+        metadata: { forceRefresh },
+      });
     } finally {
       setLoading(false);
     }
@@ -75,9 +87,15 @@ export function useProjects() {
 
       // Update local state
       setProjects(prev => prev.filter(p => p.id !== projectId));
+
+      logger.info('Project deleted successfully', 'useProjects', { projectId });
+
       return { success: true };
     } catch (err) {
-      console.error('Error deleting project:', err);
+      handleDbError(err, 'DeleteProject', {
+        userMessage: 'Failed to delete project. Please try again.',
+        metadata: { projectId },
+      });
       return { success: false, error: err };
     }
   };

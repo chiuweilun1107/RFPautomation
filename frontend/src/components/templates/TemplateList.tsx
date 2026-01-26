@@ -86,14 +86,17 @@ export function TemplateList({
     const handleReparse = async (template: Template) => {
         setReparsingId(template.id)
         try {
-            const response = await fetch("/webhook/parse-template-v2", {
+            // Updated to use the standard WF04 endpoint
+            const response = await fetch("/api/webhook/process-proposal-template", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    file_path: template.file_path,
-                    template_id: template.id,
+                    projectId: template.id,
+                    filePath: template.file_path,
+                    fileName: template.name,
+                    mode: 'replace' // Manual reparse usually implies a desire to reset/update structure
                 }),
             })
 
@@ -101,7 +104,7 @@ export function TemplateList({
                 throw new Error("Trigger failed")
             }
 
-            toast.success("已觸發重新解析")
+            toast.success("已觸發重新解析 (WF04)")
         } catch (error) {
             console.error(error)
             toast.error("觸發解析失敗")

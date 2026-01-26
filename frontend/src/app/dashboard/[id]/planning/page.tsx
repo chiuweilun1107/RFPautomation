@@ -5,9 +5,9 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ContentSkeleton } from "@/components/ui/skeletons/ContentSkeleton";
 
-// Lazy load the heavy TenderPlanning component
+// Lazy load the heavy TenderPlanning component (refactored modular version)
 const TenderPlanning = dynamic(
-    () => import("@/components/workspace/TenderPlanning").then((mod) => ({ default: mod.TenderPlanning })),
+    () => import("@/components/workspace/tender-planning").then((mod) => ({ default: mod.TenderPlanning })),
     { ssr: false }
 );
 

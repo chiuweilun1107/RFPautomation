@@ -3,6 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { templatesApi } from "@/features/templates/api/templatesApi";
 import { toast } from "sonner";
+import { Template } from "@/types/template";
+import {
+  TemplatesQueryData,
+  TemplateCreateInput,
+  TemplateUpdateInput
+} from "@/types/query-types";
 
 /**
  * 获取项目的模板列表
@@ -46,19 +52,22 @@ export function useTemplateQuery(templateId: string, enabled = true) {
 export function useCreateTemplateMutation(projectId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (templateData: any) => {
+  return useMutation<Template, Error, TemplateCreateInput>({
+    mutationFn: async (templateData: TemplateCreateInput) => {
       // TODO: Implement templates.create() API method
-      return { id: 'new', ...templateData };
+      return { id: 'new', ...templateData } as Template;
     },
     onSuccess: (newTemplate) => {
       // 更新列表缓存
-      queryClient.setQueryData(["templates", projectId], (oldData: any[] | undefined) => {
-        return oldData ? [...oldData, newTemplate] : [newTemplate];
-      });
+      queryClient.setQueryData<TemplatesQueryData>(
+        ["templates", projectId],
+        (oldData) => {
+          return oldData ? [...oldData, newTemplate] : [newTemplate];
+        }
+      );
       toast.success("模板已创建");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`创建失败: ${error.message}`);
     },
   });
@@ -70,19 +79,23 @@ export function useCreateTemplateMutation(projectId: string) {
 export function useUpdateTemplateMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ templateId, data }: { templateId: string; data: any }) => {
+  return useMutation<
+    Template,
+    Error,
+    { templateId: string; data: TemplateUpdateInput }
+  >({
+    mutationFn: async ({ templateId, data }: { templateId: string; data: TemplateUpdateInput }) => {
       // TODO: Implement templates.update() API method
-      return { id: templateId, ...data };
+      return { id: templateId, name: '', ...data } as Template;
     },
     onSuccess: (updatedTemplate) => {
       // 更新详情缓存
-      queryClient.setQueryData(["template", updatedTemplate.id], updatedTemplate);
+      queryClient.setQueryData<Template>(["template", updatedTemplate.id], updatedTemplate);
 
       // 更新列表缓存
-      queryClient.setQueryData(
-        ["templates", updatedTemplate.project_id],
-        (oldData: any[] | undefined) => {
+      queryClient.setQueryData<TemplatesQueryData>(
+        ["templates", updatedTemplate.user_id],
+        (oldData) => {
           return oldData
             ? oldData.map((t) => (t.id === updatedTemplate.id ? updatedTemplate : t))
             : oldData;
@@ -91,7 +104,7 @@ export function useUpdateTemplateMutation() {
 
       toast.success("模板已更新");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`更新失败: ${error.message}`);
     },
   });
@@ -103,16 +116,19 @@ export function useUpdateTemplateMutation() {
 export function useDeleteTemplateMutation(projectId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<string, Error, string>({
     mutationFn: async (templateId: string) => {
       // TODO: Implement templates.delete() API method
       return templateId;
     },
     onSuccess: (deletedTemplateId) => {
       // 更新列表缓存
-      queryClient.setQueryData(["templates", projectId], (oldData: any[] | undefined) => {
-        return oldData ? oldData.filter((t) => t.id !== deletedTemplateId) : oldData;
-      });
+      queryClient.setQueryData<TemplatesQueryData>(
+        ["templates", projectId],
+        (oldData) => {
+          return oldData ? oldData.filter((t) => t.id !== deletedTemplateId) : oldData;
+        }
+      );
 
       // 清理详情缓存
       queryClient.removeQueries({
@@ -121,7 +137,7 @@ export function useDeleteTemplateMutation(projectId: string) {
 
       toast.success("模板已删除");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`删除失败: ${error.message}`);
     },
   });

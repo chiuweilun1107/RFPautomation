@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo } from "react";
 import { Task } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ interface TaskItemProps {
 /**
  * 单个任务项组件 - 展示和编辑任务
  */
-export function TaskItem({
+function TaskItemComponent({
     task,
     sectionId,
     isExpanded,
@@ -119,3 +119,26 @@ export function TaskItem({
         </div>
     );
 }
+
+/**
+ * Memoized TaskItem component to prevent unnecessary re-renders
+ * Only re-renders when task data, editing state, or callbacks change
+ */
+export const TaskItem = memo(
+    TaskItemComponent,
+    (prevProps, nextProps) => {
+        // Compare task-related props
+        if (prevProps.task.id !== nextProps.task.id) return false;
+        if (prevProps.task.requirement_text !== nextProps.task.requirement_text) return false;
+        if (prevProps.task.status !== nextProps.task.status) return false;
+
+        // Compare state props
+        if (prevProps.isExpanded !== nextProps.isExpanded) return false;
+        if (prevProps.isEditing !== nextProps.isEditing) return false;
+        if (prevProps.editValue !== nextProps.editValue) return false;
+        if (prevProps.isGenerating !== nextProps.isGenerating) return false;
+
+        // Callbacks are stable if parent uses useCallback
+        return true;
+    }
+);

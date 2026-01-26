@@ -5,23 +5,17 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from '@/lib/api-client';
+import {
+  UseGoogleDrivePickerOptions,
+  UseGoogleDrivePickerReturn,
+  GoogleDriveAuthResponse,
+  GoogleDriveTokenResponse,
+  GoogleDriveImportResponse,
+  GooglePickerData,
+} from '@/types/google-drive';
 
 // Global flag to prevent multiple pickers across all instances
 let globalPickerLock = false;
-
-interface UseGoogleDrivePickerOptions {
-  projectId?: string;
-  folderId?: string;
-  onSuccess?: (source: any) => void;
-  onError?: (error: string) => void;
-}
-
-interface UseGoogleDrivePickerReturn {
-  isConnecting: boolean;
-  isImporting: boolean;
-  openPicker: () => Promise<void>;
-  connectGoogleDrive: () => Promise<void>;
-}
 
 export function useGoogleDrivePicker({
   projectId,
@@ -46,10 +40,10 @@ export function useGoogleDrivePicker({
       setIsConnecting(true);
 
       // Generate OAuth state and get auth URL
-      const response = await apiClient.post<{
-        state: string;
-        authUrl: string;
-      }>('/api/auth/google/generate-state', {});
+      const response = await apiClient.post<GoogleDriveAuthResponse>(
+        '/api/auth/google/generate-state',
+        {}
+      );
 
       if (response.data?.authUrl) {
         // Open OAuth popup
@@ -139,20 +133,23 @@ export function useGoogleDrivePicker({
       // Get OAuth token
       let tokenResponse;
       try {
-        tokenResponse = await apiClient.post<{ accessToken: string }>(
+        tokenResponse = await apiClient.post<GoogleDriveTokenResponse>(
           '/api/auth/google/refresh',
           {}
         );
-      } catch (error: any) {
+      } catch (error) {
         // Check status code in both error.context.statusCode and error.statusCode
-        const statusCode = error?.context?.statusCode || error?.statusCode;
+        const statusCode =
+          (error as { context?: { statusCode?: number }; statusCode?: number })?.context?.statusCode ||
+          (error as { statusCode?: number })?.statusCode;
 
         // If 401/404 (unauthorized or no tokens found), trigger OAuth flow
+        const errorMessage = (error as Error)?.message || '';
         if (
           statusCode === 401 ||
           statusCode === 404 ||
-          error?.message?.includes('No tokens found') ||
-          error?.message?.includes('Unauthorized')
+          errorMessage.includes('No tokens found') ||
+          errorMessage.includes('Unauthorized')
         ) {
           console.log('No Google Drive connection found, starting OAuth flow...');
           globalPickerLock = false;
@@ -173,12 +170,16 @@ export function useGoogleDrivePicker({
       }
 
       // Create and show picker
-      const google = (window as any).google;
+      const google = window.google;
+      if (!google?.picker) {
+        throw new Error('Google Picker API not loaded');
+      }
+
       const picker = new google.picker.PickerBuilder()
         .addView(google.picker.ViewId.DOCS)
         .setOAuthToken(tokenResponse.data.accessToken)
-        .setCallback(async (data: any) => {
-          if (data.action === google.picker.Action.PICKED) {
+        .setCallback(async (data: GooglePickerData) => {
+          if (data.action === google.picker.Action.PICKED && data.docs && data.docs.length > 0) {
             const file = data.docs[0];
 
             // Set importing state now that user has selected a file
@@ -186,7 +187,7 @@ export function useGoogleDrivePicker({
 
             // Import file
             try {
-              const importResponse = await apiClient.post<{ source: any }>('/api/sources/from-drive', {
+              const importResponse = await apiClient.post<GoogleDriveImportResponse>('/api/sources/from-drive', {
                 fileId: file.id,
                 projectId,
                 folderId,

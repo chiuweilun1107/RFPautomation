@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
  * 源文献多选管理 Hook
  * 统一管理源文献的选择、全选、清空、搜索过滤
  */
-export function useSourceSelection<T extends { id: string }>(sources: T[] = []) {
+export function useSourceSelection<T extends { id: string; title?: string; content?: string }>(sources: T[] = []) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -56,8 +56,8 @@ export function useSourceSelection<T extends { id: string }>(sources: T[] = []) 
     if (!searchQuery.trim()) return sources;
     const query = searchQuery.toLowerCase();
     return sources.filter((source) => {
-      const title = (source as any).title?.toLowerCase() || '';
-      const content = (source as any).content?.toLowerCase() || '';
+      const title = source.title?.toLowerCase() || '';
+      const content = source.content?.toLowerCase() || '';
       return title.includes(query) || content.includes(query);
     });
   }, [sources, searchQuery]);

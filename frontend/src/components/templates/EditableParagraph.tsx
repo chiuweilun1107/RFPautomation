@@ -69,7 +69,7 @@ function getFontFamily(fontName?: string, cjkFontName?: string): string {
   // 1. 如果有指定的字體，優先處理
   // 如果是 CJK 字體，我們通常希望它能覆蓋中文
   // 如果是 西文字體，它會自動只影響英數
-  let families = []
+  const families = []
 
   if (fontName) {
     families.push(fontMap[fontName] || `"${fontName}"`)

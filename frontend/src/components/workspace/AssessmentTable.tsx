@@ -39,7 +39,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
     const supabase = createClient();
 
     const fetchData = async () => {
-        console.log("[AssessmentTable] Fetching data for project:", projectId);
         try {
             const { data: assessmentData, error: assessmentError } = await supabase
                 .from('project_assessments')
@@ -50,7 +49,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
             if (assessmentError) throw assessmentError;
 
             if (assessmentData) {
-                console.log("[AssessmentTable] Data found, processing citations...");
                 const keys = Object.keys(assessmentData).filter(k => !['id', 'project_id', 'created_at', 'updated_at', 'model_used', 'criteria'].includes(k));
                 if (keys.length > 0) setActiveTab(keys[0]);
                 setData(assessmentData);
@@ -95,7 +93,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                 setEvidences(collectedEvidences);
                 setIsAnalyzing(false);
             } else {
-                console.log("[AssessmentTable] No data found for project:", projectId);
                 setData(null);
             }
         } catch (err: any) {
@@ -110,7 +107,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
         fetchData();
 
         // Subscribe to Realtime changes for this project
-        console.log("[AssessmentTable] Subscribing to Realtime changes for project:", projectId);
         const channel = supabase
             .channel(`project_assessments_${projectId}`)
             .on(
@@ -122,7 +118,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                     filter: `project_id=eq.${projectId}`
                 },
                 (payload) => {
-                    console.log("[AssessmentTable] Realtime update detected!", payload);
                     fetchData(); // Re-fetch the full object to ensure we have all fields
                     toast.success("Intelligence Sequence Updated", {
                         description: "New analysis results have been received."
@@ -132,7 +127,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
             .subscribe();
 
         return () => {
-            console.log("[AssessmentTable] Unsubscribing from Realtime");
             supabase.removeChannel(channel);
         };
     }, [projectId, supabase]);
@@ -177,7 +171,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
     }, [isDragging, dragOffset]);
 
     const handleCitationClick = async (evidence: Evidence) => {
-        console.log("[AssessmentTable] Citation clicked, fetching full source:", evidence.source_id);
         setSelectedEvidence(evidence);
 
         // Fetch full source data
@@ -192,7 +185,6 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                 console.error("[AssessmentTable] Error fetching source:", sourceError);
                 setSelectedSource(null);
             } else {
-                console.log("[AssessmentTable] Source data fetched:", sourceData);
                 setSelectedSource(sourceData);
             }
         } catch (err) {
@@ -219,12 +211,10 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
 
     if (!data) {
         const handleStartAnalysis = async () => {
-            console.log("[AssessmentTable] Starting analysis for project:", projectId);
             setIsAnalyzing(true);
             try {
                 await n8nApi.evaluateProject(projectId);
 
-                console.log("[AssessmentTable] API call successful");
                 toast.success("AI Analysis Started", {
                     description: "The deconstruction process has been initiated. This may take a few minutes."
                 });

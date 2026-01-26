@@ -1,4 +1,5 @@
 
+import { memo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import {
     Tooltip,
@@ -21,7 +22,7 @@ interface CitationBadgeProps {
     onClick?: (evidence: Evidence) => void;
 }
 
-export function CitationBadge({ evidence, onClick }: CitationBadgeProps) {
+function CitationBadgeComponent({ evidence, onClick }: CitationBadgeProps) {
     return (
         <TooltipProvider>
             <Tooltip delayDuration={200}>
@@ -61,3 +62,24 @@ export function CitationBadge({ evidence, onClick }: CitationBadgeProps) {
         </TooltipProvider>
     );
 }
+
+/**
+ * Memoized CitationBadge
+ * Only re-renders when evidence data changes
+ */
+export const CitationBadge = memo(
+    CitationBadgeComponent,
+    (prevProps, nextProps) => {
+        const prevEvidence = prevProps.evidence;
+        const nextEvidence = nextProps.evidence;
+
+        // Compare evidence properties
+        return (
+            prevEvidence.id === nextEvidence.id &&
+            prevEvidence.source_id === nextEvidence.source_id &&
+            prevEvidence.page === nextEvidence.page &&
+            prevEvidence.source_title === nextEvidence.source_title &&
+            prevEvidence.quote === nextEvidence.quote
+        );
+    }
+);

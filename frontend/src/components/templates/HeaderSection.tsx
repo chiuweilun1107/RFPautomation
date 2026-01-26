@@ -57,7 +57,7 @@ function getFontFamily(fontName?: string, cjkFontName?: string): string {
     'Calibri': 'Calibri, "Helvetica Neue", Arial, sans-serif'
   }
 
-  let families = []
+  const families = []
   if (fontName) families.push(fontMap[fontName] || `"${fontName}"`)
   if (cjkFontName) families.push(fontMap[cjkFontName] || `"${cjkFontName}"`)
   families.push('serif')

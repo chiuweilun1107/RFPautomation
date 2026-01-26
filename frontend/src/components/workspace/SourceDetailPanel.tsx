@@ -109,13 +109,6 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         return typeLabels[type] || `OPEN ORIGINAL ${type.toUpperCase()}`;
     }, [source?.type]);
 
-    console.log('[SourceDetailPanel] Render state:', {
-        hasEvidence: !!evidence,
-        hasSource: !!source,
-        showFullContentWithHighlight,
-        sourceType: source?.type,
-        evidencePage: evidence?.page
-    });
 
     // Get content based on context
     const content = useMemo(() => {
@@ -235,15 +228,10 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
     // Helper function to highlight quote in content
     const highlightContent = useMemo(() => {
         if (!showFullContentWithHighlight || !evidence?.quote || !content) {
-            console.log('[SourceDetailPanel] Highlight skipped:', {
-                showFullContentWithHighlight,
-                hasQuote: !!evidence?.quote,
-                hasContent: !!content
-            });
             return null;
         }
 
-        let quote = evidence.quote.trim();
+        const quote = evidence.quote.trim();
 
         // Handle ellipsis in quotes - find start and end positions
         const hasEllipsis = quote.includes('...');
@@ -252,16 +240,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         if (hasEllipsis) {
             // Split by ellipsis and filter out short segments
             quoteSegments = quote.split('...').map(s => s.trim()).filter(s => s.length > 15);
-            console.log('[SourceDetailPanel] Quote contains ellipsis, segments:', quoteSegments.length);
         }
-
-        console.log('[SourceDetailPanel] Attempting to highlight:', {
-            quoteLength: quote.length,
-            contentLength: content.length,
-            hasEllipsis,
-            segmentsCount: quoteSegments.length,
-            quotePreview: quote.substring(0, 50) + '...'
-        });
 
         // Aggressive normalization for better matching
         const normalizeForMatching = (str: string) => {
@@ -323,7 +302,6 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                 }
             }
 
-            console.log('[SourceDetailPanel] Ellipsis highlight range:', { startIndex, endIndex });
         } else {
             // No ellipsis, find single quote
             const normalizedQuote = normalizeForMatching(quote);
@@ -358,9 +336,6 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
             console.warn('[SourceDetailPanel] Quote not found in content. Quote:', quote.substring(0, 100));
             return null;
         }
-
-        const actualQuoteLength = endIndex - startIndex;
-        console.log('[SourceDetailPanel] Highlight found at index:', startIndex, 'length:', actualQuoteLength);
 
         const beforeQuote = content.substring(0, startIndex);
         const quotePart = content.substring(startIndex, endIndex);

@@ -9,7 +9,7 @@
  * - @/lib/errors/logger for logging
  */
 
-import { isAppError, AppError } from './errors/AppError';
+import { isAppError } from './errors/AppError';
 import { extractErrorMessage } from './errors/error-handler';
 
 /**

@@ -58,24 +58,24 @@ export function reportWebVitals(metric: Metric) {
 
   // Log in development
   if (process.env.NODE_ENV === 'development') {
-    console.group(`📊 Web Vital: ${vitalsMetric.name}`);
-    console.log('Value:', vitalsMetric.value.toFixed(2));
-    console.log('Rating:', vitalsMetric.rating);
-    console.log('Delta:', vitalsMetric.delta.toFixed(2));
-    console.log('Navigation Type:', vitalsMetric.navigationType);
-    console.groupEnd();
+    console.warn(`📊 Web Vital: ${vitalsMetric.name}`, {
+      value: vitalsMetric.value.toFixed(2),
+      rating: vitalsMetric.rating,
+      delta: vitalsMetric.delta.toFixed(2),
+      navigationType: vitalsMetric.navigationType
+    });
   }
 
   // Send to analytics in production
   if (process.env.NODE_ENV === 'production') {
     // Option 1: Send to Vercel Analytics (if using Vercel)
     if (typeof window !== 'undefined' && 'va' in window) {
-      (window as any).va('event', 'web-vitals', vitalsMetric);
+      (window as { va: (event: string, name: string, data: unknown) => void }).va('event', 'web-vitals', vitalsMetric);
     }
 
     // Option 2: Send to Google Analytics (if configured)
     if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as any).gtag('event', vitalsMetric.name, {
+      (window as { gtag: (command: string, name: string, params: Record<string, unknown>) => void }).gtag('event', vitalsMetric.name, {
         value: Math.round(vitalsMetric.value),
         metric_id: vitalsMetric.id,
         metric_value: vitalsMetric.value,
@@ -120,7 +120,7 @@ export function initPerformanceMonitoring(): () => void {
       });
       longTaskObserver.observe({ entryTypes: ['longtask'] });
       observers.push(longTaskObserver);
-    } catch (e) {
+    } catch {
       // Long task API not supported
     }
 
@@ -138,7 +138,7 @@ export function initPerformanceMonitoring(): () => void {
       });
       resourceObserver.observe({ entryTypes: ['resource'] });
       observers.push(resourceObserver);
-    } catch (e) {
+    } catch {
       // Resource timing not supported
     }
   }
@@ -151,11 +151,11 @@ export function initPerformanceMonitoring(): () => void {
       const connectTime = perfData.responseEnd - perfData.requestStart;
       const renderTime = perfData.domComplete - perfData.domLoading;
 
-      console.group('📈 Page Performance');
-      console.log('Total Load Time:', `${pageLoadTime}ms`);
-      console.log('Connect Time:', `${connectTime}ms`);
-      console.log('Render Time:', `${renderTime}ms`);
-      console.groupEnd();
+      console.warn('📈 Page Performance', {
+        totalLoadTime: `${pageLoadTime}ms`,
+        connectTime: `${connectTime}ms`,
+        renderTime: `${renderTime}ms`
+      });
     }, 0);
   };
 

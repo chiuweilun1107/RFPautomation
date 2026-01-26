@@ -5,11 +5,12 @@
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   // Dynamic import to avoid bundling in production
-  import('@axe-core/react').then((axe) => {
-    const React = require('react');
-    const ReactDOM = require('react-dom');
-
-    axe.default(React, ReactDOM, 1000, {
+  Promise.all([
+    import('@axe-core/react'),
+    import('react'),
+    import('react-dom')
+  ]).then(([axe, React, ReactDOM]) => {
+    axe.default(React.default, ReactDOM.default, 1000, {
       rules: [
         // Enable all WCAG 2.1 AA rules
         { id: 'color-contrast', enabled: true },
@@ -30,7 +31,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       ],
     });
 
-    console.info('🔍 Axe-core accessibility testing enabled in development mode');
+    console.warn('🔍 Axe-core accessibility testing enabled in development mode');
   }).catch((error) => {
     console.error('Failed to initialize axe-core:', error);
   });

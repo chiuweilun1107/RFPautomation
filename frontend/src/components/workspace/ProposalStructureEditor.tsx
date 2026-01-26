@@ -1493,7 +1493,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
             setSections(prev => {
                 const updateSections = (nodes: Section[]): Section[] => {
                     return nodes.map(node => {
-                        let updatedNode = { ...node };
+                        const updatedNode = { ...node };
                         if (node.id === sourceSectionId && sourceSectionId !== targetSectionId) {
                             updatedNode.tasks = sourceTasks;
                         }

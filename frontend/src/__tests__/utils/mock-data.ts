@@ -1,8 +1,42 @@
-import { Evidence } from '@/components/workspace/CitationBadge'
+import { Evidence } from '@/components/workspace/CitationBadge';
+import { Source } from '@/features/sources/api/sourcesApi';
+import { Project } from '@/features/projects/types/project.schema';
+import { ChatMessage } from '@/types/api';
 
 /**
  * Mock data factories for testing
  */
+
+interface MockSourceOverrides {
+  id?: string;
+  title?: string;
+  summary?: string;
+  content?: string;
+  source_type?: string;
+  topics?: string[];
+  pages?: Array<{ page: number; content: string }>;
+}
+
+interface MockProjectOverrides {
+  id?: string;
+  name?: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string;
+}
+
+interface MockMessageOverrides {
+  role?: 'user' | 'assistant' | 'system';
+  content?: string;
+  sources?: Evidence[];
+}
+
+interface MockApiResponseOverrides {
+  ok?: boolean;
+  status?: number;
+  json?: () => Promise<unknown>;
+}
 
 export const mockEvidence = (overrides?: Partial<Evidence>): Evidence => ({
   id: 1,
@@ -27,7 +61,7 @@ export const mockImageEvidence = (overrides?: Partial<Evidence>): Evidence => ({
   ...overrides,
 })
 
-export const mockSource = (overrides?: any) => ({
+export const mockSource = (overrides?: MockSourceOverrides): Partial<Source> & MockSourceOverrides => ({
   id: 'source-123',
   title: 'Test Document',
   summary: 'This is a test document summary.',
@@ -41,7 +75,7 @@ export const mockSource = (overrides?: any) => ({
   ...overrides,
 })
 
-export const mockProject = (overrides?: any) => ({
+export const mockProject = (overrides?: MockProjectOverrides): Partial<Project> & MockProjectOverrides => ({
   id: 'project-123',
   name: 'Test Project',
   description: 'A test project',
@@ -51,19 +85,22 @@ export const mockProject = (overrides?: any) => ({
   ...overrides,
 })
 
-export const mockMessage = (overrides?: any) => ({
+export const mockMessage = (overrides?: MockMessageOverrides): ChatMessage & MockMessageOverrides => ({
   role: 'user' as const,
   content: 'Test message',
   sources: [],
   ...overrides,
 })
 
-export const mockApiResponse = (data: any, overrides?: any) => ({
+export const mockApiResponse = <TData = unknown>(
+  data: TData,
+  overrides?: MockApiResponseOverrides
+): Response & MockApiResponseOverrides => ({
   ok: true,
   status: 200,
   json: async () => data,
   ...overrides,
-})
+} as Response & MockApiResponseOverrides)
 
 export const mockApiError = (message: string, status = 500) => ({
   ok: false,

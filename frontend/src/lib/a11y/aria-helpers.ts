@@ -26,7 +26,6 @@ export function getDialogAriaProps(dialogId: string, titleId: string) {
  * 可聚焦元素的 ARIA 属性
  */
 export function getFocusableAriaProps(element: HTMLElement) {
-  const tabindex = element.getAttribute("tabindex");
   const isNaturallyFocusable =
     ["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA"].includes(element.tagName) &&
     !element.hasAttribute("disabled");

@@ -3,6 +3,16 @@
  * Type definitions for template parsing, design, and rendering
  */
 
+import {
+  SectionHeadersFooters,
+  StyleDefinition,
+  FootnotesEndnotesCollection,
+  Chart,
+  TextBox,
+  Comment,
+  RevisionsCollection
+} from './template-advanced';
+
 // Document Format Types
 export interface DocumentFormat {
   alignment?: 'left' | 'center' | 'right' | 'justify';
@@ -147,25 +157,13 @@ export interface Template {
   updated_at?: string;
   user_id?: string;
   // Advanced parsing features (v2)
-  headers_footers?: Array<{
-    section_index: number;
-    headers?: {
-      default?: { paragraphs?: any[]; images?: any[]; tables?: any[] };
-      first_page?: { paragraphs?: any[]; images?: any[]; tables?: any[] };
-      even_page?: { paragraphs?: any[]; images?: any[]; tables?: any[] };
-    };
-    footers?: {
-      default?: { paragraphs?: any[]; tables?: any[] };
-      first_page?: { paragraphs?: any[]; tables?: any[] };
-      even_page?: { paragraphs?: any[]; tables?: any[] };
-    };
-  }>;
-  styles_definitions?: any[];
-  footnotes_endnotes?: any;
-  charts?: any[];
-  text_boxes?: any[];
-  comments?: any[];
-  revisions?: any;
+  headers_footers?: SectionHeadersFooters[];
+  styles_definitions?: StyleDefinition[];
+  footnotes_endnotes?: FootnotesEndnotesCollection;
+  charts?: Chart[];
+  text_boxes?: TextBox[];
+  comments?: Comment[];
+  revisions?: RevisionsCollection;
 }
 
 // Template Structure (for hierarchical content)

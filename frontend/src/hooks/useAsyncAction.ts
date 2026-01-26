@@ -1,9 +1,9 @@
 import { useCallback, useState, useRef } from 'react';
 
-interface AsyncActionState {
+interface AsyncActionState<TData = unknown> {
   loading: boolean;
   error: Error | null;
-  data: any;
+  data: TData | null;
   isSuccess: boolean;
 }
 
@@ -15,17 +15,20 @@ interface AsyncActionState {
  * const { execute, loading, error, data } = useAsyncAction(fetchData);
  * const result = await execute();
  */
-export function useAsyncAction<T extends (...args: any[]) => Promise<any>>(
-  action: T,
+export function useAsyncAction<
+  TArgs extends unknown[],
+  TResult
+>(
+  action: (...args: TArgs) => Promise<TResult>,
   options: {
-    onSuccess?: (data: any) => void;
+    onSuccess?: (data: TResult) => void;
     onError?: (error: Error) => void;
     autoReset?: boolean;
   } = {}
 ) {
   const { onSuccess, onError, autoReset = true } = options;
 
-  const [state, setState] = useState<AsyncActionState>({
+  const [state, setState] = useState<AsyncActionState<TResult>>({
     loading: false,
     error: null,
     data: null,
@@ -36,7 +39,7 @@ export function useAsyncAction<T extends (...args: any[]) => Promise<any>>(
   const maxRetries = 3;
 
   const execute = useCallback(
-    async (...args: Parameters<T>) => {
+    async (...args: TArgs): Promise<TResult> => {
       setState({ loading: true, error: null, data: null, isSuccess: false });
 
       try {
@@ -69,7 +72,7 @@ export function useAsyncAction<T extends (...args: any[]) => Promise<any>>(
   );
 
   const retry = useCallback(
-    async (...args: Parameters<T>) => {
+    async (...args: TArgs): Promise<TResult> => {
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current += 1;
         // 指数退避
@@ -106,16 +109,16 @@ export function useAsyncAction<T extends (...args: any[]) => Promise<any>>(
 /**
  * 多个异步操作的管理（如 Promise.all 的状态管理）
  */
-export function useAsyncActions(
-  actions: Record<string, () => Promise<any>>
+export function useAsyncActions<TResult = unknown>(
+  actions: Record<string, () => Promise<TResult>>
 ) {
   const [states, setStates] = useState<
-    Record<string, AsyncActionState>
+    Record<string, AsyncActionState<TResult>>
   >({});
 
   const execute = useCallback(
     async (keys: string[]) => {
-      const results: Record<string, any> = {};
+      const results: Record<string, TResult> = {};
       const errors: Record<string, Error> = {};
 
       // 初始化状态

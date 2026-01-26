@@ -27,7 +27,7 @@ export function SortableSectionRaw({ section, depth, renderSection }: SortableSe
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 50 : 'auto',
-        position: 'relative' as 'relative',
+        position: 'relative' as const,
     };
 
     return (

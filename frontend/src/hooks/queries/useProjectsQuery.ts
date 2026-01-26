@@ -3,6 +3,16 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { projectsApi } from "@/features/projects/api/projectsApi";
 import { toast } from "sonner";
+import {
+  Project,
+  ProjectCreateInput,
+  ProjectUpdateInput
+} from "@/features/projects/types/project.schema";
+import {
+  ProjectsQueryData,
+  ProjectsInfiniteQueryData,
+  ProjectsInfiniteQueryPage
+} from "@/types/query-types";
 
 /**
  * 获取用户的项目列表（简化版 - 用于仪表板）
@@ -25,18 +35,18 @@ export function useProjectsQuery() {
  * 获取无限项目列表（无限滚动）
  */
 export function useProjectsInfiniteQuery(pageSize = 20) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<ProjectsInfiniteQueryPage, Error, ProjectsInfiniteQueryData>({
     queryKey: ["projects-infinite", { pageSize }],
     queryFn: async ({ pageParam = 1 }) => {
       const response = await projectsApi.getAll();
-      return response;
+      return { data: response, nextPage: null };
     },
     initialPageParam: 1,
-    getNextPageParam: (lastPage: any) => {
-      if (!lastPage || lastPage.length === 0) {
+    getNextPageParam: (lastPage: ProjectsInfiniteQueryPage) => {
+      if (!lastPage || lastPage.data.length === 0) {
         return undefined;
       }
-      return undefined;
+      return lastPage.nextPage ?? undefined;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -66,20 +76,23 @@ export function useProjectQuery(projectId: string, enabled = true) {
 export function useCreateProjectMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (projectData: any) => {
+  return useMutation<Project, Error, ProjectCreateInput>({
+    mutationFn: async (projectData: ProjectCreateInput) => {
       const response = await projectsApi.create(projectData);
       return response;
     },
     onSuccess: (newProject) => {
       // 更新列表缓存（第一页）
-      queryClient.setQueryData(["projects", { page: 1, pageSize: 20 }], (oldData: any) => {
-        if (!oldData) return { data: [newProject], nextPage: null };
-        return {
-          ...oldData,
-          data: [newProject, ...oldData.data],
-        };
-      });
+      queryClient.setQueryData<ProjectsQueryData>(
+        ["projects", { page: 1, pageSize: 20 }],
+        (oldData) => {
+          if (!oldData) return { data: [newProject], nextPage: null };
+          return {
+            ...oldData,
+            data: [newProject, ...oldData.data],
+          };
+        }
+      );
 
       // 清理无限查询缓存
       queryClient.invalidateQueries({
@@ -88,7 +101,7 @@ export function useCreateProjectMutation() {
 
       toast.success("项目已创建");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`创建失败: ${error.message}`);
     },
   });
@@ -100,8 +113,12 @@ export function useCreateProjectMutation() {
 export function useUpdateProjectMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ projectId, data }: { projectId: string; data: any }) => {
+  return useMutation<
+    Project,
+    Error,
+    { projectId: string; data: ProjectUpdateInput }
+  >({
+    mutationFn: async ({ projectId, data }: { projectId: string; data: ProjectUpdateInput }) => {
       const response = await projectsApi.update(projectId, data);
       return response;
     },
@@ -109,30 +126,30 @@ export function useUpdateProjectMutation() {
       const projectId = updatedProject.id;
 
       // 更新详情缓存
-      queryClient.setQueryData(["project", projectId], updatedProject);
+      queryClient.setQueryData<Project>(["project", projectId], updatedProject);
 
       // 更新列表缓存
-      queryClient.setQueriesData(
+      queryClient.setQueriesData<ProjectsQueryData>(
         { queryKey: ["projects"] },
-        (oldData: any) => {
+        (oldData) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
-            data: oldData.data.map((p: any) => (p.id === projectId ? updatedProject : p)),
+            data: oldData.data.map((p) => (p.id === projectId ? updatedProject : p)),
           };
         }
       );
 
       // 更新无限查询缓存
-      queryClient.setQueriesData(
+      queryClient.setQueriesData<ProjectsInfiniteQueryData>(
         { queryKey: ["projects-infinite"] },
-        (oldData: any) => {
+        (oldData) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
-            pages: oldData.pages.map((page: any) => ({
+            pages: oldData.pages.map((page) => ({
               ...page,
-              data: page.data.map((p: any) => (p.id === projectId ? updatedProject : p)),
+              data: page.data.map((p) => (p.id === projectId ? updatedProject : p)),
             })),
           };
         }
@@ -140,7 +157,7 @@ export function useUpdateProjectMutation() {
 
       toast.success("项目已更新");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`更新失败: ${error.message}`);
     },
   });
@@ -152,34 +169,34 @@ export function useUpdateProjectMutation() {
 export function useDeleteProjectMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<string, Error, string>({
     mutationFn: async (projectId: string) => {
       await projectsApi.delete(projectId);
       return projectId;
     },
     onSuccess: (deletedProjectId) => {
       // 更新列表缓存
-      queryClient.setQueriesData(
+      queryClient.setQueriesData<ProjectsQueryData>(
         { queryKey: ["projects"] },
-        (oldData: any) => {
+        (oldData) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
-            data: oldData.data.filter((p: any) => p.id !== deletedProjectId),
+            data: oldData.data.filter((p) => p.id !== deletedProjectId),
           };
         }
       );
 
       // 更新无限查询缓存
-      queryClient.setQueriesData(
+      queryClient.setQueriesData<ProjectsInfiniteQueryData>(
         { queryKey: ["projects-infinite"] },
-        (oldData: any) => {
+        (oldData) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
-            pages: oldData.pages.map((page: any) => ({
+            pages: oldData.pages.map((page) => ({
               ...page,
-              data: page.data.filter((p: any) => p.id !== deletedProjectId),
+              data: page.data.filter((p) => p.id !== deletedProjectId),
             })),
           };
         }
@@ -192,7 +209,7 @@ export function useDeleteProjectMutation() {
 
       toast.success("项目已删除");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(`删除失败: ${error.message}`);
     },
   });

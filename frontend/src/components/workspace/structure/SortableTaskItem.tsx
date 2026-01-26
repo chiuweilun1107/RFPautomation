@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -10,7 +10,7 @@ interface SortableTaskItemProps {
     children: (props: { attributes: any; listeners: any; isDragging: boolean }) => React.ReactNode;
 }
 
-export function SortableTaskItem({ id, sectionId, children }: SortableTaskItemProps) {
+function SortableTaskItemComponent({ id, sectionId, children }: SortableTaskItemProps) {
     const {
         attributes,
         listeners,
@@ -34,3 +34,19 @@ export function SortableTaskItem({ id, sectionId, children }: SortableTaskItemPr
         </div>
     );
 }
+
+/**
+ * Memoized SortableTaskItem wrapper
+ * Prevents re-renders when ID and sectionId haven't changed
+ */
+export const SortableTaskItem = memo(
+    SortableTaskItemComponent,
+    (prevProps, nextProps) => {
+        // Only re-render if ID or sectionId changes
+        // Children function is stable if parent memoizes properly
+        return (
+            prevProps.id === nextProps.id &&
+            prevProps.sectionId === nextProps.sectionId
+        );
+    }
+);

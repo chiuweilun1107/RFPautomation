@@ -143,6 +143,9 @@ export interface ProposalHeaderProps {
   generating: boolean;
   onGenerate: () => void;
   onAddSection: () => void;
+  generationProgress?: GenerationProgress;
+  totalSections?: number;
+  completedSections?: number;
 }
 
 export interface ProposalTreeProps {

@@ -1,15 +1,21 @@
 'use client';
 
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { ProposalTreeProps } from '../types';
+import { SortableNode } from '@/components/workspace/structure/SortableNode';
 
 /**
- * 树形结构渲染组件
+ * 樹形結構渲染組件
+ * 使用 dnd-kit 實現拖拽排序
  */
 export function ProposalTree({
   sections,
   loading,
-  onDragEnd,
   expandedSections,
+  sensors,
+  onDragEnd,
+  renderSection,
   onToggleExpand,
 }: ProposalTreeProps) {
   if (loading) {
@@ -25,15 +31,33 @@ export function ProposalTree({
   if (sections.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-        <p>No structure defined yet.</p>
+        <p>尚未定義結構。點擊上方按鈕開始創建。</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
-      {/* TODO: 渲染树形结构，使用 DndContext 和 SortableContext */}
-      <p>Tree rendering - TBD</p>
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+    >
+      <div className="space-y-1">
+        <SortableContext
+          items={sections.map((s) => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {sections.map((section) => (
+            <SortableNode
+              key={section.id}
+              section={section}
+              depth={0}
+              renderSection={renderSection || (() => null)}
+              expandedSections={expandedSections}
+            />
+          ))}
+        </SortableContext>
+      </div>
+    </DndContext>
   );
 }

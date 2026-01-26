@@ -22,9 +22,6 @@ export async function POST(request: Request) {
         const n8nBaseUrl = process.env.N8N_BASE_URL || 'http://localhost:5678';
         const webhookUrl = `${n8nBaseUrl}/webhook/rag-query`;
 
-        console.log('[RAG Generate] Calling webhook:', webhookUrl);
-        console.log('[RAG Generate] Payload:', { project_id, section_id, section_title });
-
         const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -43,25 +40,20 @@ export async function POST(request: Request) {
 
         // 處理可能的空回應
         const responseText = await response.text();
-        console.log('[RAG Generate] Raw response:', responseText);
 
         let data: any = {};
         if (responseText && responseText.trim()) {
             try {
                 data = JSON.parse(responseText);
             } catch (e) {
-                console.log('[RAG Generate] Response is not JSON, treating as plain text');
                 data = { answer: responseText };
             }
         } else {
-            console.log('[RAG Generate] Empty response from n8n - workflow may be async');
             return NextResponse.json({
                 success: false,
                 error: '請重新匯入 WF08 workflow 並設定為同步模式 (responseMode: responseNode)'
             }, { status: 400 });
         }
-
-        console.log('[RAG Generate] Parsed response:', data);
 
         // 將生成的草稿和引用來源存入 sections 表
         const draft = data.answer || data.response || data.draft || '';

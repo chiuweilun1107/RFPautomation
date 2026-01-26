@@ -4,6 +4,12 @@
  * Centralized exports for all proposal editor hooks
  */
 
+// ============ 新架構核心 Hooks（已完整實現）============
+export { useProposalState } from './useProposalState';
+export { useProposalDialogs } from './useProposalDialogs';
+export { useProposalOperations } from './useProposalOperations';
+
+// ============ 舊架構 Hooks（框架/部分實現）============
 export { useSectionState } from './useSectionState';
 export type { UseSectionStateReturn } from './useSectionState';
 
