@@ -44,7 +44,9 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { TemplatePreviewSheet } from "./TemplatePreviewSheet"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TemplateListSkeleton } from "@/components/ui/skeletons/TemplateListSkeleton"
+// import { TemplatePreviewSheet } from "./TemplatePreviewSheet"
 import { cn } from "@/lib/utils"
 
 
@@ -59,13 +61,15 @@ interface TemplateListProps {
     folders: TemplateFolder[]
     onTemplateUpdate?: () => void
     viewMode?: 'grid' | 'list'
+    isLoading?: boolean
 }
 
 export function TemplateList({
     templates,
     folders,
     onTemplateUpdate,
-    viewMode = 'grid'
+    viewMode = 'grid',
+    isLoading = false
 }: TemplateListProps) {
     const [templateToDelete, setTemplateToDelete] = React.useState<Template | null>(null)
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
@@ -74,7 +78,7 @@ export function TemplateList({
     const [editDescription, setEditDescription] = React.useState("")
     const [editCategory, setEditCategory] = React.useState("")
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
-    const [previewTemplate, setPreviewTemplate] = React.useState<Template | null>(null)
+    // const [previewTemplate, setPreviewTemplate] = React.useState<Template | null>(null)
     const [reparsingId, setReparsingId] = React.useState<string | null>(null)
     const supabase = createClient()
     const router = useRouter()
@@ -205,7 +209,7 @@ export function TemplateList({
     }
 
     const handleTemplateClick = (template: Template) => {
-        setPreviewTemplate(template)
+        router.push(`/dashboard/templates/${template.id}/design`)
     }
 
     const formatDate = (dateString?: string) => {
@@ -216,6 +220,10 @@ export function TemplateList({
             month: '2-digit',
             day: '2-digit'
         })
+    }
+
+    if (isLoading) {
+        return <TemplateListSkeleton viewMode={viewMode} count={8} />
     }
 
     if (templates.length === 0) {
@@ -250,7 +258,6 @@ export function TemplateList({
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenuItem onClick={() => handleTemplateClick(template)}>PREVIEW</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => router.push(`/dashboard/templates/${template.id}/design`)}>DESIGN</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleEdit(template)}>EDIT_INFO</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleDownload(template)}>DOWNLOAD</DropdownMenuItem>
@@ -346,7 +353,6 @@ export function TemplateList({
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenuItem onClick={() => handleTemplateClick(template)}>PREVIEW</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => router.push(`/dashboard/templates/${template.id}/design`)}>DESIGN</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleEdit(template)}>EDIT_INFO</DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleDownload(template)}>DOWNLOAD</DropdownMenuItem>
@@ -441,14 +447,14 @@ export function TemplateList({
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Template Preview Sheet */}
-            <TemplatePreviewSheet
+            {/* Template Preview Sheet Removed as per user request */}
+            {/* <TemplatePreviewSheet
                 template={previewTemplate}
                 open={!!previewTemplate}
                 onOpenChange={(open) => !open && setPreviewTemplate(null)}
                 onEdit={handleEdit}
                 onDownload={handleDownload}
-            />
+            /> */}
         </>
     )
 }

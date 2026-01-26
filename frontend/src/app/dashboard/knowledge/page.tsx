@@ -145,7 +145,7 @@ export default function KnowledgePage() {
                             </span>
                         </div>
                     </div>
-                    <KnowledgeList initialDocs={paginatedDocs} searchQuery={searchQuery} viewMode={viewMode} />
+                    <KnowledgeList initialDocs={paginatedDocs} searchQuery={searchQuery} viewMode={viewMode} isLoading={loading} />
                     <SwissPagination
                         currentPage={currentPage}
                         totalPages={totalPages}

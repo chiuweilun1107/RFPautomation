@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONLYOFFICE 字體測試</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .font-test {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .font-name {
+            font-weight: bold;
+            color: #2196F3;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .recommended {
+            background: #E8F5E9;
+            border-left: 4px solid #4CAF50;
+        }
+        .not-recommended {
+            background: #FFEBEE;
+            border-left: 4px solid #F44336;
+            opacity: 0.7;
+        }
+        .sample-text {
+            font-size: 24px;
+            line-height: 1.8;
+            margin: 10px 0;
+        }
+        .label {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .label-good {
+            background: #4CAF50;
+            color: white;
+        }
+        .label-bad {
+            background: #F44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 ONLYOFFICE 楷體字型測試</h1>
+    <p>以下是已安裝的楷體字型。<strong>綠色框</strong>是完整版，<strong>紅色框</strong>只包含少數字。</p>
+
+    <div class="font-test recommended">
+        <div class="font-name">
+            ✅ AR PL KaitiM Big5（文鼎ＰＬ中楷）
+            <span class="label label-good">完整版 11MB</span>
+        </div>
+        <div class="sample-text" style="font-family: 'AR PL KaitiM Big5', serif;">
+            壹、企劃書之可行性及完整性<br>
+            一、專案緣起<br>
+            二、計畫期程<br>
+            三、主要工作項目
+        </div>
+    </div>
+
+    <div class="font-test not-recommended">
+        <div class="font-name">
+            ❌ BiauKai（標楷體-繁/港澳）
+            <span class="label label-bad">子集版 20KB</span>
+        </div>
+        <div class="sample-text" style="font-family: 'BiauKai', serif;">
+            壹、企劃書之可行性及完整性<br>
+            一、專案緣起<br>
+            二、計畫期程<br>
+            三、主要工作項目
+        </div>
+        <p style="color: #F44336; font-size: 14px;">
+            ⚠️ 只有「壹」字正常，其他字會變成預設字體
+        </p>
+    </div>
+
+    <div class="font-test recommended">
+        <div class="font-name">
+            ✅ AR PL UKai TW
+            <span class="label label-good">完整版</span>
+        </div>
+        <div class="sample-text" style="font-family: 'AR PL UKai TW', serif;">
+            壹、企劃書之可行性及完整性<br>
+            一、專案緣起<br>
+            二、計畫期程<br>
+            三、主要工作項目
+        </div>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <h2>📋 使用說明</h2>
+    <ol>
+        <li>在 ONLYOFFICE 編輯器中，選擇文字</li>
+        <li>打開字體下拉選單</li>
+        <li>選擇：
+            <ul>
+                <li><strong>AR PL KaitiM Big5</strong> 或</li>
+                <li><strong>文鼎ＰＬ中楷</strong> 或</li>
+                <li><strong>AR PL UKai TW</strong></li>
+            </ul>
+        </li>
+        <li>避免選擇：BiauKai、標楷體-繁、標楷體-港澳</li>
+    </ol>
+
+    <hr style="margin: 40px 0;">
+
+    <h2>🔍 如何辨識完整版字體</h2>
+    <p>看下面這段文字，如果<strong>全部都是楷體</strong>，就是完整版：</p>
+    <div class="font-test">
+        <div class="sample-text" style="font-family: 'AR PL KaitiM Big5', serif;">
+            壹貳參肆伍陸柒捌玖拾 - 企劃書之可行性及完整性專案緣起計畫期程
+        </div>
+        <p style="color: #4CAF50;">✅ 如果全部都長這樣，就對了！</p>
+    </div>
+
+</body>
+</html>

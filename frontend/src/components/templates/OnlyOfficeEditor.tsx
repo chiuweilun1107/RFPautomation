@@ -1,0 +1,210 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Script from 'next/script';
+import { Loader2, AlertCircle } from 'lucide-react';
+import type { Template } from '@/types';
+import { createClient } from '@/lib/supabase/client';
+import { getOnlyOfficeApiScriptUrl } from '@/lib/onlyoffice-config';
+import { Skeleton } from '@/components/ui/skeleton';
+import { OnlyOfficeEditorSkeleton } from '@/components/ui/skeletons/OnlyOfficeEditorSkeleton';
+
+interface OnlyOfficeEditorProps {
+  template: Template;
+  onDocumentReady?: () => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * ONLYOFFICE 文檔編輯器組件
+ *
+ * 功能：
+ * 1. 從 Supabase Storage 獲取模板文檔
+ * 2. 使用字體處理 API 預處理文檔（標楷體 → AR PL KaitiM Big5）
+ * 3. 在 ONLYOFFICE 中打開編輯器
+ */
+export function OnlyOfficeEditor({
+  template,
+  onDocumentReady,
+  onError,
+}: OnlyOfficeEditorProps) {
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
+
+  const supabase = createClient();
+
+  // 初始化文檔 URL
+  useEffect(() => {
+    async function initializeDocument() {
+      if (!template.file_path) {
+        const errorMsg = '模板沒有文檔文件';
+        setError(errorMsg);
+        setIsLoading(false);
+        onError?.(errorMsg);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        console.log('[編輯器] 獲取文檔 URL:', template.file_path);
+
+        // 從 Supabase Storage 下載文檔
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('documents')
+          .download(template.file_path);
+
+        if (downloadError || !fileData) {
+          throw new Error('無法下載文檔: ' + (downloadError?.message || '未知錯誤'));
+        }
+
+        console.log('[編輯器] 文檔已下載，大小:', fileData.size);
+
+        // 將 Blob 轉換為 File
+        const file = new File([fileData], template.name + '.docx', {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        });
+
+        // 使用字體處理 API（會處理字體並重新上傳到可訪問的位置）
+        const formData = new FormData();
+        formData.append('file', file);
+
+        console.log('[編輯器] 處理並上傳文檔...');
+
+        const processResponse = await fetch('/api/process-and-upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!processResponse.ok) {
+          const errorData = await processResponse.json();
+          throw new Error(errorData.error || '處理失敗');
+        }
+
+        const result = await processResponse.json();
+        console.log('[編輯器] 處理完成，URL:', result.url);
+
+        setDocumentUrl(result.url);
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error('[編輯器] 初始化失敗:', err);
+        const errorMsg = err instanceof Error ? err.message : '初始化失敗';
+        setError(errorMsg);
+        setIsLoading(false);
+        onError?.(errorMsg);
+      }
+    }
+
+    initializeDocument();
+  }, [template.file_path, template.name]);
+
+  // 初始化 ONLYOFFICE 編輯器
+  useEffect(() => {
+    if (!documentUrl || !isScriptLoaded || editorReady) return;
+
+    try {
+      console.log('[編輯器] 初始化 ONLYOFFICE...');
+
+      const config = {
+        documentType: 'word',
+        document: {
+          fileType: 'docx',
+          key: `template_${template.id}_${Date.now()}`,
+          title: template.name,
+          url: documentUrl,
+          permissions: {
+            edit: true,
+            download: true,
+            print: true,
+            review: true,
+          },
+        },
+        editorConfig: {
+          mode: 'edit',
+          lang: 'zh-TW',
+          callbackUrl: `${window.location.origin}/api/onlyoffice-callback`,
+          customization: {
+            forcesave: true, // 啟用強制保存按鈕
+            autosave: true, // 啟用自動保存
+            compactToolbar: false,
+            toolbarNoTabs: false,
+          },
+        },
+        height: '100%',
+        width: '100%',
+        events: {
+          onDocumentReady: () => {
+            console.log('[編輯器] 文檔已就緒');
+            setEditorReady(true);
+            onDocumentReady?.();
+          },
+          onError: (event: any) => {
+            console.error('[編輯器] 錯誤:', event);
+            const errorMsg = `編輯器錯誤: ${JSON.stringify(event)}`;
+            setError(errorMsg);
+            onError?.(errorMsg);
+          },
+        },
+      };
+
+      console.log('[編輯器] 配置:', config);
+
+      // @ts-ignore
+      new window.DocsAPI.DocEditor('onlyoffice-editor-container', config);
+
+    } catch (err) {
+      console.error('[編輯器] 初始化失敗:', err);
+      const errorMsg = err instanceof Error ? err.message : '初始化失敗';
+      setError(errorMsg);
+      onError?.(errorMsg);
+    }
+  }, [documentUrl, isScriptLoaded, template.id, template.name]);
+
+  return (
+    <>
+      <Script
+        src={getOnlyOfficeApiScriptUrl()}
+        onLoad={() => {
+          console.log('[編輯器] ONLYOFFICE API 已載入');
+          setIsScriptLoaded(true);
+        }}
+        onError={() => {
+          const errorMsg = '無法載入 ONLYOFFICE API';
+          setError(errorMsg);
+          onError?.(errorMsg);
+        }}
+      />
+
+      <div className="w-full h-full relative bg-white">
+        {/* 載入中 */}
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white z-10 p-8">
+            <div className="w-full max-w-md">
+              <OnlyOfficeEditorSkeleton />
+            </div>
+          </div>
+        )}
+
+        {/* 錯誤訊息 */}
+        {error && !isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+            <div className="flex flex-col items-center gap-3 max-w-md p-6">
+              <AlertCircle className="w-12 h-12 text-destructive" />
+              <p className="text-sm text-center text-muted-foreground">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ONLYOFFICE 編輯器容器 */}
+        <div
+          id="onlyoffice-editor-container"
+          className="w-full h-full"
+          style={{ display: isLoading || error ? 'none' : 'block' }}
+        />
+      </div>
+    </>
+  );
+}

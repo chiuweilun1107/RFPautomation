@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, FileText, CheckSquare, Square } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
+import { DialogSourceListSkeleton } from "@/components/ui/skeletons/DialogSourceListSkeleton"
 
 interface SourceSelectionDialogProps {
     open: boolean
@@ -147,10 +149,7 @@ export function SourceSelectionDialog({
                     <div className="border-2 border-black/10 dark:border-white/10 p-1 mb-6 bg-zinc-50 dark:bg-zinc-900/50">
                         <ScrollArea className="h-[240px] pr-3">
                             {loading ? (
-                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                                    <Loader2 className="h-6 w-6 animate-spin" />
-                                    <span className="text-xs uppercase font-bold">LOADING_SOURCES...</span>
-                                </div>
+                                <DialogSourceListSkeleton count={5} />
                             ) : sources.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-4">
                                     <FileText className="h-8 w-8 mb-2 opacity-50" />

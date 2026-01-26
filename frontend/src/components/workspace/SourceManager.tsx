@@ -209,9 +209,20 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isDragging) return;
+
+            const dialogWidth = 580;
+            const handleHeight = 24;
+
+            let newX = e.clientX - dragOffset.x;
+            let newY = e.clientY - dragOffset.y;
+
+            // Clamp positions
+            newX = Math.max(0, Math.min(newX, window.innerWidth - dialogWidth));
+            newY = Math.max(0, Math.min(newY, window.innerHeight - handleHeight));
+
             setPosition({
-                x: e.clientX - dragOffset.x,
-                y: e.clientY - dragOffset.y
+                x: newX,
+                y: newY
             });
         };
 

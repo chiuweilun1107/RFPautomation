@@ -31,6 +31,8 @@ const nextConfig: NextConfig = {
       "@tiptap/starter-kit",
     ],
   },
+  // Allow dev server access from production domain
+  allowedDevOrigins: ["https://editor.decaza.org"],
   // Turbopack configuration (Next.js 16 default bundler)
   turbopack: {},
   compiler: {

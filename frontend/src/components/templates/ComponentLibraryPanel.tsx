@@ -33,43 +33,37 @@ export function ComponentLibraryPanel({ template, onDragStart, onComponentClick,
     return <FileText className="w-8 h-8 text-foreground" />
   }
 
-  // Collapsed State - "C" Block
+  // Collapsed State - "C" Block (Aligned with KnowledgeSidebar "K")
   if (isCollapsed) {
     return (
       <div
-        className="flex flex-col h-full bg-background border-r-2 border-black dark:border-white items-center cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all group"
+        className="w-16 h-16 border-2 border-black dark:border-white bg-background flex items-center justify-center transition-all duration-300 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black cursor-pointer group shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
         onClick={onToggleCollapse}
-        title="Expand Component Library"
+        title="展開組件庫"
       >
-        <div className="h-[60px] w-full flex items-center justify-center border-b-2 border-black dark:border-white group-hover:border-white dark:group-hover:border-black">
-          <span className="text-2xl font-bold font-mono">C</span>
-        </div>
-        {/* Decorative pattern for the empty strip? Or just blank. Blank matches KnowledgeSidebar style. */}
+        <span className="text-2xl font-black font-mono">C</span>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground font-mono">
-      {/* Header */}
-      <div className="p-6 pb-4 space-y-4 border-b-2 border-black dark:border-white shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold tracking-tighter uppercase leading-none min-h-[1.5rem] flex items-center">[ COMPONENT A ]</h2>
-            <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">
-              DRAG TO EDIT
-            </p>
-          </div>
-          {onToggleCollapse && (
-            <button
-              onClick={onToggleCollapse}
-              className="p-2 hover:bg-muted rounded-none transition-colors text-muted-foreground hover:text-foreground border border-transparent hover:border-black dark:hover:border-white"
-              title="收合側邊欄"
-            >
-              <ChevronsLeft className="w-5 h-5" />
-            </button>
-          )}
+      {/* Header - Aligned with KnowledgeSidebar height (h-16) */}
+      <div className="flex items-center justify-between px-6 border-b-2 border-black dark:border-white shrink-0 h-16">
+        <div>
+          <h2 className="text-sm font-black tracking-widest uppercase leading-none min-h-[1.5rem] flex items-center">[ COMPONENT A ]</h2>
         </div>
+        {onToggleCollapse && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleCollapse}
+            className="h-6 w-6 rounded-none hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            title="收合側邊欄"
+          >
+            <ChevronsLeft className="w-4 h-4" />
+          </Button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -92,8 +86,8 @@ export function ComponentLibraryPanel({ template, onDragStart, onComponentClick,
         </TabsList>
 
         {/* Paragraphs Tab */}
-        <TabsContent value="paragraphs" className="flex-1 overflow-y-auto px-4 py-4 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="grid grid-cols-2 gap-0 border-t-2 border-l-2 border-black dark:border-white">
+        <TabsContent value="paragraphs" className="flex-1 overflow-y-auto m-0 p-0 data-[state=inactive]:hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="divide-y-2 divide-black/10 dark:divide-white/10">
             {template.paragraphs && template.paragraphs.length > 0 ? (
               template.paragraphs.map((para: any, idx: number) => (
                 <DraggableComponent
@@ -108,33 +102,32 @@ export function ComponentLibraryPanel({ template, onDragStart, onComponentClick,
                   onDragStart={onDragStart}
                   onClick={() => onComponentClick?.(idx, 'paragraph')}
                 >
-                  <div className="aspect-square flex flex-col items-center justify-center p-2 bg-background border-r-2 border-b-2 border-black dark:border-white hover:bg-muted hover:text-foreground transition-all cursor-grab active:cursor-grabbing group rounded-none relative">
-                    {/* Hover Indicator */}
-                    <div className="absolute top-1 right-1 w-2 h-2 bg-black dark:bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                    <div className="mb-2 group-hover:scale-105 transition-transform">
+                  <div className="group flex items-center gap-3 p-4 border-b border-black/10 dark:border-white/10 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-mono cursor-pointer">
+                    <div className="shrink-0 group-hover:scale-110 transition-transform">
                       {getStyleIcon(para.style)}
                     </div>
-                    <div className="text-[10px] text-center font-medium w-full">
-                      <div className="font-bold mb-0.5 uppercase">PARA {idx + 1}</div>
-                      <div className="truncate opacity-70 text-[9px] px-1 font-sans">
-                        {para.text || 'No Content'}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-black uppercase tracking-wider truncate mb-0.5">
+                        PARA {idx + 1}
+                      </div>
+                      <div className="text-[10px] opacity-70 truncate font-sans group-hover:opacity-100">
+                        {para.text || 'NO_CONTENT'}
                       </div>
                     </div>
                   </div>
                 </DraggableComponent>
               ))
             ) : (
-              <div className="col-span-2 text-center py-8 text-muted-foreground text-xs uppercase border-b-2 border-r-2 border-black dark:border-white">
-                NO PARAGRAPHS
+              <div className="text-center py-12 text-muted-foreground text-[10px] font-black uppercase tracking-widest italic">
+                NO_PARAGRAPHS_FOUND
               </div>
             )}
           </div>
         </TabsContent>
 
         {/* Tables Tab */}
-        <TabsContent value="tables" className="flex-1 overflow-y-auto px-4 py-4 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="grid grid-cols-2 gap-0 border-t-2 border-l-2 border-black dark:border-white">
+        <TabsContent value="tables" className="flex-1 overflow-y-auto m-0 p-0 data-[state=inactive]:hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="divide-y-2 divide-black/10 dark:divide-white/10">
             {template.parsed_tables && template.parsed_tables.length > 0 ? (
               template.parsed_tables.map((table, idx) => (
                 <DraggableComponent
@@ -148,21 +141,24 @@ export function ComponentLibraryPanel({ template, onDragStart, onComponentClick,
                   onDragStart={onDragStart}
                   onClick={() => onComponentClick?.(table.index ?? idx, 'table')}
                 >
-                  <div className="aspect-square flex flex-col items-center justify-center p-2 bg-background border-r-2 border-b-2 border-black dark:border-white hover:bg-muted hover:text-foreground transition-all cursor-grab active:cursor-grabbing group rounded-none relative">
-                    <div className="absolute top-1 right-1 w-2 h-2 bg-black dark:bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                    <div className="mb-2 group-hover:scale-105 transition-transform">
-                      <Grid3x3 className="w-8 h-8 text-foreground" />
+                  <div className="group flex items-center gap-3 p-4 border-b border-black/10 dark:border-white/10 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-mono cursor-pointer">
+                    <div className="shrink-0 group-hover:scale-110 transition-transform">
+                      <Grid3x3 className="w-8 h-8" />
                     </div>
-                    <div className="text-[10px] text-center font-medium">
-                      TABLE {(table.index ?? idx) + 1}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-black uppercase tracking-wider truncate mb-0.5">
+                        TABLE {(table.index ?? idx) + 1}
+                      </div>
+                      <div className="text-[10px] opacity-70 truncate font-sans group-hover:opacity-100">
+                        {table.label || 'SYSTEM_TABLE_CONTENT'}
+                      </div>
                     </div>
                   </div>
                 </DraggableComponent>
               ))
             ) : (
-              <div className="col-span-2 text-center py-8 text-muted-foreground text-xs uppercase border-b-2 border-r-2 border-black dark:border-white">
-                NO TABLES
+              <div className="text-center py-12 text-muted-foreground text-[10px] font-black uppercase tracking-widest italic">
+                NO_TABLES_FOUND
               </div>
             )}
           </div>

@@ -140,9 +140,24 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isDragging) return;
+
+            // Define window constraints
+            const dialogWidth = 580;
+            const handleHeight = 24; // Height of the draggable handle area
+
+            let newX = e.clientX - dragOffset.x;
+            let newY = e.clientY - dragOffset.y;
+
+            // Clamp X position
+            newX = Math.max(0, Math.min(newX, window.innerWidth - dialogWidth));
+
+            // Clamp Y position (Ensure handle at top is always visible)
+            // We allow pulling from top (y=0) to near bottom (leaving the handle visible at least)
+            newY = Math.max(0, Math.min(newY, window.innerHeight - handleHeight));
+
             setPosition({
-                x: e.clientX - dragOffset.x,
-                y: e.clientY - dragOffset.y
+                x: newX,
+                y: newY
             });
         };
 
@@ -382,8 +397,8 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                             if (activeTab !== key) return null;
                             return (
                                 <div key={key} className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                    <Card className="rounded-none border-2 border-black dark:border-white bg-background shadow-[12px_12px_0px_0px_rgba(0,0,0,0.05)] dark:shadow-[12px_12px_0px_0px_rgba(255,255,255,0.05)]">
-                                        <CardContent className="pt-12 pb-16 px-8 md:px-12">
+                                    <Card className="rounded-none border-0 bg-transparent shadow-none">
+                                        <CardContent className="pt-12 pb-16 px-0 md:px-4">
                                             <div className="max-w-4xl mx-auto">
                                                 <div className="h-full w-full">
                                                     <RecursiveAssessmentRenderer

@@ -137,7 +137,23 @@
       "Bash(brew:*)",
       "Bash(export ACCESS_TOKEN:*)",
       "Bash(PROJECT_ID=\"rfp-automation-20260119\":*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(ssh:*)",
+      "Bash(/Users/chiuyongren/Desktop/AI dev/document-server-monitor.sh)",
+      "Bash(\"/Users/chiuyongren/Desktop/AI dev/document-server-monitor.sh\")",
+      "Bash(scp:*)",
+      "Bash(mdfind:*)",
+      "Bash(__NEW_LINE_c11499f4111a47d9__ echo \"=== 上傳 BiauKai（標楷體）===\")",
+      "Bash(__NEW_LINE_c11499f4111a47d9__ echo \"\")",
+      "Bash(PGPASSWORD=\"9963GhOTa0jZSTi4\" psql:*)",
+      "Bash(ipconfig getifaddr:*)",
+      "Bash(cloudflared tunnel create:*)",
+      "Bash(cloudflared tunnel route dns:*)",
+      "Bash(cloudflared tunnel info:*)",
+      "Bash(dig:*)",
+      "Bash(redis-cli ping:*)",
+      "Bash(docker stats:*)",
+      "Bash(npm ls --depth=0)"
     ]
   }
 }

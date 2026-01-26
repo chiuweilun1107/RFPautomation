@@ -2,7 +2,24 @@
 import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Save, Loader2, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Sparkles, MoreVertical, FileText, Database, Copy, Check, Download } from "lucide-react";
+import { Save, Loader2, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Sparkles, MoreVertical, FileText, Database, Copy, Check, Download, ChevronRight } from "lucide-react";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -290,6 +307,7 @@ interface Chapter {
     sections: Section[]; // Child sections from the database
     generation_method?: 'manual' | 'ai_gen' | 'template';
     is_modified?: boolean;
+    expanded?: boolean; // UI state for section visibility
 }
 
 // Fallback initial outline if none exists
@@ -323,6 +341,50 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
 
     // Collapsible Header State
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        setOutline((prev) => {
+            const newOutline = [...prev];
+
+            // 1. Try to find if it's a chapter move
+            const oldChapterIndex = prev.findIndex(c => c.id === active.id);
+            const newChapterIndex = prev.findIndex(c => c.id === over.id);
+
+            if (oldChapterIndex !== -1 && newChapterIndex !== -1) {
+                return arrayMove(newOutline, oldChapterIndex, newChapterIndex).map(item => ({ ...item, is_modified: true }));
+            }
+
+            // 2. Try to find if it's a section move within same chapter
+            for (let i = 0; i < newOutline.length; i++) {
+                const chapter = newOutline[i];
+                const sections = chapter.sections || [];
+                const oldSectionIndex = sections.findIndex(s => s.id === active.id);
+                const newSectionIndex = sections.findIndex(s => s.id === over.id);
+
+                if (oldSectionIndex !== -1 && newSectionIndex !== -1) {
+                    const newSections = arrayMove([...sections], oldSectionIndex, newSectionIndex);
+                    newOutline[i] = {
+                        ...chapter,
+                        sections: newSections.map((s, idx) => ({ ...s, order_index: idx + 1 })),
+                        is_modified: true
+                    };
+                    return newOutline;
+                }
+            }
+
+            return prev;
+        });
+    };
 
     const [supabase] = useState(() => createClient());
 
@@ -362,6 +424,7 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                     title: root.title,
                     generation_method: root.generation_method,
                     is_modified: root.is_modified,
+                    expanded: true, // Default to expanded
                     sections: childSections
                         .filter((child: Section) => child.parent_id === root.id)
                         .map((child: Section) => ({
@@ -395,6 +458,16 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
             setLoading(false);
         }
     }, [projectId, supabase]);
+
+    const toggleChapter = (cIndex: number) => {
+        setOutline(prev => {
+            const newOutline = [...prev];
+            const newChapter = { ...newOutline[cIndex] };
+            newChapter.expanded = !newChapter.expanded;
+            newOutline[cIndex] = newChapter;
+            return newOutline;
+        });
+    };
 
     const toggleSectionTasks = (cIndex: number, sIndex: number) => {
         setOutline(prev => {
@@ -980,174 +1053,33 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-8 space-y-8">
-                                {outline.map((chapter, cIndex) => (
-                                    <div key={chapter.id || cIndex} className="group/chapter relative pl-4 border-l-2 border-black/10 dark:border-white/10 hover:border-[#FA4028] transition-colors">
-
-                                        {/* Chapter Row */}
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <GripVertical className="h-4 w-4 opacity-100 text-black/20 dark:text-white/20 cursor-grab active:cursor-grabbing shrink-0" />
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <label className="text-[10px] font-bold uppercase tracking-wider opacity-40 block">Chapter {cIndex + 1}</label>
-                                                    <GenerationBadge
-                                                        method={chapter.generation_method}
-                                                        isModified={chapter.is_modified}
-                                                    />
-                                                </div>
-                                                <Input
-                                                    value={chapter.title}
-                                                    onChange={(e) => updateChapterTitle(cIndex, e.target.value)}
-                                                    className="font-bold text-lg rounded-none border-x-0 border-t-0 border-b-2 border-black/20 focus:border-[#FA4028] bg-transparent px-0 h-auto py-1 focus:ring-0"
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 rounded-none data-[state=open]:bg-zinc-100 opacity-0 group-hover/chapter:opacity-100 transition-opacity mt-4"
-                                                        >
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-56 rounded-none border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.4)]">
-                                                        <DropdownMenuLabel className="text-[10px] uppercase font-bold text-zinc-500">Chapter Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleGenerateTasks(chapter.id, chapter.title, 'function')}
-                                                            disabled={generating}
-                                                            className="focus:bg-blue-50 focus:text-blue-600 cursor-pointer font-bold text-xs py-2"
-                                                        >
-                                                            <Database className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
-                                                            FUNCTIONAL DESIGN (WF11)
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleGenerateTasks(chapter.id, chapter.title, 'content')}
-                                                            disabled={generating}
-                                                            className="focus:bg-purple-50 focus:text-purple-600 cursor-pointer font-bold text-xs py-2"
-                                                        >
-                                                            <FileText className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
-                                                            ARTICLE DESIGN (WF13)
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            onClick={() => deleteChapter(cIndex)}
-                                                            className="focus:bg-red-50 focus:text-red-500 cursor-pointer font-bold text-xs py-2"
-                                                        >
-                                                            <Trash2 className="mr-2 h-3 w-3" />
-                                                            DELETE CHAPTER
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </div>
-
-                                        {/* Sections List */}
-                                        <div className="pl-8 space-y-3">
-                                            {chapter.sections?.map((section, sIndex) => (
-                                                <div key={sIndex} className="group/section pl-4 border-l border-black/5 dark:border-white/5 pb-2">
-                                                    <div className="flex items-center gap-3 mb-1">
-                                                        <div className="w-1.5 h-1.5 bg-black/20 dark:bg-white/20 rounded-none transform rotate-45 shrink-0" />
-                                                        <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Section {cIndex + 1}.{sIndex + 1}</label>
-                                                        <GenerationBadge
-                                                            method={section.generation_method}
-                                                            isModified={section.is_modified}
-                                                            compact
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <GripVertical className="h-3 w-3 opacity-100 text-black/10 dark:text-white/10 cursor-grab active:cursor-grabbing shrink-0" />
-                                                        <Input
-                                                            value={section.title}
-                                                            onChange={(e) => updateSectionTitle(cIndex, sIndex, e.target.value)}
-                                                            className="flex-1 text-sm rounded-none border-x-0 border-t-0 border-b border-black/10 focus:border-[#FA4028] bg-transparent px-0 h-8 focus:ring-0"
-                                                        />
-                                                        <div className="flex items-center gap-1">
-                                                            {/* Task Toggle Button */}
-                                                            {section.tasks && section.tasks.length > 0 && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => toggleSectionTasks(cIndex, sIndex)}
-                                                                    className="h-6 w-6 rounded-none hover:bg-zinc-100"
-                                                                    title={section.expanded ? "Hide Tasks" : "Show Tasks"}
-                                                                >
-                                                                    {section.expanded ? (
-                                                                        <ChevronUp className="h-3 w-3" />
-                                                                    ) : (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className="text-[9px] font-bold">{section.tasks.length}</span>
-                                                                            <ChevronDown className="h-3 w-3" />
-                                                                        </div>
-                                                                    )}
-                                                                </Button>
-                                                            )}
-
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-6 w-6 rounded-none data-[state=open]:bg-zinc-100 opacity-0 group-hover/section:opacity-100 transition-opacity"
-                                                                    >
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-56 rounded-none border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.4)]">
-                                                                    <DropdownMenuLabel className="text-[10px] uppercase font-bold text-zinc-500">Task Actions</DropdownMenuLabel>
-                                                                    <DropdownMenuItem
-                                                                        onClick={() => handleGenerateTasks(section.id, section.title, 'function')}
-                                                                        disabled={generating}
-                                                                        className="focus:bg-blue-50 focus:text-blue-600 cursor-pointer font-bold text-xs py-2"
-                                                                    >
-                                                                        <Database className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
-                                                                        FUNCTIONAL DESIGN (WF11)
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem
-                                                                        onClick={() => handleGenerateTasks(section.id, section.title, 'content')}
-                                                                        disabled={generating}
-                                                                        className="focus:bg-purple-50 focus:text-purple-600 cursor-pointer font-bold text-xs py-2"
-                                                                    >
-                                                                        <FileText className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
-                                                                        ARTICLE DESIGN (WF13)
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem
-                                                                        onClick={() => deleteSection(cIndex, sIndex)}
-                                                                        className="focus:bg-red-50 focus:text-red-500 cursor-pointer font-bold text-xs py-2"
-                                                                    >
-                                                                        <Trash2 className="mr-2 h-3 w-3" />
-                                                                        DELETE SECTION
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Task List (Collapsible) */}
-                                                    {section.expanded && section.tasks && section.tasks.length > 0 && (
-                                                        <div className="mt-2 ml-7 space-y-2 border-l border-zinc-200 pl-2">
-                                                            {section.tasks.map((task) => (
-                                                                <TaskItem key={task.id} task={task} />
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-
-                                            {/* Add Section Button */}
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleAddSectionClick(cIndex)}
-                                                className="h-8 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-[#FA4028] hover:bg-transparent pl-0 mt-2"
-                                            >
-                                                <Plus className="h-3 w-3 mr-1" />
-                                                Add Section
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={outline.map(c => c.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {outline.map((chapter, cIndex) => (
+                                            <SortableChapterItem
+                                                key={chapter.id || cIndex}
+                                                chapter={chapter}
+                                                cIndex={cIndex}
+                                                toggleChapter={toggleChapter}
+                                                updateChapterTitle={updateChapterTitle}
+                                                handleGenerateTasks={handleGenerateTasks}
+                                                generating={generating}
+                                                deleteChapter={deleteChapter}
+                                                toggleSectionTasks={toggleSectionTasks}
+                                                updateSectionTitle={updateSectionTitle}
+                                                deleteSection={deleteSection}
+                                                handleAddSectionClick={handleAddSectionClick}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </DndContext>
 
                                 {/* Add Chapter Button (Updated) */}
                                 <Button
@@ -1211,6 +1143,317 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                 projectId={projectId}
                 onConfirm={handleSourceSelectionConfirm}
             />
+        </div>
+    );
+}
+
+// --- Sortable Components ---
+
+interface SortableChapterItemProps {
+    chapter: Chapter;
+    cIndex: number;
+    toggleChapter: (index: number) => void;
+    updateChapterTitle: (index: number, title: string) => void;
+    handleGenerateTasks: (id: string, title: string, mode: 'function' | 'content') => void;
+    generating: boolean;
+    deleteChapter: (index: number) => void;
+    toggleSectionTasks: (cIndex: number, sIndex: number) => void;
+    updateSectionTitle: (cIndex: number, sIndex: number, title: string) => void;
+    deleteSection: (cIndex: number, sIndex: number) => void;
+    handleAddSectionClick: (chapterIndex: number) => void;
+}
+
+function SortableChapterItem({
+    chapter,
+    cIndex,
+    toggleChapter,
+    updateChapterTitle,
+    handleGenerateTasks,
+    generating,
+    deleteChapter,
+    toggleSectionTasks,
+    updateSectionTitle,
+    deleteSection,
+    handleAddSectionClick
+}: SortableChapterItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: chapter.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 50 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="group/chapter relative pl-4 border-l-2 border-black/10 dark:border-white/10 hover:border-[#FA4028] transition-colors"
+        >
+            {/* Chapter Row */}
+            <div className="flex items-center gap-4 mb-4">
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+                    <GripVertical className="h-4 w-4 opacity-100 text-black/20 dark:text-white/20 shrink-0" />
+                </div>
+                <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider opacity-40 block">Chapter {cIndex + 1}</label>
+                        <GenerationBadge
+                            method={chapter.generation_method}
+                            isModified={chapter.is_modified}
+                        />
+                    </div>
+                    <Input
+                        value={chapter.title}
+                        onChange={(e) => updateChapterTitle(cIndex, e.target.value)}
+                        className="font-bold text-lg rounded-none border-x-0 border-t-0 border-b-2 border-black/20 focus:border-[#FA4028] bg-transparent px-0 h-auto py-1 focus:ring-0"
+                    />
+                </div>
+                <div className="flex items-center gap-1">
+                    {/* Chapter Toggle Button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleChapter(cIndex)}
+                        className="h-6 w-6 rounded-none hover:bg-zinc-100 mt-4"
+                        title={chapter.expanded ? "Hide Sections" : "Show Sections"}
+                    >
+                        {chapter.expanded ? (
+                            <ChevronUp className="h-3 w-3" />
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-bold">{chapter.sections?.length || 0}</span>
+                                <ChevronDown className="h-3 w-3" />
+                            </div>
+                        )}
+                    </Button>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-none data-[state=open]:bg-zinc-100 opacity-0 group-hover/chapter:opacity-100 transition-opacity mt-4"
+                            >
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-none border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.4)]">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-bold text-zinc-500">Chapter Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => handleGenerateTasks(chapter.id, chapter.title, 'function')}
+                                disabled={generating}
+                                className="focus:bg-blue-50 focus:text-blue-600 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <Database className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
+                                FUNCTIONAL DESIGN (WF11)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleGenerateTasks(chapter.id, chapter.title, 'content')}
+                                disabled={generating}
+                                className="focus:bg-purple-50 focus:text-purple-600 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <FileText className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
+                                ARTICLE DESIGN (WF13)
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={() => deleteChapter(cIndex)}
+                                className="focus:bg-red-50 focus:text-red-500 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <Trash2 className="mr-2 h-3 w-3" />
+                                DELETE CHAPTER
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            {/* Sections List */}
+            {chapter.expanded && (
+                <div className="pl-8 space-y-3">
+                    <SortableContext
+                        items={chapter.sections?.map(s => s.id) || []}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {chapter.sections?.map((section, sIndex) => (
+                            <SortableSectionItem
+                                key={section.id || sIndex}
+                                section={section}
+                                chapterId={chapter.id}
+                                chapterTitle={chapter.title}
+                                cIndex={cIndex}
+                                sIndex={sIndex}
+                                toggleSectionTasks={toggleSectionTasks}
+                                updateSectionTitle={updateSectionTitle}
+                                deleteSection={deleteSection}
+                                handleGenerateTasks={handleGenerateTasks}
+                                generating={generating}
+                            />
+                        ))}
+                    </SortableContext>
+
+                    {/* Add Section Button */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleAddSectionClick(cIndex)}
+                        className="h-8 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-[#FA4028] hover:bg-transparent pl-0 mt-2"
+                    >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Section
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+interface SortableSectionItemProps {
+    section: Section;
+    chapterId: string;
+    chapterTitle: string;
+    cIndex: number;
+    sIndex: number;
+    toggleSectionTasks: (cIndex: number, sIndex: number) => void;
+    updateSectionTitle: (cIndex: number, sIndex: number, title: string) => void;
+    deleteSection: (cIndex: number, sIndex: number) => void;
+    handleGenerateTasks: (id: string, title: string, mode: 'function' | 'content') => void;
+    generating: boolean;
+}
+
+function SortableSectionItem({
+    section,
+    chapterId,
+    chapterTitle,
+    cIndex,
+    sIndex,
+    toggleSectionTasks,
+    updateSectionTitle,
+    deleteSection,
+    handleGenerateTasks,
+    generating
+}: SortableSectionItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: section.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 50 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="group/section pl-4 border-l border-black/5 dark:border-white/5 pb-2"
+        >
+            <div className="flex items-center gap-3 mb-1">
+                <div className="w-1.5 h-1.5 bg-black/20 dark:bg-white/20 rounded-none transform rotate-45 shrink-0" />
+                <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Section {cIndex + 1}.{sIndex + 1}</label>
+                <GenerationBadge
+                    method={section.generation_method}
+                    isModified={section.is_modified}
+                    compact
+                />
+            </div>
+            <div className="flex items-center gap-3">
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+                    <GripVertical className="h-3 w-3 opacity-100 text-black/10 dark:text-white/10 shrink-0" />
+                </div>
+                <Input
+                    value={section.title}
+                    onChange={(e) => updateSectionTitle(cIndex, sIndex, e.target.value)}
+                    className="flex-1 text-sm rounded-none border-x-0 border-t-0 border-b border-black/10 focus:border-[#FA4028] bg-transparent px-0 h-8 focus:ring-0"
+                />
+                <div className="flex items-center gap-1">
+                    {/* Task Toggle Button */}
+                    {section.tasks && section.tasks.length > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleSectionTasks(cIndex, sIndex)}
+                            className="h-6 w-6 rounded-none hover:bg-zinc-100"
+                            title={section.expanded ? "Hide Tasks" : "Show Tasks"}
+                        >
+                            {section.expanded ? (
+                                <ChevronUp className="h-3 w-3" />
+                            ) : (
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[9px] font-bold">{section.tasks.length}</span>
+                                    <ChevronDown className="h-3 w-3" />
+                                </div>
+                            )}
+                        </Button>
+                    )}
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded-none data-[state=open]:bg-zinc-100 opacity-0 group-hover/section:opacity-100 transition-opacity"
+                            >
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-none border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.4)]">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-bold text-zinc-500">Task Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => handleGenerateTasks(section.id, section.title, 'function')}
+                                disabled={generating}
+                                className="focus:bg-blue-50 focus:text-blue-600 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <Database className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
+                                FUNCTIONAL DESIGN (WF11)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleGenerateTasks(section.id, section.title, 'content')}
+                                disabled={generating}
+                                className="focus:bg-purple-50 focus:text-purple-600 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <FileText className={cn("mr-2 h-3 w-3", generating && "animate-spin")} />
+                                ARTICLE DESIGN (WF13)
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={() => deleteSection(cIndex, sIndex)}
+                                className="focus:bg-red-50 focus:text-red-500 cursor-pointer font-bold text-xs py-2"
+                            >
+                                <Trash2 className="mr-2 h-3 w-3" />
+                                DELETE SECTION
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            {/* Task List (Collapsible) */}
+            {section.expanded && section.tasks && section.tasks.length > 0 && (
+                <div className="mt-2 ml-7 space-y-2 border-l border-zinc-200 pl-2">
+                    {section.tasks.map((task) => (
+                        <TaskItem key={task.id} task={task} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

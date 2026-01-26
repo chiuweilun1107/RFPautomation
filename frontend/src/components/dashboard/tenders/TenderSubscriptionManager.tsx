@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TenderSubscriptionManagerSkeleton } from "@/components/ui/skeletons/TenderSubscriptionManagerSkeleton"
 
 export function TenderSubscriptionManager() {
     const router = useRouter()
@@ -177,14 +179,8 @@ export function TenderSubscriptionManager() {
     }
 
     // Prevent hydration mismatch by only rendering on client
-    if (!mounted) {
-        return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                </div>
-            </div>
-        )
+    if (!mounted || isLoading) {
+        return <TenderSubscriptionManagerSkeleton count={6} />
     }
 
     return (

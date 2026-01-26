@@ -37,15 +37,19 @@ interface Source {
 
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { MoreVertical, LayoutGrid, ArrowRight, Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { KnowledgeListSkeleton } from "@/components/ui/skeletons/KnowledgeListSkeleton"
 
 export function KnowledgeList({
     initialDocs,
     searchQuery = "",
-    viewMode = 'grid'
+    viewMode = 'grid',
+    isLoading = false
 }: {
     initialDocs: any[],
     searchQuery?: string,
-    viewMode?: 'grid' | 'list'
+    viewMode?: 'grid' | 'list',
+    isLoading?: boolean
 }) {
     const rawDocs = initialDocs as Source[]
 
@@ -99,6 +103,10 @@ export function KnowledgeList({
             setDeletingId(null)
             setDocToDelete(null)
         }
+    }
+
+    if (isLoading) {
+        return <KnowledgeListSkeleton count={6} />
     }
 
     if (docs.length === 0) {

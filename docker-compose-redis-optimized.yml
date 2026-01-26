@@ -1,0 +1,215 @@
+# Redis 優化配置 - 替換 docker-compose.yml 中的 redis 部分
+# 系統架構師 Leo - 2026-01-26
+#
+# 使用說明:
+# 1. 備份當前 docker-compose.yml
+# 2. 將以下配置替換到您的 docker-compose.yml
+# 3. 運行: docker-compose down && docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Redis 主服務 - 優化配置
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis-local
+    ports:
+      - "6379:6379"
+
+    # ========== 核心命令配置 ==========
+    command: >
+      redis-server
+      --maxmemory 1gb
+      --maxmemory-policy volatile-lru
+      --save ""
+      --appendonly no
+      --lazyfree-lazy-eviction yes
+      --lazyfree-lazy-expire yes
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --tcp-backlog 511
+      --timeout 0
+      --tcp-keepalive 300
+      --daemonize no
+      --supervised no
+      --pidfile /var/run/redis.pid
+      --loglevel notice
+      --databases 16
+
+    # ========== 資源限制 ==========
+    # 根據系統能力調整，建議:
+    # - 開發環境: memory 1GB
+    # - 生產環境: memory 4GB-8GB (根據數據量)
+    resources:
+      limits:
+        cpus: '1'
+        memory: 2G
+      reservations:
+        cpus: '0.5'
+        memory: 1G
+
+    # ========== 健康檢查 ==========
+    # 確保 Redis 始終保持健康
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+    # ========== 網絡配置 ==========
+    networks:
+      - rfp-network
+
+    # ========== 重啟策略 ==========
+    restart: unless-stopped
+
+    # ========== 日誌配置 ==========
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  # ============================================================================
+  # Redis Exporter - 監控與指標收集 (可選，推薦生產環境使用)
+  # ============================================================================
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis:6379  # 連接到 Redis 主服務
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}  # 如果 Redis 設置了密碼
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - rfp-network
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '2'
+
+  # ============================================================================
+  # Redis Insight - Redis 可視化管理工具 (可選，開發環境推薦)
+  # ============================================================================
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "8001:8001"
+    environment:
+      RITRUSTEDORIGINS: http://localhost:8001
+    volumes:
+      - redis_insight_data:/data
+    networks:
+      - rfp-network
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '2'
+
+networks:
+  rfp-network:
+    external: true
+    name: aidev_rfp-network
+
+volumes:
+  redis_insight_data:
+    driver: local
+
+# ============================================================================
+# 配置說明
+# ============================================================================
+#
+# 【主要優化參數】
+#
+# 1. maxmemory: 1gb
+#    - 內存上限，防止 Redis 無限增長
+#    - 開發環境: 512MB-1GB
+#    - 生產環境: 4GB-8GB (根據數據量)
+#
+# 2. maxmemory-policy: volatile-lru
+#    - 淘汰策略: 優先淘汰有 TTL 的鑰匙（LRU）
+#    - 相比 allkeys-lru，保護無 TTL 的重要鑰匙
+#    - 其他選項:
+#      * allkeys-lru: 全鑰匙 LRU（可能淘汰重要數據）
+#      * volatile-ttl: 優先淘汰 TTL 短的鑰匙
+#      * noeviction: 拒絕寫入 (不推薦)
+#
+# 3. save "": 關閉 RDB 持久化
+#    - 開發環境無需持久化，減少磁盤 I/O
+#    - 生產環境若需要: save "900 1 300 10 60 10000"
+#
+# 4. appendonly no: 關閉 AOF 日誌
+#    - 開發環境不需要
+#    - 生產環境若需要: appendonly yes + appendfsync everysec
+#
+# 5. lazyfree-lazy-eviction yes: 非阻塞式淘汰
+#    - 後台線程執行淘汰，不阻塞前台命令
+#    - 改善響應時間
+#
+# 6. slowlog-log-slower-than 10000: 慢查詢日誌
+#    - 記錄執行時間 > 10000 微秒的命令
+#    - 幫助診斷性能問題
+#
+# 【資源限制】
+#
+# resources.limits:
+#   - cpus: '1' = 最多使用 1 個 CPU 核心
+#   - memory: 2G = 最多使用 2GB 內存
+#
+# resources.reservations:
+#   - cpus: '0.5' = 預留 0.5 個 CPU 核心
+#   - memory: 1G = 預留 1GB 內存
+#
+# 【健康檢查】
+#
+# healthcheck:
+#   - interval: 每 10 秒執行一次檢查
+#   - timeout: 命令超時 5 秒
+#   - retries: 失敗 3 次後視為不健康
+#
+# 【監控工具】
+#
+# 1. redis-exporter (9121 端口)
+#    - 導出 Prometheus 格式的指標
+#    - 用於 Grafana 監控儀表板
+#    - 指標: 命中率、內存使用、連接數等
+#
+# 2. redis-insight (8001 端口)
+#    - Redis 官方管理工具
+#    - 實時監控、命令調試、數據瀏覽
+#    - 訪問: http://localhost:8001
+#
+# ============================================================================
+# 啟動命令
+# ============================================================================
+#
+# 1. 啟動所有服務:
+#    docker-compose -f docker-compose-redis-optimized.yml up -d
+#
+# 2. 查看日誌:
+#    docker-compose logs -f redis
+#
+# 3. 進入 Redis CLI:
+#    docker-compose exec redis redis-cli
+#
+# 4. 檢查 Redis 狀態:
+#    docker-compose exec redis redis-cli info stats
+#
+# 5. 查看慢查詢:
+#    docker-compose exec redis redis-cli slowlog get 10
+#
+# 6. 停止服務:
+#    docker-compose down
+#
+# ============================================================================

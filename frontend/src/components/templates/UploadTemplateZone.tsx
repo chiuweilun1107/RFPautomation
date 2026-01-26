@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Upload, FileText, X } from "lucide-react"
 import { toast } from "sonner"
 import { templatesApi } from "@/features/templates/api/templatesApi"
+import { useRouter } from "next/navigation"
 
 interface TemplateFolder {
     id: string
@@ -29,6 +30,7 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
     const [file, setFile] = React.useState<File | null>(null)
     const [uploading, setUploading] = React.useState(false)
     const supabase = createClient()
+    const router = useRouter()
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0]
@@ -58,24 +60,32 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Not authenticated")
 
-            // 1. Upload file to Supabase Storage
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
-            const filePath = `templates/${fileName}`
+            // 1. 使用字體處理 API 上傳並處理文件
+            console.log('[上傳] 開始處理文件:', file.name)
 
-            const { error: uploadError } = await supabase.storage
-                .from('raw-files')
-                .upload(filePath, file)
+            const formData = new FormData()
+            formData.append('file', file)
 
-            if (uploadError) throw uploadError
+            const response = await fetch('/api/process-and-upload', {
+                method: 'POST',
+                body: formData,
+            })
 
-            // 2. Create template record
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || '上傳失敗')
+            }
+
+            const result = await response.json()
+            console.log('[上傳] 處理完成:', result.url, result.processedPath)
+
+            // 2. Create template record with processed file path
             const { data: templateData, error: insertError } = await supabase
                 .from('templates')
                 .insert({
                     name,
                     description: description || null,
-                    file_path: filePath,
+                    file_path: result.processedPath, // 使用處理後的文件路徑
                     category: category || null,
                     folder_id: selectedFolderId === "all" ? null : selectedFolderId,
                     owner_id: user.id,
@@ -85,13 +95,42 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
 
             if (insertError) throw insertError
 
-            // 3. Trigger n8n workflow to parse template
-            templatesApi.triggerParse(templateData.id, filePath).catch(err => {
-                console.error("Failed to trigger template parsing:", err)
-                toast.error("範本上傳成功,但解析失敗")
-            })
+            // NEW: Trigger Template Parsing (WF04) via n8n webhook
+            try {
+                toast.info("正在自動解析範本結構...")
 
-            toast.success("範本上傳成功!正在解析...")
+                // Call the existing webhook logic
+                const parseResponse = await fetch("/api/webhook/process-proposal-template", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        projectId: templateData.id, // In this context projectId acts as templateId for the parsing logic
+                        filePath: templateData.file_path,
+                        fileName: name,
+                        mode: 'replace' // Initial parsing should replace any empty structure
+                    }),
+                });
+
+                if (parseResponse.ok) {
+                    toast.success("結構解析完成！")
+                } else {
+                    console.warn("Auto-parsing triggered but returned status:", parseResponse.status)
+                    // We don't block the user, just warn
+                    toast.warning("結構解析仍在後台進行中")
+                }
+            } catch (parseError) {
+                console.error("Auto-parse trigger failed:", parseError)
+                // Don't error out the whole upload process, just log it
+            }
+
+            toast.success("範本上傳成功！正在開啟編輯器...")
+
+            // 3. 直接跳轉到編輯器頁面
+            router.push(`/dashboard/templates/${templateData.id}/design`)
+
+            // 清空表單（可選，因為會跳轉）
             setName("")
             setDescription("")
             setCategory("")
@@ -103,7 +142,6 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
         } catch (error) {
             console.error("Upload error:", error)
             toast.error(getErrorMessage(error) || "上傳失敗")
-        } finally {
             setUploading(false)
         }
     }

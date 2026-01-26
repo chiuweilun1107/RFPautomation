@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, Circle, ChevronDown, Sparkles, Loader2, Wand2, Edit3, FileText } from "lucide-react"
+import { CheckCircle2, Circle, ChevronDown, Sparkles, Loader2, Wand2, Edit3, FileText, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { TaskEditorSheet } from "./TaskEditorSheet"
@@ -12,7 +12,21 @@ import { SourceDetailSheet } from "@/components/workspace/SourceDetailSheet"
 import { createClient } from "@/lib/supabase/client"
 import { ragApi } from "@/features/rag/api/ragApi"
 import { templatesApi } from "@/features/templates/api/templatesApi"
-import { Upload } from "lucide-react"
+
+// 從 publicUrl 提取 storage path（用於 OnlyOffice）
+function extractStoragePath(publicUrl: string | null): string | null {
+    if (!publicUrl) return null;
+    try {
+        const url = new URL(publicUrl);
+        const pathParts = url.pathname.split('/');
+        // 尋找 bucket 名稱後的路徑
+        const bucketIndex = pathParts.findIndex(p => p === 'raw-files' || p === 'section-templates');
+        if (bucketIndex === -1) return null;
+        return pathParts.slice(bucketIndex + 1).join('/');
+    } catch {
+        return null;
+    }
+}
 
 // Types based on the schema
 interface Task {
@@ -234,6 +248,10 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
     const [localTemplateUrl, setLocalTemplateUrl] = React.useState(section.template_file_url || null)
     const [activeView, setActiveView] = React.useState<'draft' | 'template'>('draft')
 
+    // 模板查看模式（移除編輯模式，改為跳轉到獨立頁面）
+    const [iframeKey, setIframeKey] = React.useState(0)
+    const [isRefreshing, setIsRefreshing] = React.useState(false)
+
     // Check if we have content for views
     const hasDraft = localDraft && localDraft.trim().length > 0;
     const hasTemplate = !!localTemplateUrl;
@@ -259,6 +277,48 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
     const fileInputRef = React.useRef<HTMLInputElement>(null)
     const [isUploading, setIsUploading] = React.useState(false)
     const router = useRouter()
+    const supabase = createClient()
+
+    // 跳轉到獨立編輯頁面
+    const openEditorPage = () => {
+        // 從當前 URL 獲取 projectId
+        const pathParts = window.location.pathname.split('/')
+        const dashboardIndex = pathParts.indexOf('dashboard')
+        const projectId = pathParts[dashboardIndex + 1]
+
+        if (projectId) {
+            router.push(`/dashboard/${projectId}/writing/edit/${section.id}`)
+        } else {
+            toast.error('無法獲取項目 ID')
+        }
+    }
+
+    // 刷新模板預覽（從編輯頁面返回時調用）
+    const refreshTemplatePreview = async () => {
+        setIsRefreshing(true)
+
+        try {
+            const { data, error } = await supabase
+                .from('sections')
+                .select('template_file_url')
+                .eq('id', section.id)
+                .single()
+
+            if (error) {
+                console.error('Failed to fetch updated section:', error)
+                toast.error('無法載入最新版本')
+            } else if (data?.template_file_url) {
+                setLocalTemplateUrl(data.template_file_url)
+                setIframeKey(prev => prev + 1)
+                toast.success('已更新至最新版本')
+            }
+        } catch (err) {
+            console.error('Error refreshing template:', err)
+            toast.error('刷新失敗')
+        } finally {
+            setIsRefreshing(false)
+        }
+    }
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -271,40 +331,44 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
 
         setIsUploading(true)
         try {
+            // 1. 使用字體處理 API 處理文件
+            toast.info('正在處理字體...')
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('bucket', 'raw-files') // 指定 bucket
+            formData.append('folder', 'section-templates') // 指定文件夾
+
+            const response = await fetch('/api/process-and-upload', {
+                method: 'POST',
+                body: formData,
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || '字體處理失敗')
+            }
+
+            const result = await response.json()
+            console.log('[上傳] 字體處理完成:', result.url)
+
+            // 2. 將處理後的文件 URL 保存到 section
             const supabase = createClient()
+            toast.info('正在保存...')
 
-            // 1. Upload to Supabase Storage
-            toast.info('正在上傳文件...')
-            const fileExt = file.name.split('.').pop()
-            const fileName = `${section.id}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`
-            const filePath = `section-templates/${fileName}`
-
-            const { error: uploadError } = await supabase.storage
-                .from('raw-files')
-                .upload(filePath, file)
-
-            if (uploadError) throw uploadError
-
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('raw-files')
-                .getPublicUrl(filePath)
-
-            // 2. Update Section template_file_url
             const { error: updateError } = await supabase
                 .from('sections')
                 .update({
-                    template_file_url: publicUrl
+                    template_file_url: result.url
                 })
                 .eq('id', section.id)
 
             if (updateError) throw updateError
 
-            toast.success('文件上傳成功！')
+            toast.success('文件上傳成功！字體已處理')
             if (fileInputRef.current) fileInputRef.current.value = ''
 
             // Optimistic Update
-            setLocalTemplateUrl(publicUrl)
+            setLocalTemplateUrl(result.url)
 
             // Switch to template view
             setActiveView('template')
@@ -312,9 +376,7 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
             router.refresh()
 
         } catch (error: any) {
-            console.error('Upload failed object:', error)
-            console.error('Upload failed message:', error.message)
-            console.error('Upload failed details:', JSON.stringify(error))
+            console.error('Upload failed:', error)
             toast.error(`上傳失敗: ${error.message || '未知錯誤'}`)
         } finally {
             setIsUploading(false)
@@ -507,16 +569,54 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                         {activeView === 'template' && (
                             localTemplateUrl ? (
                                 <div className="p-6">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <FileText className="w-4 h-4 text-blue-600" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40 dark:text-white/40">UPLOADED_TEMPLATE_PREVIEW</span>
-                                        <a href={localTemplateUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-600 hover:underline">
-                                            下載原始檔案
-                                        </a>
+                                    {/* 標題欄 */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="w-4 h-4 text-blue-600" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40 dark:text-white/40">
+                                                UPLOADED_TEMPLATE_PREVIEW
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {/* 編輯按鈕（跳轉到獨立頁面） */}
+                                            <Button
+                                                size="sm"
+                                                onClick={openEditorPage}
+                                                className="rounded-none border-2 border-black dark:border-white bg-green-600 text-white hover:bg-green-700 font-black uppercase text-[10px] tracking-widest"
+                                            >
+                                                <Edit3 className="w-3 h-3 mr-2" />
+                                                Open_In_Editor
+                                            </Button>
+                                            {/* 刷新按鈕 */}
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={refreshTemplatePreview}
+                                                disabled={isRefreshing}
+                                                className="rounded-none border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest"
+                                            >
+                                                {isRefreshing ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    '🔄 Refresh'
+                                                )}
+                                            </Button>
+                                            <a
+                                                href={localTemplateUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[10px] text-blue-600 hover:underline font-bold uppercase tracking-widest"
+                                            >
+                                                下載原始檔案
+                                            </a>
+                                        </div>
                                     </div>
+
+                                    {/* 預覽區域 */}
                                     <div className="w-full aspect-[3/4] min-h-[600px] border border-gray-200 shadow-sm bg-white">
                                         <iframe
-                                            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(localTemplateUrl)}`}
+                                            key={iframeKey}
+                                            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(localTemplateUrl)}&t=${iframeKey}`}
                                             width="100%"
                                             height="100%"
                                             frameBorder="0"

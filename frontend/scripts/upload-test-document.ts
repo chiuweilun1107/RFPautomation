@@ -1,0 +1,121 @@
+/**
+ * 上傳一個測試文檔到 Supabase Storage
+ * 用於 ONLYOFFICE 測試
+ *
+ * 執行：npx tsx scripts/upload-test-document.ts
+ */
+
+import { createClient } from '@supabase/supabase-js';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
+
+// 加載環境變數
+dotenv.config({ path: '.env.local' });
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // 使用 service key 繞過 RLS
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ 請設置環境變數：NEXT_PUBLIC_SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function uploadTestDocument() {
+  console.log('📄 創建測試文檔...');
+
+  // 創建一個最小的空白 .docx 文件
+  const minimalDocx = Buffer.from(
+    'UEsDBBQABgAIAAAAIQBi7p1oXgEAAJAEAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtbCCiBAIo' +
+    'oAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnJPLSsNA' +
+    'FIb3gt4h7F3TTQsiFJutN3AD0YbLQk1Pyww0MZNJqn17k1a0UGi7OQs+Pv5zOf0Jld/JKDXf' +
+    'Bnk0hQUwUmYj9GvQb6++3gF6n7Bz9H5M4+Pk7+h7j6+9v2/v9yd3d/d7+/v96e3t7el0ajr6' +
+    'hMZMcqW8wm7+N0yMgxmGKjFEAmGRBRY7m8a+oqBwUNlK1gJG5s0R16Q7mT7SLqmAQ7HXFZHK' +
+    'aUpPR0+GQAAAP//AwBQSwMEFAAGAAgAAAAhALVVMCP1AAAATAIAAAsACAJfcmVscy8ucmVs' +
+    'cyCiBAIooAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKxSTUvE' +
+    'MBC9C/6HMHebdhUR2XQvIuxV6w8I7cZ2sY1BtAf/vZMWFRWUCrp5TJP3ZvLeJHcv1HPYVAZL' +
+    'I0hxlWC/VgEJ9V/kW6v3l/4/u9w+bzu+8fkr7wP/QoMAAP//AwBQSwMEFAAGAAgAAAAhAIE+' +
+    'lJfzAAAAugIAABoACAF3b3JkL19yZWxzL2RvY3VtZW50LnhtbC5yZWxzIKIEASigAAEAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKxSTUvE' +
+    'MBC9C/6HMHebdhUR2XQvIuxV6w8I7cZ2sY1BtAf/vZMWFRWUCrp5TJP3ZvLeJHcv1HPYVAZL' +
+    'I0hxlWC/VgEJ9V/kW6v3l/4/u9w+bzu+8fkr7wP/QoMAAP//AwBQSwMEFAAGAAgAAAAhAMlZ' +
+    'E3eOBgAAhRsAABEAAAB3b3JkL2RvY3VtZW50LnhtbLRY246bMBC9I/UfLN4X82XzbJWV2lZq' +
+    'H/oBHjCQqDZGttNs/r52AgkYQ3f7sHlBc5m5HTOcYezbt2+7Lc/Ut81+X379Ib/+AD79c/Pn' +
+    'j9+/fvr1r1+//vr16/fv37/9/v37t9+/f/v169evX79+/fbt27evXz/+/PXrly+fPn/68uXz' +
+    'l89fPv/1+fPnPz9//vznr1+//vr5z58/f/78+c+fP3/+/Pnz58+fP3/+/Pnz58+fP3/+/Pnz' +
+    '58+fP3/+/Pnz58+fP3/+/Pnz58+fP3/+/Pnz58+fP3/+/Pnz58+fP3/+/PkzHl9OAz4MDgYD' +
+    'g4FBwWBgMDAYGAwMBgYDg4HBwGBgMDAYGAwMBgYDg4HBwGBgMDAYGAwMBgYDg4HBwGBgMDAY' +
+    'GAz+L4PFwtPq8noxN/r0+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX16+vr69fX' +
+    '16+vr6AAAP//AwBQSwMEFAAGAAgAAAAhAGU+nJOVAQAAzAIAABwACAF3b3JkL19yZWxzL2Rv' +
+    'Y3VtZW50LnhtbC5yZWxzIKIEASigAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArJJB' +
+    'S8MwFIbvgv8h5N5sE0FGu96E6U2kHv0BIU3TrbRJSFL1/vhF6VSEB0P2eO/L+zUv+W5b+cZe' +
+    'RBcQIYFlhQR6aLq+RtB/vXz8fLq7RjBUgXVvHUQYQNBdVcl2S6kcQr9Gh1KBc5uGmbqxVnlk' +
+    'nJ1k7RZCCFkBQy+UAAAP//AwBQSwMEFAAGAAgAAAAhALC8nq6vAAAAbAEAABUAAAB3b3Jk' +
+    'L3RoZW1lL3RoZW1lMS54bWyMj1FLwzAUhd+F/ocwd5t2KELXVxF8K+gfCGl6txaT3JCk6v69' +
+    'aRWf5OntN+ecQ3F1e3CNegQbletowKtcgFPSaN2uwF+7m/sdCAsmtdKDo8BJpXqaPM+mzTLy' +
+    'I8keDpUCF0M8YqF0D0iRjyhCF5dDXynhR2mBJXk/9I/iJDqGEJf/wN0DAAD//wMAUEsBAi0A' +
+    'FAAGAAgAAAAhAGLunWheAQAAkAQAABMAAAAAAAAAAAAAAAAAAAAAAABbQ29udGVudF9UeXBl' +
+    'c10ueG1sUEsBAi0AFAAGAAgAAAAhALVVMCP1AAAATAIAAAsAAAAAAAAAAAAAAAAAlwEAAF9y' +
+    'ZWxzLy5yZWxzUEsBAi0AFAAGAAgAAAAhAIE+lJfzAAAAugIAABoAAAAAAAAAAAAAAAAAvQIA' +
+    'AHdvcmQvX3JlbHMvZG9jdW1lbnQueG1sLnJlbHNQSwECLQAUAAYACAAAACEAyVkTd44GAACF' +
+    'GwAAEQAAAAAAAAAAAAAAAADwAwAAd29yZC9kb2N1bWVudC54bWxQSwECLQAUAAYACAAAACEA' +
+    'ZT6ck5UBAADMAgAAHAAAAAAAAAAAAAAAAACrCgAAd29yZC9fcmVscy9kb2N1bWVudC54bWwu' +
+    'cmVsc1BLAQItABQABgAIAAAAIQCwvJ6urwAAAGwBAAAVAAAAAAAAAAAAAAAAAHwMAAB3b3Jk' +
+    'L3RoZW1lL3RoZW1lMS54bWxQSwUGAAAAAAYABgB+AQAAZQ0AAAAA',
+    'base64'
+  );
+
+  console.log('📤 上傳到 Supabase Storage...');
+
+  // 上傳到 documents bucket
+  const { data, error } = await supabase.storage
+    .from('documents')
+    .upload('test-onlyoffice.docx', minimalDocx, {
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      upsert: true, // 覆蓋已存在的文件
+    });
+
+  if (error) {
+    console.error('❌ 上傳失敗:', error);
+    process.exit(1);
+  }
+
+  console.log('✅ 上傳成功:', data.path);
+
+  // 創建公開 URL
+  const { data: urlData } = supabase.storage
+    .from('documents')
+    .getPublicUrl('test-onlyoffice.docx');
+
+  console.log('');
+  console.log('🎉 測試文檔已準備好！');
+  console.log('');
+  console.log('公開 URL:', urlData.publicUrl);
+  console.log('');
+  console.log('請在測試頁面中使用此 URL');
+}
+
+uploadTestDocument();

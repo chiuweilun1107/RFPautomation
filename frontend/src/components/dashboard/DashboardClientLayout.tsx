@@ -21,8 +21,11 @@ export function DashboardClientLayout({ children, userEmail }: DashboardClientLa
     // All workspace pages under /dashboard/[id]/* should be fullscreen
     React.useEffect(() => {
         if (pathname) {
+            // 匹配工作區頁面和編輯頁面
             const isWorkspacePage = /^\/dashboard\/[^/]+\/(assessment|launch|planning|writing|review|handover|design)/.test(pathname)
-            setIsFullScreenPage(isWorkspacePage)
+            // 匹配 /writing/edit/[sectionId] 編輯頁面
+            const isEditPage = /^\/dashboard\/[^/]+\/writing\/edit\/[^/]+/.test(pathname)
+            setIsFullScreenPage(isWorkspacePage || isEditPage)
         }
     }, [pathname])
 

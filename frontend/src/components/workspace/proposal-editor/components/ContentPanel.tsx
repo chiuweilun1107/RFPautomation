@@ -6,6 +6,8 @@ import remarkGfm from "remark-gfm";
 import { X, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EditorSkeleton } from "@/components/ui/skeletons/EditorSkeleton";
 
 interface ContentPanelProps {
     taskId: string;
@@ -66,9 +68,7 @@ export function ContentPanel({
             {/* Content */}
             <div className="flex-1 overflow-auto p-4">
                 {isLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="animate-spin">⌛</div>
-                    </div>
+                    <EditorSkeleton />
                 ) : content ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>

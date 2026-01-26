@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { ComponentLibraryPanel } from "./ComponentLibraryPanel"
 import { EditorCanvas } from "./EditorCanvas"
 import { PropertyPanel } from "./PropertyPanel"
+import { OnlyOfficeEditorWithUpload } from "./OnlyOfficeEditorWithUpload"
+import { cn } from "@/lib/utils"
 import { SaveDialog } from "./SaveDialog"
 import { SaveAsDialog } from "./SaveAsDialog"
 import { toast } from "sonner"
@@ -41,8 +43,28 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
     }
   }
 
-  const handleSave = () => {
-    setShowSaveDialog(true)
+  const handleSave = async () => {
+    try {
+      console.log('[保存] 提示用戶保存方式');
+
+      // 檢查是否使用 localhost
+      const isLocalhost = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' ||
+         window.location.hostname === '127.0.0.1');
+
+      if (isLocalhost) {
+        toast.info('💡 保存提示', {
+          description: '請在編輯器中按 Ctrl+S (或 Cmd+S) 保存文檔。開發環境需要使用 ngrok 才能自動保存，詳見 ONLYOFFICE_SETUP.md',
+          duration: 5000,
+        });
+      } else {
+        toast.success('請在編輯器中按 Ctrl+S (或 Cmd+S) 保存文檔');
+      }
+
+    } catch (error) {
+      console.error('[保存] 失敗:', error);
+      toast.error('保存失敗');
+    }
   }
 
   const handleSaveAs = () => {
@@ -149,102 +171,56 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
 
   return (
     <>
-      {/* Header */}
-      {/* Main Container - Separated Panels Layout */}
-      <div className="flex h-screen bg-transparent p-6 gap-6 overflow-hidden font-sans">
+      {/* Full Screen ONLYOFFICE Editor */}
+      <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
 
-        {/* Left Block - Component Library - Swiss Bordered Card */}
-        <aside className={`transition-all duration-300 ease-in-out ${isLibraryCollapsed ? 'w-[60px]' : 'w-[280px]'} relative z-10 group/sidebar border-2 border-black dark:border-white bg-background`}>
-          <div className={`h-full w-full flex flex-col overflow-hidden transition-all duration-300`}>
-            <ComponentLibraryPanel
-              template={template}
-              onDragStart={() => { }}
-              onComponentClick={handleComponentClick}
-              isCollapsed={isLibraryCollapsed}
-              onToggleCollapse={() => setIsLibraryCollapsed(!isLibraryCollapsed)}
-            />
-          </div>
-        </aside>
-
-        {/* Right Block - Main Content (Header + Canvas) - Swiss Bordered Card */}
-        <main className="flex-1 bg-background flex flex-col overflow-hidden relative z-0 border-2 border-black dark:border-white">
-
-          {/* Internal Header - Swiss Bordered */}
-          <header className="h-14 flex items-center justify-between px-6 border-b-2 border-black dark:border-white shrink-0 bg-background">
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col justify-center">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1 font-mono">
-                  [ DRAFTING ]
-                </span>
-                <h1 className="text-lg font-bold text-foreground font-mono leading-none tracking-tighter uppercase">
-                  {template.name}
-                </h1>
-              </div>
+        {/* Header - Swiss Bordered */}
+        <header className="h-14 flex items-center justify-between px-6 border-b-2 border-black dark:border-white shrink-0 bg-background">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col justify-center">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none mb-1 font-mono">
+                [ DRAFTING ]
+              </span>
+              <h1 className="text-lg font-bold text-foreground font-mono leading-none tracking-tighter uppercase">
+                {template.name}
+              </h1>
             </div>
-
-            <div className="flex items-center gap-3">
-              {/* Action Buttons - Swiss Sharp */}
-              <div className="flex items-center gap-0 border-2 border-black dark:border-white">
-                <Button
-                  variant="ghost"
-                  onClick={handleBack}
-                  className="rounded-none h-9 px-4 font-mono text-xs hover:bg-muted text-muted-foreground hover:text-foreground border-r-2 border-black dark:border-white last:border-r-0"
-                >
-                  [ CANCEL ]
-                </Button>
-
-                <Button
-                  onClick={handleSave}
-                  className="rounded-none h-9 px-6 font-mono text-xs bg-foreground text-background hover:bg-muted-foreground hover:text-white"
-                  disabled={!hasUnsavedChanges}
-                >
-                  [ SAVE ]
-                </Button>
-              </div>
-            </div>
-          </header>
-
-          {/* Editor Canvas Container */}
-          <div className="flex-1 relative overflow-hidden bg-muted/20">
-            <EditorCanvas
-              template={template}
-              selectedComponent={selectedComponent}
-              deletedComponents={deletedComponents}
-              onSelectComponent={setSelectedComponent}
-              onComponentChange={() => setHasUnsavedChanges(true)}
-            />
           </div>
-        </main>
 
-        {/* Floating Property Panel - Absolute Overlay */}
-        {selectedComponent && (
-          <PropertyPanel
-            component={selectedComponent}
+          <div className="flex items-center gap-3">
+            {/* Action Buttons - Swiss Sharp */}
+            <div className="flex items-center gap-0 border-2 border-black dark:border-white">
+              <Button
+                variant="ghost"
+                onClick={handleBack}
+                className="rounded-none h-9 px-4 font-mono text-xs hover:bg-muted text-muted-foreground hover:text-foreground border-r-2 border-black dark:border-white last:border-r-0"
+              >
+                [ CANCEL ]
+              </Button>
+
+              <Button
+                onClick={handleSave}
+                className="rounded-none h-9 px-6 font-mono text-xs bg-foreground text-background hover:bg-muted-foreground hover:text-white"
+              >
+                [ SAVE ]
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* ONLYOFFICE Editor - Full Height */}
+        <div className="flex-1 relative overflow-hidden bg-white">
+          <OnlyOfficeEditorWithUpload
             template={template}
-            onComponentUpdate={(updatedComponent) => {
-              // 更新 template 中對應的段落或表格資料
-              if (updatedComponent.type === 'paragraph') {
-                setTemplate(prev => ({
-                  ...prev,
-                  paragraphs: prev.paragraphs?.map(p =>
-                    p.index === updatedComponent.data.index ? updatedComponent.data : p
-                  )
-                }))
-              } else if (updatedComponent.type === 'table') {
-                setTemplate(prev => ({
-                  ...prev,
-                  parsed_tables: prev.parsed_tables?.map(t =>
-                    t.index === updatedComponent.data.index ? updatedComponent.data : t
-                  )
-                }))
-              }
-              // 同步更新 selectedComponent
-              setSelectedComponent(updatedComponent)
-              setHasUnsavedChanges(true)
+            onDocumentReady={() => {
+              console.log('ONLYOFFICE 文檔已就緒');
             }}
-            onClose={() => setSelectedComponent(null)}
+            onError={(error) => {
+              console.error('ONLYOFFICE 錯誤:', error);
+              toast.error(error);
+            }}
           />
-        )}
+        </div>
       </div>
 
       {/* Save Dialog */}

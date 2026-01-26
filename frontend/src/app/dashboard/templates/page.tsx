@@ -246,6 +246,7 @@ export default function TemplatesPage() {
                     folders={folders}
                     onTemplateUpdate={handleTemplateUpdate}
                     viewMode={viewMode}
+                    isLoading={loading}
                 />
 
                 <SwissPagination
