@@ -140,8 +140,8 @@ export function OnlyOfficeEditor({
           lang: 'zh-TW',
           callbackUrl: `${window.location.origin}/api/onlyoffice-callback`,
           customization: {
-            forcesave: true, // 啟用強制保存按鈕
-            autosave: true, // 啟用自動保存
+            forcesave: !window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1'), // 本地開發禁用
+            autosave: !window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1'), // 本地開發禁用
             compactToolbar: false,
             toolbarNoTabs: false,
           },
@@ -200,10 +200,8 @@ export function OnlyOfficeEditor({
       <div className="w-full h-full relative bg-white">
         {/* 載入中 */}
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white z-10 p-8">
-            <div className="w-full max-w-md">
-              <OnlyOfficeEditorSkeleton />
-            </div>
+          <div className="absolute inset-0 bg-white z-10">
+            <OnlyOfficeEditorSkeleton />
           </div>
         )}
 

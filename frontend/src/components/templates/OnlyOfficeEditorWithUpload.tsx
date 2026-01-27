@@ -88,8 +88,7 @@ export function OnlyOfficeEditorWithUpload({
       });
     } catch (err) {
       const errorInfo = handleFileError(err, 'Upload', file.name, {
-        userMessage: '上傳失敗，請重試',
-        metadata: { templateId: template.id }
+        userMessage: '上傳失敗，請重試'
       });
       setError(errorInfo.message);
       setIsProcessing(false);
@@ -162,8 +161,8 @@ export function OnlyOfficeEditorWithUpload({
               change: true, // 啟用追蹤修改
             },
             customization: {
-              forcesave: true, // 啟用強制保存按鈕
-              autosave: true, // 啟用自動保存
+              forcesave: !callbackUrl.includes('localhost') && !callbackUrl.includes('127.0.0.1'), // 本地開發且無 tunnel 時禁用強制保存
+              autosave: !callbackUrl.includes('localhost') && !callbackUrl.includes('127.0.0.1'), // 本地開發且無 tunnel 時禁用自動保存
               compactToolbar: false,
               toolbarNoTabs: false,
               chat: true, // 啟用聊天功能
@@ -334,8 +333,7 @@ export function OnlyOfficeEditorWithUpload({
         // 注意：isAutoLoading 和 isProcessing 會在編輯器就緒時關閉
       } catch (err) {
         const errorInfo = handleFileError(err, 'AutoLoad', template.file_path, {
-          userMessage: '自動載入失敗，請手動上傳文件',
-          metadata: { templateId: template.id }
+          userMessage: '自動載入失敗，請手動上傳文件'
         });
         setError(errorInfo.message);
         // 如果自動載入失敗，顯示上傳界面
@@ -439,10 +437,8 @@ export function OnlyOfficeEditorWithUpload({
 
         {/* 處理中或自動載入中 */}
         {(isProcessing || isAutoLoading) && !showUpload && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white z-10 p-8">
-            <div className="w-full max-w-md">
-              <OnlyOfficeEditorSkeleton />
-            </div>
+          <div className="absolute inset-0 bg-white z-10">
+            <OnlyOfficeEditorSkeleton />
           </div>
         )}
 

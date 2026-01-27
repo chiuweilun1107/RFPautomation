@@ -149,6 +149,7 @@
 
 @theme inline {
   --animate-source-pulse: source-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 2s ease-in-out infinite;
 
   --keyframes-source-pulse: {
 
@@ -159,6 +160,19 @@
 
     50% {
       opacity: .5;
+    }
+  }
+
+  ;
+
+  --keyframes-shimmer: {
+
+    0% {
+      transform: translateX(-100%);
+    }
+
+    100% {
+      transform: translateX(100%);
     }
   }
 
