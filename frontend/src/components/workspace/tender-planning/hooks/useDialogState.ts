@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import type { DialogContext, TaskGenerationContext, SourceSelectionContext, TaskGenerationMode, GenerationMode } from '../types';
+import type { DialogContext, TaskGenerationContext, SourceSelectionContext, TaskGenerationMode, GenerationMode, Task } from '../types';
 
 interface UseDialogStateReturn {
     // Method Dialog
@@ -42,6 +42,12 @@ interface UseDialogStateReturn {
     setIsTaskGenerationDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
     taskGenerationTypeContext: { sectionTitle: string; sectionId: string; mode: TaskGenerationMode; conflictMode: GenerationMode; sourceIds: string[] } | null;
     setTaskGenerationTypeContext: React.Dispatch<React.SetStateAction<{ sectionTitle: string; sectionId: string; mode: TaskGenerationMode; conflictMode: GenerationMode; sourceIds: string[] } | null>>;
+
+    // Image Generation Dialog
+    isImageGenDialogOpen: boolean;
+    setIsImageGenDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    imageGenTask: Task | null;
+    setImageGenTask: React.Dispatch<React.SetStateAction<Task | null>>;
 }
 
 /**
@@ -71,6 +77,10 @@ export function useDialogState(): UseDialogStateReturn {
     const [isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen] = useState(false);
     const [taskGenerationTypeContext, setTaskGenerationTypeContext] = useState<{ sectionTitle: string; sectionId: string; mode: TaskGenerationMode; conflictMode: GenerationMode; sourceIds: string[] } | null>(null);
 
+    // Image Generation Dialog
+    const [isImageGenDialogOpen, setIsImageGenDialogOpen] = useState(false);
+    const [imageGenTask, setImageGenTask] = useState<Task | null>(null);
+
     return {
         isMethodDialogOpen,
         setIsMethodDialogOpen,
@@ -94,5 +104,9 @@ export function useDialogState(): UseDialogStateReturn {
         setIsTaskGenerationDialogOpen,
         taskGenerationTypeContext,
         setTaskGenerationTypeContext,
+        isImageGenDialogOpen,
+        setIsImageGenDialogOpen,
+        imageGenTask,
+        setImageGenTask,
     };
 }

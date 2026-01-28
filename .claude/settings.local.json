@@ -170,7 +170,14 @@
       "Bash(supabase db remote status:*)",
       "Bash(supabase db remote commit:*)",
       "Bash(supabase link:*)",
-      "Bash(CONFIRM_DELETE=true node:*)"
+      "Bash(CONFIRM_DELETE=true node:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(\"/Users/chiuyongren/Desktop/AI dev/test-automation.sh\")",
+      "Bash(crontab:*)",
+      "Bash(\"/Users/chiuyongren/Desktop/AI dev/install-cron.sh\")",
+      "Bash(/Users/chiuyongren/Desktop/AI dev/cron-update-tender.sh)",
+      "WebFetch(domain:acebidx.com)",
+      "Bash(git remote set-url:*)"
     ]
   }
 }

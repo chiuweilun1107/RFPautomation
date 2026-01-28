@@ -13,3 +13,4 @@ export { useDialogState } from './useDialogState';
 export { useAIGeneration } from './useAIGeneration';
 export { useSaveOperations } from './useSaveOperations';
 export { useTemplatePreview } from './useTemplatePreview';
+export { useImageGeneration } from './useImageGeneration';

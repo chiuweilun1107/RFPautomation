@@ -19,6 +19,8 @@ interface TaskItemProps {
     section: Section;
     /** Content generation handler */
     handleGenerateContent: (task: any, section: any) => void;
+    /** Image generation handler */
+    handleGenerateImage: (task: Task) => void;
 }
 
 /**
@@ -37,7 +39,7 @@ const renderSummary = (text: any): string => {
 /**
  * Clickable task list item with status badge and pre-fetching
  */
-function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemProps) {
+function TaskItemComponent({ task, section, handleGenerateContent, handleGenerateImage }: TaskItemProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [prefetchedContent, setPrefetchedContent] = useState<string | null>(null);
     const [isPrefetching, setIsPrefetching] = useState(false);
@@ -107,6 +109,7 @@ function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemPro
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
                 handleGenerateContent={handleGenerateContent}
+                handleGenerateImage={handleGenerateImage}
                 initialContent={prefetchedContent}
             />
         </>

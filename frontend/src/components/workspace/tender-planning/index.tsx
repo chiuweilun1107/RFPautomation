@@ -24,7 +24,8 @@ import {
     useAIGeneration,
     useSaveOperations,
     useContentGeneration,
-    useTemplatePreview
+    useTemplatePreview,
+    useImageGeneration
 } from "./hooks";
 
 // Components
@@ -89,6 +90,10 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setIsTaskGenerationDialogOpen,
         taskGenerationTypeContext,
         setTaskGenerationTypeContext,
+        isImageGenDialogOpen,
+        setIsImageGenDialogOpen,
+        imageGenTask,
+        setImageGenTask,
     } = useDialogState();
 
     // Data Operations
@@ -167,6 +172,9 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         templateName,
         handlePreview
     } = useTemplatePreview(projectId);
+
+    // Image Generation
+    const { generateImage } = useImageGeneration({ fetchData });
 
     // Load data on mount
     useEffect(() => {
@@ -374,6 +382,42 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setIsSourceSelectionOpen(true);
     };
 
+    // Handle Image Generation
+    const handleGenerateImage = (task: any) => {
+        setImageGenTask(task);
+        setIsImageGenDialogOpen(true);
+    };
+
+    const handleImageGenConfirm = async (options: any) => {
+        if (!imageGenTask) return;
+        try {
+            await generateImage(imageGenTask.id, {
+                task_content: typeof imageGenTask.requirement_text === 'string'
+                    ? imageGenTask.requirement_text
+                    : JSON.stringify(imageGenTask.requirement_text),
+                image_type: options.type,
+                custom_prompt: options.customPrompt,
+                reference_image: options.referenceImage
+            });
+            setIsImageGenDialogOpen(false);
+            setImageGenTask(null);
+        } catch (error) {
+            console.error("Image generation error:", error);
+        }
+    };
+
+    // Project-wide Images for Gallery
+    const projectImages = outline.flatMap(chapter =>
+        chapter.sections.flatMap(section =>
+            (section.tasks || []).flatMap(task =>
+                (task.task_images || []).map(img => ({
+                    id: img.id,
+                    url: img.image_url
+                }))
+            )
+        )
+    );
+
 
 
     return (
@@ -417,6 +461,7 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                         setTaskFilter={setTaskFilter} // Pass filter setter
                         handleGenerateContent={handleGenerateContent}
                         handleGenerateSectionContent={handleGenerateSectionContent}
+                        handleGenerateImage={handleGenerateImage}
                     />
                 </div>
             </div>
@@ -444,6 +489,11 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                 onTaskGenerationDialogChange={setIsTaskGenerationDialogOpen}
                 taskGenerationSectionTitle={taskGenerationTypeContext?.sectionTitle || ''}
                 onTaskGenerationConfirm={handleTaskGenerationConfirm}
+                isImageGenDialogOpen={isImageGenDialogOpen}
+                onImageGenDialogChange={setIsImageGenDialogOpen}
+                imageGenTask={imageGenTask}
+                onImageGenConfirm={handleImageGenConfirm}
+                projectImages={projectImages}
             />
 
             {/* Template Preview Dialog */}

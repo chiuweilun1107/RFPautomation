@@ -4,7 +4,7 @@
  * All TypeScript interfaces and types used in the TenderPlanning component.
  */
 
-import type { Citation } from "@/components/workspace/types";
+import type { Citation, TaskImage } from "@/components/workspace/types";
 
 /**
  * Main component props for TenderPlanning
@@ -40,6 +40,8 @@ export interface Task {
     workflow_type?: 'wf11_functional' | 'wf13_article';
     /** Whether content has been generated for this task */
     has_content?: boolean;
+    /** Images associated with this task */
+    task_images?: TaskImage[];
 }
 
 /**

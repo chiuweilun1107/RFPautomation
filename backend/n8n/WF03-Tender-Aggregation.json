@@ -12,10 +12,7 @@
             "name": "Webhook",
             "type": "n8n-nodes-base.webhook",
             "typeVersion": 1,
-            "position": [
-                250,
-                300
-            ]
+            "position": [250, 300]
         },
         {
             "parameters": {
@@ -32,10 +29,7 @@
             "name": "Schedule",
             "type": "n8n-nodes-base.scheduleTrigger",
             "typeVersion": 1,
-            "position": [
-                250,
-                500
-            ]
+            "position": [250, 500]
         },
         {
             "parameters": {},
@@ -43,16 +37,13 @@
             "name": "Merge Triggers",
             "type": "n8n-nodes-base.merge",
             "typeVersion": 2,
-            "position": [
-                500,
-                400
-            ],
+            "position": [500, 400],
             "mode": "any"
         },
         {
             "parameters": {
                 "method": "GET",
-                "url": "={{ 'https://goyonrowhfphooryfzif.supabase.co/rest/v1/tender_subscriptions?select=*&is_active=eq.true' + ( $('Webhook').isExecuted ? '' : '&schedule_time=eq.' + $now.setZone('Asia/Taipei').toFormat('HH:mm')) }}",
+                "url": "={{ 'https://goyonrowhfphooryfzif.supabase.co/rest/v1/tender_subscriptions?select=*&is_active=eq.true' + ( $('Webhook').isExecuted ? '' : '&schedule_time=eq.' + $now.setZone('Asia/Taipei').toFormat('HH:mm:ss')) }}",
                 "authentication": "none",
                 "sendHeaders": true,
                 "headerParameters": {
@@ -73,10 +64,7 @@
             "name": "Get Subscriptions",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
-            "position": [
-                750,
-                400
-            ],
+            "position": [750, 400],
             "credentials": {
                 "httpHeaderAuth": {
                     "id": "Ku7I5ahwnWdwj5SM",
@@ -91,11 +79,8 @@
             "id": "prepare-loop",
             "name": "Prepare Loop",
             "type": "n8n-nodes-base.code",
-            "typeVersion": 1,
-            "position": [
-                1000,
-                400
-            ]
+            "typeVersion": 2,
+            "position": [1000, 400]
         },
         {
             "parameters": {
@@ -125,7 +110,7 @@
                     "parameters": [
                         {
                             "name": "Cookie",
-                            "value": "_ga=GA1.1.1887446850.1766393999; ot_session=eyJhbGciOiJSUzI1NiIsImtpZCI6ImM0MTZJUSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS9za2lsbGZ1bC1zdW1tZXItNDAzMTA3IiwibmFtZSI6IldlaS1MdW4gQ2hpdSIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NJZTFaYkpvTVRKbG5ERlBPWWVHLVJJM2F3bll2SWUtSy1XM2VDYXJUbEhOVFowOU5WZlx1MDAzZHM5Ni1jIiwiaXNfcGFpZF91bnRpbCI6IjIwMjYtMDEtMDUiLCJhdWQiOiJza2lsbGZ1bC1zdW1tZXItNDAzMTA3IiwiYXV0aF90aW1lIjoxNzY2Mzk4NTM0LCJ1c2VyX2lkIjoiRE5hZ0g1RjhUc2dTakhlU0pnaUgwRjRxM1BtMiIsInN1YiI6IkROYWdINUY4VHNnU2pIZVNKZ2lIMEY0cTNQbTIiLCJpYXQiOjE3NjYzOTg1MzUsImV4cCI6MTc2NjU3MTMzNSwiZW1haWwiOiJjaGl1d2VpbHVuMTEwN0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJnb29nbGUuY29tIjpbIjExNTc4NTUxNDg0MjQ1NDIwNTI5OSJdLCJlbWFpbCI6WyJjaGl1d2VpbHVuMTEwN0BnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJnb29nbGUuY29tIn19.QYHzHa_if6Du15HdGU0HSqtBIca84VftT3eTFKADNB1FhzmqRxBAIaRXLRMQSDhh-_7dqxbjJ_otEddRxe0-TL7U9PwLcSyGhzVUl84L7IqDObYJDLHUaRBbTaoRI440LVPHC4m7aAy_NYm7iIW82MvqdCVLpW4BYy9Jzxt3ymKgY2aypkOKysl-YbnsxSMzlASsYTOLV3u68oHQu2DZ_rIeCIElK2KjJD5JtkOa6ybu-hnhhXNXbGc9cKTL9whB6C1fd_oJi9c7pvULULKFTM9Tn6tg_r9FypEv0iw7IJKAOhB6Sm4sQ4R_gwA_bCwW-uSYHPa5mLoMig6cTCYh1w; _ga_PY50PZ38HC=GS2.1.s1766398526$o1$g0$t1766398536$j50$l0$h0; _ga_L8DPPXZWNN=GS2.1.s1766398112$o2$g1$t1766398546$j38$l0$h0"
+                            "value": "_ga=GA1.1.1887446850.1766393999; ot_session=eyJhbGciOiJSUzI1NiIsImtpZCI6ImM0MTZJUSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS9za2lsbGZ1bC1zdW1tZXItNDAzMTA3IiwibmFtZSI6IldlaS1MdW4gQ2hpdSIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NJZTFaYkpvTVRKbG5ERlBPWWVHLVJJM2F3bll2SWktSy1XM2VDYXJUbEhOVFowOU5WZlx1MDAzZHM5Ni1jIiwiaXNfcGFpZF91bnRpbCI6IjIwMjYtMDEtMDUiLCJhdWQiOiJza2lsbGZ1bC1zdW1tZXItNDAzMTA3IiwiYXV0aF90aW1lIjoxNzY2Mzk4NTM0LCJ1c2VyX2lkIjoiRE5hZ0g1RjhUc2dTakhlU0pnaUgwRjRxM1BtMiIsInN1YiI6IkROYWdINUY4VHNnU2pIZVNKZ2lIMEY0cTNQbTIiLCJpYXQiOjE3NjYzOTg1MzUsImV4cCI6MTc2NjU3MTMzNSwiZW1haWwiOiJjaGl1d2VpbHVuMTEwN0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJnb29nbGUuY29tIjpbIjExNTc4NTUxNDg0MjQ1NDIwNTI5OSJdLCJlbWFpbCI6WyJjaGl1d2VpbHVuMTEwN0BnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJnb29nbGUuY29tIn19.QYHzHa_if6Du15HdGU0HSqtBIca84VftT3eTFKADNB1FhzmqRxBAIaRXLRMQSDhh-_7dqxbjJ_otEddRxe0-TL7U9PwLcSyGhzVUl84L7IqDObYJDLHUaRBbTaoRI440LVPHC4m7aAy_NYm7iIW82MvqdCVLpW4BYy9Jzxt3ymKgY2aypkOKysl-YbnsxSMzlASsYTOLV3u68oHQu2DZ_rIeCIElK2KjJD5JtkOa6ybu-hnhhXNXbGc9cKTL9whB6C1fd_oJi9c7pvULULKFTM9Tn6tg_r9FypEv0iw7IJKAOhB6Sm4sQ4R_gwA_bCwW-uSYHPa5mLoMig6cTCYh1w; _ga_PY50PZ38HC=GS2.1.s1766398526$o1$g0$t1766398536$j50$l0$h0; _ga_L8DPPXZWNN=GS2.1.s1766398112$o2$g1$t1766398546$j38$l0$h0"
                         },
                         {
                             "name": "User-Agent",
@@ -138,10 +123,7 @@
             "name": "Search AceBidX",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
-            "position": [
-                1250,
-                400
-            ],
+            "position": [1250, 400],
             "notes": "Requires Login Cookie or Headers"
         },
         {
@@ -153,10 +135,7 @@
             "name": "Split Results",
             "type": "n8n-nodes-base.itemLists",
             "typeVersion": 1,
-            "position": [
-                1400,
-                400
-            ]
+            "position": [1400, 400]
         },
         {
             "parameters": {
@@ -174,10 +153,7 @@
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
             "onError": "continueErrorOutput",
-            "position": [
-                1550,
-                400
-            ]
+            "position": [1550, 400]
         },
         {
             "parameters": {
@@ -187,16 +163,22 @@
             "name": "Process Dates",
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
-            "position": [
-                1700,
-                400
-            ]
+            "position": [1700, 400]
         },
         {
             "parameters": {
                 "method": "POST",
-                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/tenders?on_conflict=url",
+                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/tenders",
                 "authentication": "none",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "on_conflict",
+                            "value": "url"
+                        }
+                    ]
+                },
                 "sendHeaders": true,
                 "headerParameters": {
                     "parameters": [
@@ -210,7 +192,7 @@
                         },
                         {
                             "name": "Prefer",
-                            "value": "resolution=merge-duplicates"
+                            "value": "resolution=merge-duplicates,return=representation"
                         }
                     ]
                 },
@@ -257,10 +239,7 @@
             "name": "Save Tenders",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
-            "position": [
-                1850,
-                400
-            ],
+            "position": [1850, 400],
             "credentials": {
                 "httpHeaderAuth": {
                     "id": "Ku7I5ahwnWdwj5SM",
@@ -369,5 +348,8 @@
                 ]
             ]
         }
+    },
+    "settings": {
+        "executionOrder": "v1"
     }
 }

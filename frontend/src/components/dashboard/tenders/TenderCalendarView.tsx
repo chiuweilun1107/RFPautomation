@@ -5,12 +5,15 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
+export type DateType = 'publish' | 'deadline';
+
 interface TenderCalendarViewProps {
     tenders: any[];
     onDayClick?: (date: Date) => void;
+    dateType?: DateType;
 }
 
-export function TenderCalendarView({ tenders, onDayClick }: TenderCalendarViewProps) {
+export function TenderCalendarView({ tenders, onDayClick, dateType = 'deadline' }: TenderCalendarViewProps) {
     const [currentDate, setCurrentDate] = React.useState(new Date());
 
     // Calendar logic
@@ -75,12 +78,15 @@ export function TenderCalendarView({ tenders, onDayClick }: TenderCalendarViewPr
 
     const getTendersForDay = (d: number, m: number, y: number) => {
         return tenders.filter(t => {
-            if (!t.publish_date) return false;
-            const pubDate = new Date(t.publish_date);
+            const dateStr = dateType === 'publish' ? t.publish_date : t.deadline_date;
+            if (!dateStr) return false;
+
+            // Handle both date formats: 'YYYY-MM-DD' and 'YYYY-MM-DD HH:mm:ss'
+            const targetDate = new Date(dateStr);
             return (
-                pubDate.getDate() === d &&
-                pubDate.getMonth() === m &&
-                pubDate.getFullYear() === y
+                targetDate.getDate() === d &&
+                targetDate.getMonth() === m &&
+                targetDate.getFullYear() === y
             );
         });
     };
@@ -93,7 +99,7 @@ export function TenderCalendarView({ tenders, onDayClick }: TenderCalendarViewPr
                         {monthNames[month]} {year}
                     </h3>
                     <p className="text-[10px] font-mono font-bold opacity-40 uppercase tracking-[0.2em]">
-                        TENDER_TIMELINE // PUBLICATION_MAP
+                        TENDER_TIMELINE // {dateType === 'publish' ? 'PUBLICATION_MAP' : 'DEADLINE_MAP'}
                     </p>
                 </div>
 
@@ -180,7 +186,7 @@ export function TenderCalendarView({ tenders, onDayClick }: TenderCalendarViewPr
                     // CHANNEL: TENDER_HUB // ACCESS_GRANTED
                 </div>
                 <div className="text-[10px] font-mono font-bold uppercase tracking-widest">
-                    PUBLISH_CYCLE: {month + 1}.{year}
+                    {dateType === 'publish' ? 'PUBLISH_CYCLE' : 'DEADLINE_CYCLE'}: {month + 1}.{year}
                 </div>
             </div>
         </div>

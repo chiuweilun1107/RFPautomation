@@ -68,7 +68,20 @@ export function useTenderData({
                     .select('task_id')
                     .in('task_id', normalizedTasks.map(t => t.id));
 
-                const taskContentMap = new Set((contentData || []).map(c => c.task_id));
+                const taskContentMap = new Set((contentData || []).map((c: any) => c.task_id));
+
+                // Fetch images for these tasks
+                const { data: imagesData } = await supabase
+                    .from('task_images')
+                    .select('*')
+                    .in('task_id', normalizedTasks.map(t => t.id))
+                    .order('created_at', { ascending: false });
+
+                const imagesByTask = (imagesData || []).reduce((acc: Record<string, any[]>, img: any) => {
+                    if (!acc[img.task_id]) acc[img.task_id] = [];
+                    acc[img.task_id].push(img);
+                    return acc;
+                }, {});
 
                 // Group sections by parent_id to build tree
                 const rootSections = sectionsData.filter((s: Section) => s.parent_id === null);
@@ -88,11 +101,11 @@ export function useTenderData({
                             ...child,
                             generation_method: child.generation_method || 'manual',
                             is_modified: child.is_modified || false,
-                            is_modified: child.is_modified || false,
                             citations: child.citations || [], // Normalize citations
                             tasks: (tasksBySection[child.id] || []).map((t: Task) => ({
                                 ...t,
-                                has_content: taskContentMap.has(t.id)
+                                has_content: taskContentMap.has(t.id),
+                                task_images: imagesByTask[t.id] || []
                             }))
                         }))
                         .sort((a: Section, b: Section) => (a.order_index || 0) - (b.order_index || 0))

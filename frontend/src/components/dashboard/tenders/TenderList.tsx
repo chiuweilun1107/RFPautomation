@@ -18,15 +18,30 @@ import { createClient } from "@/lib/supabase/client"
 import { SwissPagination } from "@/components/ui/SwissPagination"
 import { cn } from "@/lib/utils"
 import { TenderGrid } from "./TenderGrid"
-import { TenderCalendarView } from "./TenderCalendarView"
+import { TenderCalendarView, DateType } from "./TenderCalendarView"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
+export type StatusFilter = 'all' | 'active' | 'expired' | 'awarded'
+export type DeadlineFilter = 'all' | '3days' | '7days' | '30days'
 
 export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPortalId }: { searchQuery?: string, syncButtonPortalId?: string }) {
     const [tenders, setTenders] = React.useState<any[]>([])
+    const [allTendersForCalendar, setAllTendersForCalendar] = React.useState<any[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
+    const [isLoadingCalendar, setIsLoadingCalendar] = React.useState(false)
     const [isSyncing, setIsSyncing] = React.useState(false)
     const [page, setPage] = React.useState(1)
     const [viewMode, setViewMode] = React.useState<'list' | 'grid' | 'calendar'>('list')
     const [selectedDate, setSelectedDate] = React.useState<Date | null>(null)
+    const [dateType, setDateType] = React.useState<DateType>('deadline')
+    const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all')
+    const [deadlineFilter, setDeadlineFilter] = React.useState<DeadlineFilter>('all')
     const [totalCount, setTotalCount] = React.useState(0)
     const [debouncedSearch, setDebouncedSearch] = React.useState("")
     const [pageSize, setPageSize] = React.useState(12)
@@ -41,6 +56,79 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
     const searchParams = useSearchParams()
     const selectedKeyword = searchParams.get('keyword')
 
+    // Filter logic functions
+    const applyStatusFilter = (tender: any): boolean => {
+        if (statusFilter === 'all') return true
+
+        const now = new Date()
+        const deadlineDate = tender.deadline_date ? new Date(tender.deadline_date) : null
+
+        if (statusFilter === 'active') {
+            // 招標中：deadline_date > 現在時間 或無截止日期
+            return !deadlineDate || deadlineDate > now
+        } else if (statusFilter === 'expired') {
+            // 已截止：deadline_date <= 現在時間
+            return deadlineDate !== null && deadlineDate <= now
+        } else if (statusFilter === 'awarded') {
+            // 已決標：status 包含 '已決標'
+            return Boolean(tender.status && tender.status.includes('已決標'))
+        }
+        return true
+    }
+
+    const applyDeadlineFilter = (tender: any): boolean => {
+        if (deadlineFilter === 'all') return true
+
+        const deadlineDate = tender.deadline_date ? new Date(tender.deadline_date) : null
+        if (!deadlineDate) return false
+
+        const now = new Date()
+        const diffTime = deadlineDate.getTime() - now.getTime()
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        // 只顯示未來的日期（未截止的）
+        if (diffDays < 0) return false
+
+        if (deadlineFilter === '3days') {
+            return diffDays <= 3
+        } else if (deadlineFilter === '7days') {
+            return diffDays <= 7
+        } else if (deadlineFilter === '30days') {
+            return diffDays <= 30
+        }
+        return true
+    }
+
+    // 動態計算顯示的 status
+    const getDisplayStatus = (tender: any): string => {
+        // 如果標題包含決標，優先顯示已決標
+        if (tender.status?.includes('已決標')) {
+            return '已決標'
+        }
+
+        // 如果標題包含撤案相關字眼，顯示已撤案
+        if (tender.status?.includes('已撤案')) {
+            return '已撤案'
+        }
+
+        // 檢查截止日期
+        if (tender.deadline_date) {
+            const deadlineDate = new Date(tender.deadline_date)
+            const now = new Date()
+
+            if (deadlineDate <= now) {
+                return '已截止'
+            }
+        }
+
+        // 預設顯示招標中
+        return tender.status || '招標中'
+    }
+
+    const applyAllFilters = (tender: any): boolean => {
+        return applyStatusFilter(tender) && applyDeadlineFilter(tender)
+    }
+
     // Debounce search input
     React.useEffect(() => {
         const timer = setTimeout(() => {
@@ -53,7 +141,7 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
     React.useEffect(() => {
         setPage(1)
         setSelectedDate(null)
-    }, [selectedKeyword, debouncedSearch])
+    }, [selectedKeyword, debouncedSearch, statusFilter, deadlineFilter])
 
     const fetchTenders = async () => {
         setIsLoading(true)
@@ -108,17 +196,76 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                 query = query.eq('publish_date', dateStr);
             }
 
-            const { data, error, count } = await query
+            const { data, error } = await query
                 .order('publish_date', { ascending: false })
-                .range(from, to)
 
             if (error) throw error
-            setTenders(data || [])
-            setTotalCount(count || 0)
+
+            // Apply frontend filters
+            const filteredData = (data || []).filter(applyAllFilters)
+
+            // Apply pagination after filtering
+            const paginatedData = filteredData.slice(from, from + pageSize)
+
+            setTenders(paginatedData)
+            setTotalCount(filteredData.length)
         } catch (error) {
             console.error('Error fetching tenders:', error)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    // Fetch ALL tenders for calendar view (without pagination)
+    const fetchAllTendersForCalendar = async () => {
+        setIsLoadingCalendar(true)
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            let activeKeywords: string[] = []
+
+            if (selectedKeyword) {
+                activeKeywords = [selectedKeyword]
+            } else {
+                const { data: subs, error: subsError } = await supabase
+                    .from('tender_subscriptions')
+                    .select('keyword')
+                    .eq('user_id', user.id)
+                    .eq('is_active', true)
+
+                if (subsError) throw subsError
+
+                if (!subs || subs.length === 0) {
+                    setAllTendersForCalendar([])
+                    setIsLoadingCalendar(false)
+                    return
+                }
+                activeKeywords = subs.map(s => s.keyword)
+            }
+
+            // Fetch ALL tenders (no pagination), but only essential fields for calendar
+            let query = supabase
+                .from('tenders')
+                .select('id, title, publish_date, deadline_date, url, org_name')
+                .in('keyword_tag', activeKeywords)
+
+            // Apply search filter if exists
+            if (debouncedSearch.trim()) {
+                query = query.or(`title.ilike.%${debouncedSearch}%,org_name.ilike.%${debouncedSearch}%`)
+            }
+
+            const { data, error } = await query.order('publish_date', { ascending: false })
+
+            if (error) throw error
+
+            // Apply frontend filters
+            const filteredData = (data || []).filter(applyAllFilters)
+            setAllTendersForCalendar(filteredData)
+        } catch (error) {
+            console.error('Error fetching all tenders for calendar:', error)
+        } finally {
+            setIsLoadingCalendar(false)
         }
     }
 
@@ -128,6 +275,9 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
             .channel('tenders_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tenders' }, () => {
                 fetchTenders()
+                if (viewMode === 'calendar') {
+                    fetchAllTendersForCalendar()
+                }
             })
             .subscribe()
 
@@ -136,6 +286,9 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
             .channel('subscriptions_changes_for_list')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tender_subscriptions' }, () => {
                 fetchTenders()
+                if (viewMode === 'calendar') {
+                    fetchAllTendersForCalendar()
+                }
             })
             .subscribe()
 
@@ -145,7 +298,14 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
             supabase.removeChannel(tendersChannel)
             supabase.removeChannel(subsChannel)
         }
-    }, [page, selectedKeyword, debouncedSearch, selectedDate]) // Refetch when page, keyword, search or date changes
+    }, [page, selectedKeyword, debouncedSearch, selectedDate, statusFilter, deadlineFilter]) // Refetch when filters change
+
+    // Load all tenders when switching to calendar view or when filters change
+    React.useEffect(() => {
+        if (viewMode === 'calendar') {
+            fetchAllTendersForCalendar()
+        }
+    }, [viewMode, selectedKeyword, debouncedSearch, statusFilter, deadlineFilter])
 
     const handleRunNow = async () => {
         setIsSyncing(true)
@@ -178,6 +338,113 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                     </h1>
                 </div>
             </div>
+            {/* Filter Section */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-black/10 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                        STATUS_FILTER:
+                    </span>
+                    <div className="flex border border-black dark:border-white h-9 p-0.5 bg-white dark:bg-black">
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                statusFilter === 'all'
+                                    ? "bg-black text-white dark:bg-white dark:text-black"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            全部
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('active')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                statusFilter === 'active'
+                                    ? "bg-[#00C853] text-white"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            招標中
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('expired')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                statusFilter === 'expired'
+                                    ? "bg-[#FA4028] text-white"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            已截止
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('awarded')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                statusFilter === 'awarded'
+                                    ? "bg-[#285AFA] text-white"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            已決標
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-black uppercase tracking-widest text-black/40 dark:text-white/40">
+                        DEADLINE_ALERT:
+                    </span>
+                    <div className="flex border border-black dark:border-white h-9 p-0.5 bg-white dark:bg-black">
+                        <button
+                            onClick={() => setDeadlineFilter('all')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                deadlineFilter === 'all'
+                                    ? "bg-black text-white dark:bg-white dark:text-black"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            全部
+                        </button>
+                        <button
+                            onClick={() => setDeadlineFilter('3days')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                deadlineFilter === '3days'
+                                    ? "bg-[#FA4028] text-white"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            3天內
+                        </button>
+                        <button
+                            onClick={() => setDeadlineFilter('7days')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                deadlineFilter === '7days'
+                                    ? "bg-[#FF9800] text-white"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            7天內
+                        </button>
+                        <button
+                            onClick={() => setDeadlineFilter('30days')}
+                            className={cn(
+                                "px-3 text-[10px] font-mono font-black uppercase tracking-wider transition-colors",
+                                deadlineFilter === '30days'
+                                    ? "bg-[#FDD835] text-black"
+                                    : "hover:bg-muted text-muted-foreground"
+                            )}
+                        >
+                            30天內
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h3 className="text-sm font-black uppercase tracking-widest text-[#00063D] dark:text-white flex items-center gap-2">
@@ -190,6 +457,29 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {/* Date Type Selector - Show only in calendar view */}
+                    {viewMode === 'calendar' && (
+                        <Select value={dateType} onValueChange={(value) => setDateType(value as DateType)}>
+                            <SelectTrigger className="w-[160px] h-10 rounded-none border-black dark:border-white bg-white dark:bg-black font-mono text-xs font-bold uppercase tracking-wider">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-none border-black dark:border-white">
+                                <SelectItem value="deadline" className="font-mono text-xs font-bold uppercase">
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-2 h-2 bg-[#FA4028]"></span>
+                                        截止日期
+                                    </span>
+                                </SelectItem>
+                                <SelectItem value="publish" className="font-mono text-xs font-bold uppercase">
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-2 h-2 bg-[#285AFA]"></span>
+                                        發布日期
+                                    </span>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    )}
+
                     {/* View Toggles - Matching Project Dashboard */}
                     <div className="flex border border-black dark:border-white h-10 p-1 bg-white dark:bg-black shrink-0">
                         <button
@@ -259,22 +549,38 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
             </div>
 
             {/* Selection Info / Clear Filter - Matching Project Dashboard */}
-            {selectedDate && (
+            {(selectedDate || statusFilter !== 'all' || deadlineFilter !== 'all') && (
                 <div className="flex items-center justify-between p-4 bg-[#FA4028] text-white font-mono rounded-none mb-4">
-                    <div className="flex items-center gap-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Filtered_By_Date</span>
-                        <span className="text-sm font-black underline underline-offset-4">
-                            {selectedDate.toLocaleDateString()}
-                        </span>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Active_Filters:</span>
+                        {selectedDate && (
+                            <span className="text-sm font-black underline underline-offset-4">
+                                DATE: {selectedDate.toLocaleDateString()}
+                            </span>
+                        )}
+                        {statusFilter !== 'all' && (
+                            <span className="text-sm font-black underline underline-offset-4">
+                                STATUS: {statusFilter === 'active' ? '招標中' : statusFilter === 'expired' ? '已截止' : '已決標'}
+                            </span>
+                        )}
+                        {deadlineFilter !== 'all' && (
+                            <span className="text-sm font-black underline underline-offset-4">
+                                DEADLINE: {deadlineFilter === '3days' ? '3天內' : deadlineFilter === '7days' ? '7天內' : '30天內'}
+                            </span>
+                        )}
                         <span className="text-[10px] font-black opacity-60">// {totalCount} TENDERS_FOUND</span>
                     </div>
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSelectedDate(null)}
+                        onClick={() => {
+                            setSelectedDate(null)
+                            setStatusFilter('all')
+                            setDeadlineFilter('all')
+                        }}
                         className="h-7 rounded-none border border-white hover:bg-white hover:text-[#FA4028] text-[10px] font-black uppercase"
                     >
-                        Clear_Filter [X]
+                        Clear_All_Filters [X]
                     </Button>
                 </div>
             )}
@@ -346,12 +652,16 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                                             <TableCell className="border-l border-black/5 dark:border-white/5">
                                                 <Badge className={cn(
                                                     "rounded-none text-[9px] font-black uppercase px-1.5 py-0.5",
-                                                    tender.status === '已撤案' ? "bg-red-500 text-white" :
-                                                        tender.status === '已廢標' ? "bg-gray-500 text-white" :
-                                                            tender.status === '已決標' ? "bg-green-600 text-white" :
-                                                                "bg-[#FA4028] text-white"
+                                                    (() => {
+                                                        const displayStatus = getDisplayStatus(tender)
+                                                        if (displayStatus === '已撤案') return "bg-gray-500 text-white"
+                                                        if (displayStatus === '已廢標') return "bg-gray-500 text-white"
+                                                        if (displayStatus === '已決標') return "bg-[#285AFA] text-white"
+                                                        if (displayStatus === '已截止') return "bg-[#FA4028] text-white"
+                                                        return "bg-[#00C853] text-white"
+                                                    })()
                                                 )}>
-                                                    {tender.status || '招標中'}
+                                                    {getDisplayStatus(tender)}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right border-l border-black/5 dark:border-white/5">
@@ -378,13 +688,25 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                     )}
 
                     {viewMode === 'calendar' && (
-                        <TenderCalendarView
-                            tenders={tenders}
-                            onDayClick={(date) => {
-                                setSelectedDate(date);
-                                setViewMode('grid');
-                            }}
-                        />
+                        isLoadingCalendar ? (
+                            <div className="flex items-center justify-center py-24 border-[1.5px] border-black dark:border-white">
+                                <div className="flex flex-col items-center gap-4">
+                                    <Loader2 className="h-8 w-8 animate-spin text-[#FA4028]" />
+                                    <p className="text-[10px] font-mono font-bold uppercase tracking-widest opacity-40">
+                                        LOADING_ALL_TENDERS // {totalCount}_RECORDS
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <TenderCalendarView
+                                tenders={allTendersForCalendar}
+                                dateType={dateType}
+                                onDayClick={(date) => {
+                                    setSelectedDate(date);
+                                    setViewMode('grid');
+                                }}
+                            />
+                        )
                     )}
                 </>
             )}

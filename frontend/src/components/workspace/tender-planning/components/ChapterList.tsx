@@ -47,6 +47,8 @@ interface ChapterListProps {
     handleGenerateContent: (task: any, section: any) => void;
     /** Generate section content batch */
     handleGenerateSectionContent: (section: any) => void;
+    /** Generate task image */
+    handleGenerateImage: (task: any) => void;
 }
 
 /**
@@ -68,7 +70,8 @@ export function ChapterList({
     taskFilter,
     setTaskFilter,
     handleGenerateContent,
-    handleGenerateSectionContent
+    handleGenerateSectionContent,
+    handleGenerateImage
 }: ChapterListProps) {
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -129,6 +132,7 @@ export function ChapterList({
                                     taskFilter={taskFilter}
                                     handleGenerateContent={handleGenerateContent}
                                     handleGenerateSectionContent={handleGenerateSectionContent}
+                                    handleGenerateImage={handleGenerateImage}
                                 />
                             ))}
                         </SortableContext>

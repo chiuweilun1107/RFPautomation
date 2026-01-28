@@ -71,6 +71,7 @@ export interface Source {
 export interface TaskImage {
     id: string;
     task_id: string;
+    project_id?: string;
     image_type: 'flowchart' | 'architecture' | 'hero' | 'infographic' | 'ui_concept' | 'custom';
     prompt: string;
     image_url: string;

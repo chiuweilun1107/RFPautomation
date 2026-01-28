@@ -73,3 +73,6 @@ backend/supabase/migrations/*.py
 !backend/supabase/migrations/*.example.py
 !backend/supabase/migrations/apply_migration.py.example
 n8n_data/database.sqlite
+
+# Backups
+n8n_data/*.backup*

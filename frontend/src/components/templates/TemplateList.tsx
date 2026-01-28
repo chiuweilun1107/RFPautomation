@@ -142,15 +142,15 @@ export function TemplateList({
         if (!editingTemplate) return
 
         const oldTemplate = editingTemplate
-        const newValues = {
+        const newValues: Partial<Template> = {
             name: editName,
-            description: editDescription || null,
-            category: editCategory || null,
+            description: editDescription || undefined,
+            category: editCategory || undefined,
         }
 
         // ✅ 樂觀更新：立即更新 UI
         setLocalTemplates(prev => prev.map(t =>
-            t.id === editingTemplate.id ? { ...t, ...newValues } : t
+            t.id === editingTemplate.id ? { ...t, ...newValues } as Template : t
         ))
         setIsEditDialogOpen(false)
         setEditingTemplate(null)

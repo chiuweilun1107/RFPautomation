@@ -10,7 +10,8 @@ import { GenerationModeDialog } from "../../dialogs/GenerationModeDialog";
 import { TemplateUploadDialog } from "@/components/templates/TemplateUploadDialog";
 import { SourceSelectionDialog } from "../../dialogs/SourceSelectionDialog";
 import { TaskGenerationDialog, TaskGenerationOptions } from "../../dialogs/TaskGenerationDialog";
-import type { DialogContext, GenerationMode } from "../types";
+import { ImageGenerationDialog } from "../../dialogs/ImageGenerationDialog";
+import type { DialogContext, GenerationMode, Task } from "../types";
 
 interface TenderDialogsProps {
     /** Project ID for dialogs */
@@ -55,6 +56,16 @@ interface TenderDialogsProps {
     taskGenerationSectionTitle: string;
     /** Task generation confirmation handler */
     onTaskGenerationConfirm: (options: TaskGenerationOptions) => Promise<void>;
+    /** Image generation dialog state */
+    isImageGenDialogOpen: boolean;
+    /** Image generation dialog change handler */
+    onImageGenDialogChange: (open: boolean) => void;
+    /** Task for image generation */
+    imageGenTask: Task | null;
+    /** Image generation confirmation handler */
+    onImageGenConfirm: (options: any) => Promise<void>;
+    /** Project-wide images for gallery selection */
+    projectImages?: Array<{ id: string, url: string }>;
 }
 
 /**
@@ -81,7 +92,12 @@ export function TenderDialogs({
     isTaskGenerationDialogOpen,
     onTaskGenerationDialogChange,
     taskGenerationSectionTitle,
-    onTaskGenerationConfirm
+    onTaskGenerationConfirm,
+    isImageGenDialogOpen,
+    onImageGenDialogChange,
+    imageGenTask,
+    onImageGenConfirm,
+    projectImages = []
 }: TenderDialogsProps) {
     return (
         <>
@@ -133,6 +149,15 @@ export function TenderDialogs({
                 onOpenChange={onTaskGenerationDialogChange}
                 sectionTitle={taskGenerationSectionTitle}
                 onGenerate={onTaskGenerationConfirm}
+            />
+
+            {/* Image Generation Dialog */}
+            <ImageGenerationDialog
+                open={isImageGenDialogOpen}
+                onOpenChange={onImageGenDialogChange}
+                task={imageGenTask}
+                onGenerate={onImageGenConfirm}
+                projectImages={projectImages}
             />
         </>
     );

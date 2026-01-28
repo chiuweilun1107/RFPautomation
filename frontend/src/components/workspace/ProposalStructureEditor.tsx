@@ -39,7 +39,7 @@ import { AddSectionDialog } from "./dialogs/AddSectionDialog";
 import { AddSubsectionDialog } from "./dialogs/AddSubsectionDialog";
 import { SortableNode } from "./structure/SortableNode";
 import { SortableTaskItem } from "./structure/SortableTaskItem";
-import { Section, Task, TaskContent, Source } from "./types";
+import { Section, Task, TaskImage, TaskContent, Source } from "./types";
 
 import { Label } from "@/components/ui/label";
 import {
@@ -272,31 +272,8 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         return result;
     }, [sections, expandedSections]);
 
-    // Aggregate all project images from loaded sections for the gallery
-    const allProjectImages = useMemo(() => {
-        const images: { id: string, url: string }[] = [];
-        const traverse = (nodes: Section[]) => {
-            nodes.forEach(node => {
-                // Add images from tasks in this section
-                node.tasks?.forEach(task => {
-                    if (task.task_images && task.task_images.length > 0) {
-                        task.task_images.forEach((img: any) => {
-                            if (img.image_url) {
-                                images.push({
-                                    id: img.id,
-                                    url: img.image_url
-                                });
-                            }
-                        });
-                    }
-                });
-                // Recurse for children
-                if (node.children) traverse(node.children);
-            });
-        };
-        traverse(sections);
-        return images;
-    }, [sections]);
+    // Aggregate all project images for the gallery
+    const [allProjectImages, setAllProjectImages] = useState<TaskImage[]>([]);
 
     // Initial Fetch & Realtime Subscription
     useEffect(() => {
@@ -369,29 +346,25 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
 
             if (tasksError) throw tasksError;
 
-            // 2.5 Fetch Task Images (Manual Join)
-            // OPTIMIZATION: Only fetch images for tasks in this project
-            const taskIds = tasksData?.map((t: any) => t.id) || [];
-            let imagesData: any[] = [];
+            // 2.5 Fetch Task Images (Project-wide / All Orphans)
+            // SHOW ALL IMAGES: To support orphaned images (where task/project link is lost),
+            // we temporarily fetch all images. Ideally we filter by project_id, but for recovery purposes we show all.
+            const { data: imagesData, error: imagesError } = await supabase
+                .from('task_images')
+                .select('*')
+                // .eq('project_id', projectId) // Removed to show orphans
+                .order('created_at', { ascending: false });
 
-            if (taskIds.length > 0) {
-                const { data, error } = await supabase
-                    .from('task_images')
-                    .select('*')
-                    .in('task_id', taskIds)
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.warn("Error fetching task images:", error);
-                } else {
-                    imagesData = data || [];
-                }
+            if (imagesError) {
+                console.warn("Error fetching task images:", imagesError);
+            } else {
+                setAllProjectImages(imagesData || []);
             }
 
             // Map images to tasks
             const imagesByTask = new Map<string, any[]>();
-            if (imagesData) {
-                imagesData.forEach((img: any) => {
+            if (imagesData || allProjectImages.length > 0) {
+                (imagesData || allProjectImages).forEach((img: any) => {
                     const tId = img.task_id;
                     if (!imagesByTask.has(tId)) imagesByTask.set(tId, []);
                     imagesByTask.get(tId)?.push(img);
@@ -1223,6 +1196,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                 },
                 body: JSON.stringify({
                     task_id: selectedTaskForImage.id,
+                    project_id: projectId,
                     task_content: selectedTaskForImage.requirement_text,
                     image_type: type,
                     custom_prompt: customPrompt,
@@ -1245,6 +1219,49 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         } catch (error) {
             console.error("Error generating image:", error);
             toast.error(getErrorMessage(error) || "圖片生成失敗，請稍後再試。");
+        }
+    };
+
+    const handleUploadImage = async (file: File, taskId: string) => {
+        try {
+            // 1. Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${taskId}_${Date.now()}_custom.${fileExt}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('task-images')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('task-images')
+                .getPublicUrl(fileName);
+
+            // 3. Insert into task_images
+            const { data: insertData, error: insertError } = await supabase
+                .from('task_images')
+                .insert({
+                    project_id: projectId,
+                    task_id: taskId,
+                    image_type: 'custom',
+                    prompt: 'User uploaded reference',
+                    image_url: publicUrl,
+                    caption: '使用者上傳參考圖'
+                })
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+
+            // 4. Update local state
+            setAllProjectImages(prev => [insertData, ...prev]);
+
+            return publicUrl;
+        } catch (error) {
+            console.error("Failed to upload image:", error);
+            toast.error("圖片上傳失敗");
+            throw error;
         }
     };
 
@@ -2245,6 +2262,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                 task={selectedTaskForImage}
                 projectImages={allProjectImages}
                 onGenerate={executeImageGeneration}
+                onUpload={(file) => handleUploadImage(file, selectedTaskForImage?.id || '')}
             />
 
             {/* Task Generation Dialog (WF11) */}

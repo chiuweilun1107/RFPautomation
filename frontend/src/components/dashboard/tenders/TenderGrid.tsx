@@ -11,6 +11,32 @@ interface TenderGridProps {
 }
 
 export function TenderGrid({ tenders }: TenderGridProps) {
+    // 動態計算顯示的 status
+    const getDisplayStatus = (tender: any): string => {
+        // 如果標題包含決標，優先顯示已決標
+        if (tender.status?.includes('已決標')) {
+            return '已決標'
+        }
+
+        // 如果標題包含撤案相關字眼，顯示已撤案
+        if (tender.status?.includes('已撤案')) {
+            return '已撤案'
+        }
+
+        // 檢查截止日期
+        if (tender.deadline_date) {
+            const deadlineDate = new Date(tender.deadline_date)
+            const now = new Date()
+
+            if (deadlineDate <= now) {
+                return '已截止'
+            }
+        }
+
+        // 預設顯示招標中
+        return tender.status || '招標中'
+    }
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tenders.map((tender) => (
@@ -78,12 +104,16 @@ export function TenderGrid({ tenders }: TenderGridProps) {
                         <div className="flex items-center gap-2 pt-2">
                             <Badge className={cn(
                                 "rounded-none text-[9px] font-black uppercase px-2 py-0.5",
-                                tender.status === '已撤案' ? "bg-red-500 text-white" :
-                                    tender.status === '已廢標' ? "bg-gray-500 text-white" :
-                                        tender.status === '已決標' ? "bg-green-600 text-white" :
-                                            "bg-[#FA4028] text-white"
+                                (() => {
+                                    const displayStatus = getDisplayStatus(tender)
+                                    if (displayStatus === '已撤案') return "bg-gray-500 text-white"
+                                    if (displayStatus === '已廢標') return "bg-gray-500 text-white"
+                                    if (displayStatus === '已決標') return "bg-[#285AFA] text-white"
+                                    if (displayStatus === '已截止') return "bg-[#FA4028] text-white"
+                                    return "bg-[#00C853] text-white"
+                                })()
                             )}>
-                                {tender.status || '招標中'}
+                                {getDisplayStatus(tender)}
                             </Badge>
                             <div className="flex items-center gap-1 text-[9px] font-bold font-mono text-black/40">
                                 <Tag className="h-2.5 w-2.5" />

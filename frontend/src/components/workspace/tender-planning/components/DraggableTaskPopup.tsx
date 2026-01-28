@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import { memo } from "react";
-import { GripVertical, Plus, Copy, Check, Download, Sparkles } from "lucide-react";
+import { GripVertical, Plus, Copy, Check, Download, Sparkles, Image as ImageIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import Draggable from "react-draggable";
 import { toast } from "sonner";
@@ -33,12 +33,14 @@ interface DraggableTaskPopupProps {
     handleGenerateContent: (task: any, section: any) => void;
     /** Initial content if prefetched */
     initialContent?: string | null;
+    /** Image generation handler */
+    handleGenerateImage: (task: Task) => void;
 }
 
 /**
  * Brutalist-styled draggable task detail popup
  */
-function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGenerateContent, initialContent }: DraggableTaskPopupProps) {
+function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGenerateContent, initialContent, handleGenerateImage }: DraggableTaskPopupProps) {
     const nodeRef = React.useRef(null);
     const [copied, setCopied] = React.useState(false);
     const supabase = createClient();
@@ -279,6 +281,14 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                                 <span className="text-[10px] font-bold uppercase">GENERATE</span>
                             </button>
                             <button
+                                onClick={() => handleGenerateImage(task)}
+                                className="p-1 hover:bg-black/20 transition-colors border-2 border-transparent hover:border-black/50 flex items-center gap-1.5 text-white/90 hover:text-white"
+                                title="Generate Visual Image"
+                            >
+                                <ImageIcon className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase">IMAGE</span>
+                            </button>
+                            <button
                                 onClick={onClose}
                                 className="p-1 hover:bg-black/20 transition-colors border-2 border-transparent hover:border-black/50"
                             >
@@ -354,6 +364,47 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                                 </div>
                             )}
 
+                            {/* Task Images Section (Fig 1) */}
+                            {task.task_images && task.task_images.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-1.5 h-4 bg-purple-500" />
+                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-purple-600">Generated_Visuals</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {task.task_images.map((img) => (
+                                            <div key={img.id} className="group relative border-2 border-black dark:border-white">
+                                                <div className="aspect-video bg-zinc-100 dark:bg-zinc-900 overflow-hidden">
+                                                    <img
+                                                        src={img.image_url}
+                                                        alt={img.caption || "Generated task image"}
+                                                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                    />
+                                                </div>
+                                                <div className="p-3 bg-white dark:bg-zinc-950 border-t-2 border-black dark:border-white">
+                                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                                        <span className="text-[9px] font-black uppercase text-purple-600 bg-purple-50 px-1.5 py-0.5 border border-purple-200">
+                                                            {img.image_type}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => window.open(img.image_url, '_blank')}
+                                                            className="text-[9px] font-bold uppercase hover:underline"
+                                                        >
+                                                            View Full
+                                                        </button>
+                                                    </div>
+                                                    {img.caption && (
+                                                        <p className="text-[11px] leading-tight text-zinc-600 dark:text-zinc-400 line-clamp-2">
+                                                            {img.caption}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Metadata */}
                             <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black/5 dark:border-white/5">
                                 <div>
@@ -386,8 +437,8 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                             ACKNOWLEDGE_&_CLOSE
                         </Button>
                     </div>
-                </div>
-            </Draggable>
+                </div >
+            </Draggable >
 
             {/* Citation Detail Panel - Draggable Portal */}
             {selectedEvidence && createPortal(
@@ -424,7 +475,7 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                 </div>,
                 document.body
             )}
-        </div>,
+        </div >,
         document.body
     );
 }

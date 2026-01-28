@@ -41,6 +41,7 @@ interface SortableSectionItemProps {
     taskFilter: 'all' | 'wf11_functional' | 'wf13_article';
     handleGenerateContent: (task: any, section: any) => void;
     handleGenerateSectionContent: (section: any) => void;
+    handleGenerateImage: (task: any) => void;
 }
 
 /**
@@ -59,7 +60,8 @@ function SortableSectionItemComponent({
     generating,
     taskFilter,
     handleGenerateContent,
-    handleGenerateSectionContent
+    handleGenerateSectionContent,
+    handleGenerateImage
 }: SortableSectionItemProps) {
     const {
         attributes,
@@ -187,6 +189,7 @@ function SortableSectionItemComponent({
                             task={task}
                             section={section}
                             handleGenerateContent={handleGenerateContent}
+                            handleGenerateImage={handleGenerateImage}
                         />
                     ))}
                 </div>
