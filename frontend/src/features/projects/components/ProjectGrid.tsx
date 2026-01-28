@@ -8,6 +8,7 @@ import type { Project } from '../hooks/useProjects';
 interface ProjectGridProps {
   projects: Project[];
   onDelete: (project: Project) => void;
+  onEdit: (project: Project) => void;
   enableVirtualization?: boolean;
 }
 
@@ -17,6 +18,7 @@ const VIRTUALIZATION_THRESHOLD = 50;
 export function ProjectGrid({
   projects,
   onDelete,
+  onEdit,
   enableVirtualization = projects.length > VIRTUALIZATION_THRESHOLD
 }: ProjectGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -45,7 +47,7 @@ export function ProjectGrid({
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} onDelete={onDelete} />
+          <ProjectCard key={project.id} project={project} onDelete={onDelete} onEdit={onEdit} />
         ))}
       </div>
     );
@@ -84,6 +86,7 @@ export function ProjectGrid({
                     key={project.id}
                     project={project}
                     onDelete={onDelete}
+                    onEdit={onEdit}
                   />
                 ))}
               </div>

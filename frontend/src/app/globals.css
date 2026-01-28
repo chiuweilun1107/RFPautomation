@@ -147,36 +147,38 @@
   --sidebar-ring: oklch(1 0 0);
 }
 
+/* Custom Keyframes */
+@keyframes source-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmer-brand {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 @theme inline {
   --animate-source-pulse: source-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s ease-in-out infinite;
-
-  --keyframes-source-pulse: {
-
-    0%,
-    100% {
-      opacity: 1;
-    }
-
-    50% {
-      opacity: .5;
-    }
-  }
-
-  ;
-
-  --keyframes-shimmer: {
-
-    0% {
-      transform: translateX(-100%);
-    }
-
-    100% {
-      transform: translateX(100%);
-    }
-  }
-
-  ;
+  --animate-shimmer-brand: shimmer-brand 1.8s ease-in-out infinite;
 }
 
 @layer base {

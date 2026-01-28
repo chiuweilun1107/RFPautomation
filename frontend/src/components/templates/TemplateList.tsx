@@ -363,58 +363,58 @@ export function TemplateList({
                 <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden rounded-none">
                     <div className="overflow-x-auto -mx-4 sm:mx-0">
                         <div className="hidden md:grid grid-cols-[1fr_180px_150px_120px] gap-4 p-4 bg-muted border-b border-black dark:border-white text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic text-black dark:text-white min-w-[640px]">
-                        <div>Template_Name</div>
-                        <div>Category</div>
-                        <div>Created_At</div>
-                        <div className="text-right">Ops</div>
-                    </div>
+                            <div>Template_Name</div>
+                            <div>Category</div>
+                            <div>Created_At</div>
+                            <div className="text-right">Ops</div>
+                        </div>
 
-                    <div className="divide-y divide-black/10 dark:divide-white/10 min-w-[640px]">
-                        {templates.filter(t => t.id !== deletingId).map((template) => (
-                            <div
-                                key={template.id}
-                                onClick={() => handleTemplateClick(template)}
-                                className="grid grid-cols-1 md:grid-cols-[1fr_180px_150px_120px] gap-4 p-4 items-center hover:bg-[#FA4028]/5 transition-colors cursor-pointer group"
-                            >
-                                <div className="font-mono text-sm font-black uppercase group-hover:text-[#FA4028] transition-colors truncate">
-                                    <div className="flex items-center">
-                                        <FileText className="w-3.5 h-3.5 mr-3 text-[#FA4028] opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        {template.name}
+                        <div className="divide-y divide-black/10 dark:divide-white/10 min-w-[640px]">
+                            {templates.filter(t => t.id !== deletingId).map((template) => (
+                                <div
+                                    key={template.id}
+                                    onClick={() => handleTemplateClick(template)}
+                                    className="grid grid-cols-1 md:grid-cols-[1fr_180px_150px_120px] gap-4 p-4 items-center hover:bg-[#FA4028]/5 transition-colors cursor-pointer group"
+                                >
+                                    <div className="font-mono text-sm font-black uppercase group-hover:text-[#FA4028] transition-colors truncate">
+                                        <div className="flex items-center">
+                                            <FileText className="w-3.5 h-3.5 mr-3 text-[#FA4028] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            {template.name}
+                                        </div>
+                                    </div>
+
+                                    <div className="font-mono text-[11px] font-bold text-foreground/60 uppercase border-l border-black/5 pl-4">
+                                        {template.category || "GENERAL"}
+                                    </div>
+
+                                    <div className="font-mono text-[11px] font-bold text-foreground/60 border-l border-black/5 pl-4">
+                                        {formatDate(template.created_at)}
+                                    </div>
+
+                                    <div className="flex justify-end gap-1 border-l border-black/5">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-black hover:text-white transition-colors">
+                                                    <MoreVertical className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenuItem onClick={() => router.push(`/dashboard/templates/${template.id}/design`)}>DESIGN</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEdit(template)}>EDIT_INFO</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDownload(template)}>DOWNLOAD</DropdownMenuItem>
+                                                <DropdownMenuSeparator className="bg-black/10" />
+                                                <DropdownMenuItem
+                                                    className="text-red-600 focus:bg-red-600 focus:text-white rounded-none cursor-pointer"
+                                                    onClick={() => setTemplateToDelete(template)}
+                                                >
+                                                    DELETE_TEMPLATE
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                 </div>
-
-                                <div className="font-mono text-[11px] font-bold text-foreground/60 uppercase border-l border-black/5 pl-4">
-                                    {template.category || "GENERAL"}
-                                </div>
-
-                                <div className="font-mono text-[11px] font-bold text-foreground/60 border-l border-black/5 pl-4">
-                                    {formatDate(template.created_at)}
-                                </div>
-
-                                <div className="flex justify-end gap-1 border-l border-black/5">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-black hover:text-white transition-colors">
-                                                <MoreVertical className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenuItem onClick={() => router.push(`/dashboard/templates/${template.id}/design`)}>DESIGN</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleEdit(template)}>EDIT_INFO</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownload(template)}>DOWNLOAD</DropdownMenuItem>
-                                            <DropdownMenuSeparator className="bg-black/10" />
-                                            <DropdownMenuItem
-                                                className="text-red-600 focus:bg-red-600 focus:text-white rounded-none cursor-pointer"
-                                                onClick={() => setTemplateToDelete(template)}
-                                            >
-                                                DELETE_TEMPLATE
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}

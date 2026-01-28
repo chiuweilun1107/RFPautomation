@@ -26,6 +26,7 @@ import type { Project } from '../hooks/useProjects';
 interface ProjectCardProps {
   project: Project;
   onDelete: (project: Project) => void;
+  onEdit: (project: Project) => void;
 }
 
 // Helper to parse dates including ROC years (e.g. 115年)
@@ -49,7 +50,7 @@ const parseFlexibleDate = (dateStr: string | undefined | null): string => {
   return dateStr;
 };
 
-function ProjectCardComponent({ project, onDelete }: ProjectCardProps) {
+function ProjectCardComponent({ project, onDelete, onEdit }: ProjectCardProps) {
   const router = useRouter();
 
   const statusClassName = project.status === 'processing'
@@ -96,6 +97,9 @@ function ProjectCardComponent({ project, onDelete }: ProjectCardProps) {
                 <Link href={`/dashboard/${project.id}`} className="w-full">
                   OPEN_PROJECT
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }}>
+                EDIT_INFO
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-black/10 dark:bg-white/10" />
               <DropdownMenuItem

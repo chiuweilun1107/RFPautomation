@@ -22,12 +22,14 @@ import { ProjectListView } from './ProjectListView';
 import { ProjectPagination } from './ProjectPagination';
 import { ProjectEmptyState } from './ProjectEmptyState';
 import { ProjectCalendarView } from './ProjectCalendarView';
+import { EditProjectDialog } from './EditProjectDialog';
 import { ProjectListSkeleton } from '@/components/ui/skeletons/ProjectListSkeleton';
 
 export function ProjectListContainer({ externalSearchQuery = "" }: { externalSearchQuery?: string }) {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   // Fetch projects with realtime updates
@@ -150,12 +152,14 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
             <ProjectGrid
               projects={selectedDate ? drillDownProjects : paginatedProjects}
               onDelete={setProjectToDelete}
+              onEdit={setProjectToEdit}
             />
           )}
           {viewMode === 'list' && (
             <ProjectListView
               projects={selectedDate ? drillDownProjects : paginatedProjects}
               onDelete={setProjectToDelete}
+              onEdit={setProjectToEdit}
             />
           )}
           {viewMode === 'calendar' && (
@@ -208,6 +212,13 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Project Dialog */}
+      <EditProjectDialog
+        project={projectToEdit}
+        open={!!projectToEdit}
+        onOpenChange={(open) => !open && setProjectToEdit(null)}
+      />
     </div>
   );
 }

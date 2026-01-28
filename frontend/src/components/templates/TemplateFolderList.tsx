@@ -2,10 +2,17 @@
 
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Folder, Upload, Trash2, FileText, Clock, Edit2, FolderPlus, ArrowRight, LayoutGrid } from "lucide-react"
+import { Folder, Upload, Trash2, FileText, Clock, Edit2, FolderPlus, ArrowRight, LayoutGrid, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
     Card,
     CardContent,
@@ -243,14 +250,25 @@ export function TemplateFolderList({
                                     CUSTOM_PATH
                                 </Badge>
 
-                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(folder)} className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground">
-                                        <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(folder)} className="h-8 w-8 rounded-none text-red-500 hover:text-red-700">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
+                                        <DropdownMenuItem onClick={() => handleEdit(folder)}>
+                                            EDIT_FOLDER
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator className="bg-black/10" />
+                                        <DropdownMenuItem
+                                            className="text-red-500 focus:bg-red-500 focus:text-white rounded-none cursor-pointer"
+                                            onClick={() => handleDelete(folder)}
+                                        >
+                                            DELETE
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
 
                             <div className="space-y-1">

@@ -26,6 +26,7 @@ import type { Project } from '../hooks/useProjects';
 interface ProjectListViewProps {
     projects: Project[];
     onDelete: (project: Project) => void;
+    onEdit: (project: Project) => void;
 }
 
 // Helper to parse dates (copied from ProjectCard for consistency)
@@ -43,7 +44,7 @@ const parseFlexibleDate = (dateStr: string | undefined | null): string => {
     return dateStr;
 };
 
-export function ProjectListView({ projects, onDelete }: ProjectListViewProps) {
+export function ProjectListView({ projects, onDelete, onEdit }: ProjectListViewProps) {
     const router = useRouter();
 
     return (
@@ -130,6 +131,9 @@ export function ProjectListView({ projects, onDelete }: ProjectListViewProps) {
                                 <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs" onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenuItem asChild>
                                         <Link href={`/dashboard/${project.id}`} className="w-full">OPEN_PROJECT</Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(project); }}>
+                                        EDIT_INFO
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator className="bg-black/10 dark:bg-white/10" />
                                     <DropdownMenuItem

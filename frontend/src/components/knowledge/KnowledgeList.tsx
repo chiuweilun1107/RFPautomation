@@ -2,12 +2,25 @@
 
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
-import { FileText, Trash2, CheckCircle2, Clock, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useErrorHandler } from "@/hooks/useErrorHandler"
 import { logger } from "@/lib/errors/logger"
+import {
+    FileText,
+    Trash2,
+    CheckCircle2,
+    Clock,
+    AlertCircle,
+    Edit2,
+    MoreVertical,
+    Search,
+    LayoutGrid,
+    List as ListIcon,
+    ArrowRight,
+    Loader2
+} from "lucide-react"
 import {
     Table,
     TableBody,
@@ -27,6 +40,26 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { KnowledgeListSkeleton } from "@/components/ui/skeletons/KnowledgeListSkeleton"
 
 interface Source {
     id: string
@@ -36,11 +69,6 @@ interface Source {
     status: 'processing' | 'ready' | 'error'
     created_at: string
 }
-
-import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { MoreVertical, LayoutGrid, ArrowRight, Loader2 } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { KnowledgeListSkeleton } from "@/components/ui/skeletons/KnowledgeListSkeleton"
 
 export function KnowledgeList({
     initialDocs,
@@ -69,9 +97,42 @@ export function KnowledgeList({
     const router = useRouter()
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
     const [docToDelete, setDocToDelete] = React.useState<Source | null>(null)
+    const [editingDoc, setEditingDoc] = React.useState<Source | null>(null)
+    const [editTitle, setEditTitle] = React.useState("")
+    const [isEditPreviewOpen, setIsEditPreviewOpen] = React.useState(false)
 
     const handleDelete = (doc: Source) => {
         setDocToDelete(doc)
+    }
+
+    const handleEdit = (doc: Source) => {
+        setEditingDoc(doc)
+        setEditTitle(doc.title)
+        setIsEditPreviewOpen(true)
+    }
+
+    const confirmEdit = async () => {
+        if (!editingDoc || !editTitle.trim()) return
+
+        const supabase = createClient()
+        try {
+            const { error } = await supabase
+                .from('sources')
+                .update({ title: editTitle.trim() })
+                .eq('id', editingDoc.id)
+
+            if (error) throw error
+            toast.success('文件標題已更新')
+            router.refresh()
+        } catch (error) {
+            handleDbError(error, 'UpdateDocumentTitle', {
+                userMessage: '無法更新標題',
+                metadata: { documentId: editingDoc.id }
+            })
+        } finally {
+            setIsEditPreviewOpen(false)
+            setEditingDoc(null)
+        }
     }
 
     const confirmDelete = async () => {
@@ -155,19 +216,30 @@ export function KnowledgeList({
                                     {doc.status.toUpperCase()}
                                 </Badge>
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted"
-                                    onClick={() => handleDelete(doc)}
-                                    disabled={deletingId === doc.id}
-                                >
-                                    {deletingId === doc.id ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    )}
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted"
+                                            disabled={deletingId === doc.id}
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs">
+                                        <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                                            EDIT_TITLE
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator className="bg-black/10" />
+                                        <DropdownMenuItem
+                                            className="text-red-600 focus:bg-red-600 focus:text-white rounded-none cursor-pointer"
+                                            onClick={() => handleDelete(doc)}
+                                        >
+                                            DELETE
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
 
                             <CardTitle className="text-2xl font-black leading-[1.1] font-mono tracking-tighter uppercase group-hover:text-[#FA4028] transition-colors line-clamp-2">
@@ -234,58 +306,69 @@ export function KnowledgeList({
         <div className="border-[1.5px] border-black dark:border-white bg-white dark:bg-black overflow-hidden rounded-none">
             <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <Table className="min-w-[640px]">
-                <TableHeader>
-                    <TableRow className="bg-muted border-b border-black dark:border-white hover:bg-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">
-                        <TableHead className="text-black dark:text-white py-3">STATUS</TableHead>
-                        <TableHead className="text-black dark:text-white py-3">DOCUMENT_IDENTIFIER</TableHead>
-                        <TableHead className="text-black dark:text-white py-3">DATA_TYPE</TableHead>
-                        <TableHead className="text-black dark:text-white py-3">CREATED_AT</TableHead>
-                        <TableHead className="text-right text-black dark:text-white py-3">OPS</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-black/10 dark:divide-white/10">
-                    {docs.map((doc) => (
-                        <TableRow key={doc.id} className="hover:bg-[#FA4028]/5 transition-colors group border-b-0">
-                            <TableCell>
-                                {doc.status === 'ready' ? (
-                                    <Badge className="rounded-none bg-emerald-500 text-white text-[8px] font-black uppercase px-1.5 py-0">READY</Badge>
-                                ) : doc.status === 'error' ? (
-                                    <Badge className="rounded-none bg-[#FA4028] text-white text-[8px] font-black uppercase px-1.5 py-0">FAIL</Badge>
-                                ) : (
-                                    <Badge className="rounded-none bg-amber-400 text-black text-[8px] font-black uppercase px-1.5 py-0">PROC</Badge>
-                                )}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm font-black uppercase group-hover:text-[#FA4028] transition-colors truncate max-w-[300px]">
-                                <div className="flex items-center">
-                                    <FileText className="w-3.5 h-3.5 mr-3 text-[#FA4028] opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    {doc.title}
-                                </div>
-                            </TableCell>
-                            <TableCell className="font-mono text-[11px] font-bold text-foreground/60 uppercase border-l border-black/5 pl-4">
-                                {doc.type}
-                            </TableCell>
-                            <TableCell className="font-mono text-[11px] font-bold text-foreground/60 border-l border-black/5 pl-4">
-                                {new Date(doc.created_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="text-right border-l border-black/5">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-none hover:bg-black hover:text-white transition-colors"
-                                    onClick={() => handleDelete(doc)}
-                                    disabled={deletingId === doc.id}
-                                >
-                                    {deletingId === doc.id ? (
-                                        <Clock className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    )}
-                                </Button>
-                            </TableCell>
+                    <TableHeader>
+                        <TableRow className="bg-muted border-b border-black dark:border-white hover:bg-muted text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">
+                            <TableHead className="text-black dark:text-white py-3">STATUS</TableHead>
+                            <TableHead className="text-black dark:text-white py-3">DOCUMENT_IDENTIFIER</TableHead>
+                            <TableHead className="text-black dark:text-white py-3">DATA_TYPE</TableHead>
+                            <TableHead className="text-black dark:text-white py-3">CREATED_AT</TableHead>
+                            <TableHead className="text-right text-black dark:text-white py-3">OPS</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-black/10 dark:divide-white/10">
+                        {docs.map((doc) => (
+                            <TableRow key={doc.id} className="hover:bg-[#FA4028]/5 transition-colors group border-b-0">
+                                <TableCell>
+                                    {doc.status === 'ready' ? (
+                                        <Badge className="rounded-none bg-emerald-500 text-white text-[8px] font-black uppercase px-1.5 py-0">READY</Badge>
+                                    ) : doc.status === 'error' ? (
+                                        <Badge className="rounded-none bg-[#FA4028] text-white text-[8px] font-black uppercase px-1.5 py-0">FAIL</Badge>
+                                    ) : (
+                                        <Badge className="rounded-none bg-amber-400 text-black text-[8px] font-black uppercase px-1.5 py-0">PROC</Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell className="font-mono text-sm font-black uppercase group-hover:text-[#FA4028] transition-colors truncate max-w-[300px]">
+                                    <div className="flex items-center">
+                                        <FileText className="w-3.5 h-3.5 mr-3 text-[#FA4028] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        {doc.title}
+                                    </div>
+                                </TableCell>
+                                <TableCell className="font-mono text-[11px] font-bold text-foreground/60 uppercase border-l border-black/5 pl-4">
+                                    {doc.type}
+                                </TableCell>
+                                <TableCell className="font-mono text-[11px] font-bold text-foreground/60 border-l border-black/5 pl-4">
+                                    {new Date(doc.created_at).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell className="text-right border-l border-black/5">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-none hover:bg-black hover:text-white transition-colors"
+                                                disabled={deletingId === doc.id}
+                                            >
+                                                <MoreVertical className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rounded-none border-black dark:border-white font-mono text-xs">
+                                            <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                                                EDIT_TITLE
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator className="bg-black/10" />
+                                            <DropdownMenuItem
+                                                className="text-red-600 focus:bg-red-600 focus:text-white rounded-none cursor-pointer"
+                                                onClick={() => handleDelete(doc)}
+                                            >
+                                                DELETE
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
 
             <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
@@ -307,6 +390,43 @@ export function KnowledgeList({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditPreviewOpen} onOpenChange={setIsEditPreviewOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-none border-4 border-black p-0">
+                    <div className="p-6">
+                        <DialogHeader className="mb-6">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">編輯文件標題</DialogTitle>
+                            <DialogDescription className="font-mono text-black dark:text-gray-400 uppercase text-xs mt-1">
+                                // MODIFY THE DISPLAY TITLE FOR THIS DOCUMENT.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-6 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-title" className="text-sm font-black uppercase tracking-widest">文件標題</Label>
+                                <Input
+                                    id="edit-title"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    placeholder="輸入新的標題..."
+                                    className="rounded-none border-2 border-black font-mono focus-visible:ring-0 focus-visible:border-[#FA4028]"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter className="mt-8 flex flex-col sm:flex-row gap-3">
+                            <Button variant="outline" onClick={() => setIsEditPreviewOpen(false)} className="rounded-none border-black border-2 font-black uppercase tracking-widest hover:bg-gray-100">
+                                取消
+                            </Button>
+                            <Button
+                                onClick={confirmEdit}
+                                className="rounded-none border-black border-2 bg-black hover:bg-zinc-800 text-white font-black uppercase tracking-widest"
+                            >
+                                確認更新
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
