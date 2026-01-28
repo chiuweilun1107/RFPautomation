@@ -62,6 +62,14 @@ export function useTenderData({
                     return acc;
                 }, {});
 
+                // Fetch content existence map
+                const { data: contentData } = await supabase
+                    .from('task_contents')
+                    .select('task_id')
+                    .in('task_id', normalizedTasks.map(t => t.id));
+
+                const taskContentMap = new Set((contentData || []).map(c => c.task_id));
+
                 // Group sections by parent_id to build tree
                 const rootSections = sectionsData.filter((s: Section) => s.parent_id === null);
                 const childSections = sectionsData.filter((s: Section) => s.parent_id !== null);
@@ -80,8 +88,12 @@ export function useTenderData({
                             ...child,
                             generation_method: child.generation_method || 'manual',
                             is_modified: child.is_modified || false,
+                            is_modified: child.is_modified || false,
                             citations: child.citations || [], // Normalize citations
-                            tasks: tasksBySection[child.id] || []
+                            tasks: (tasksBySection[child.id] || []).map((t: Task) => ({
+                                ...t,
+                                has_content: taskContentMap.has(t.id)
+                            }))
                         }))
                         .sort((a: Section, b: Section) => (a.order_index || 0) - (b.order_index || 0))
                 }));

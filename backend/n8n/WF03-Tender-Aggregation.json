@@ -1,0 +1,373 @@
+{
+    "name": "Tender Aggregation Workflow",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "parse-tender",
+                "responseMode": "onReceived",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Schedule",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                500
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "merge-node",
+            "name": "Merge Triggers",
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 2,
+            "position": [
+                500,
+                400
+            ],
+            "mode": "any"
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ 'https://goyonrowhfphooryfzif.supabase.co/rest/v1/tender_subscriptions?select=*&is_active=eq.true' + ( $('Webhook').isExecuted ? '' : '&schedule_time=eq.' + $now.setZone('Asia/Taipei').toFormat('HH:mm')) }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdveW9ucm93aGZwaG9vcnlmemlmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTYxMTA4NywiZXhwIjoyMDgxMTg3MDg3fQ.O49nmTt-80E0oAx70B_QYMU7rZpcoe26x5FQr6IuKnU"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "get-subscriptions",
+            "name": "Get Subscriptions",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                750,
+                400
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Prepare items for Loop\nreturn items;"
+            },
+            "id": "prepare-loop",
+            "name": "Prepare Loop",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 1,
+            "position": [
+                1000,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://acebidx.com/api/search",
+                "sendQuery": true,
+                "queryParameters": {
+                    "parameters": [
+                        {
+                            "name": "query",
+                            "value": "={{ $json.keyword }}"
+                        },
+                        {
+                            "name": "tag",
+                            "value": "tender by-keyword"
+                        },
+                        {
+                            "name": "page",
+                            "value": "1"
+                        }
+                    ]
+                },
+                "options": {
+                    "responseFormat": "json"
+                },
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Cookie",
+                            "value": "_ga=GA1.1.1887446850.1766393999; ot_session=eyJhbGciOiJSUzI1NiIsImtpZCI6ImM0MTZJUSJ9.eyJpc3MiOiJodHRwczovL3Nlc3Npb24uZmlyZWJhc2UuZ29vZ2xlLmNvbS9za2lsbGZ1bC1zdW1tZXItNDAzMTA3IiwibmFtZSI6IldlaS1MdW4gQ2hpdSIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NJZTFaYkpvTVRKbG5ERlBPWWVHLVJJM2F3bll2SWUtSy1XM2VDYXJUbEhOVFowOU5WZlx1MDAzZHM5Ni1jIiwiaXNfcGFpZF91bnRpbCI6IjIwMjYtMDEtMDUiLCJhdWQiOiJza2lsbGZ1bC1zdW1tZXItNDAzMTA3IiwiYXV0aF90aW1lIjoxNzY2Mzk4NTM0LCJ1c2VyX2lkIjoiRE5hZ0g1RjhUc2dTakhlU0pnaUgwRjRxM1BtMiIsInN1YiI6IkROYWdINUY4VHNnU2pIZVNKZ2lIMEY0cTNQbTIiLCJpYXQiOjE3NjYzOTg1MzUsImV4cCI6MTc2NjU3MTMzNSwiZW1haWwiOiJjaGl1d2VpbHVuMTEwN0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJnb29nbGUuY29tIjpbIjExNTc4NTUxNDg0MjQ1NDIwNTI5OSJdLCJlbWFpbCI6WyJjaGl1d2VpbHVuMTEwN0BnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJnb29nbGUuY29tIn19.QYHzHa_if6Du15HdGU0HSqtBIca84VftT3eTFKADNB1FhzmqRxBAIaRXLRMQSDhh-_7dqxbjJ_otEddRxe0-TL7U9PwLcSyGhzVUl84L7IqDObYJDLHUaRBbTaoRI440LVPHC4m7aAy_NYm7iIW82MvqdCVLpW4BYy9Jzxt3ymKgY2aypkOKysl-YbnsxSMzlASsYTOLV3u68oHQu2DZ_rIeCIElK2KjJD5JtkOa6ybu-hnhhXNXbGc9cKTL9whB6C1fd_oJi9c7pvULULKFTM9Tn6tg_r9FypEv0iw7IJKAOhB6Sm4sQ4R_gwA_bCwW-uSYHPa5mLoMig6cTCYh1w; _ga_PY50PZ38HC=GS2.1.s1766398526$o1$g0$t1766398536$j50$l0$h0; _ga_L8DPPXZWNN=GS2.1.s1766398112$o2$g1$t1766398546$j38$l0$h0"
+                        },
+                        {
+                            "name": "User-Agent",
+                            "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        }
+                    ]
+                }
+            },
+            "id": "search-acebidx",
+            "name": "Search AceBidX",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1250,
+                400
+            ],
+            "notes": "Requires Login Cookie or Headers"
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "results",
+                "options": {}
+            },
+            "id": "split-results",
+            "name": "Split Results",
+            "type": "n8n-nodes-base.itemLists",
+            "typeVersion": 1,
+            "position": [
+                1400,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ 'https://acebidx.com' + $json.url }}",
+                "responseFormat": "string",
+                "options": {
+                    "redirect": {
+                        "redirect": {}
+                    }
+                }
+            },
+            "id": "fetch-tender-page",
+            "name": "Fetch Tender Page",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "onError": "continueErrorOutput",
+            "position": [
+                1550,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Process Dates and Status (Batch Mode)\n// RECOVERY: Map over ALL input items to ensure full batch processing.\n// 'Fetch Tender Page' has 'onError': 'continueErrorOutput' ensuring index alignment.\n\nconst items = $input.all();\nconst splitResults = $('Split Results').all();\n\nreturn items.map((inputItem, index) => {\n    // Align metadata with HTML result using index\n    const originalItem = (splitResults.length > index) ? splitResults[index].json : {};\n    const html = inputItem.json.data || ''; \n\n    // 1. Handle Status Logic\n    let status = '招標中';\n    const title = originalItem.project_name || '';\n    if (title.includes('更正') || title.includes('取消') || title.includes('廢標') || title.includes('撤銷') || title.includes('撤案')) {\n        status = '已撤案';\n    }\n    if (title.includes('決標')) {\n        status = '已決標';\n    }\n\n    // 2. Handle ROC Date Parsing (e.g. 115/02/09 17:00 -> 2026-02-09T17:00:00)\n    function parseRocDate(dateStr) {\n        if (!dateStr || typeof dateStr !== 'string') return null;\n        const cleanStr = dateStr.replace(/\\\\/g, '').trim();\n        \n        if (cleanStr.match(/^\\d{4}-\\d{2}-\\d{2}/)) return cleanStr;\n        \n        // Regex matches date and optionally time\n        const rocMatch = cleanStr.match(/^(\\d{2,3})[\\/\\.](\\d{1,2})[\\/\\.](\\d{1,2})(?:\\s+(\\d{1,2}:\\d{2}))?/);\n        if (rocMatch) {\n            const rocYear = parseInt(rocMatch[1]);\n            const month = rocMatch[2].padStart(2, '0');\n            const day = rocMatch[3].padStart(2, '0');\n            let timePart = '00:00:00';\n            if (rocMatch[4]) timePart = rocMatch[4] + ':00';\n            \n            const adYear = rocYear + 1911;\n            return `${adYear}-${month}-${day}T${timePart}+08:00`;\n        }\n        return null;\n    }\n\n    // 3. Robust Deadline Extraction\n    let deadlineStr = originalItem.end_date;\n\n    if (!deadlineStr && html) {\n        const keywords = ['截止投標', '截止'];\n        let bestDate = null;\n        let minDistance = Infinity;\n\n        const dateRegex = /(\\d{2,3})[\\/.\\\\]{1,2}(\\d{2})[\\/.\\\\]{1,2}(\\d{2})(?:\\s+(\\d{1,2}:\\d{2}))?/g;\n        let match;\n        const dates = [];\n        while ((match = dateRegex.exec(html)) !== null) {\n            dates.push({\n                full: match[0],\n                index: match.index\n            });\n        }\n\n        for (const kw of keywords) {\n            const kwRegex = new RegExp(kw, 'g');\n            let kwMatch;\n            while ((kwMatch = kwRegex.exec(html)) !== null) {\n                const kwIndex = kwMatch.index;\n                for (const date of dates) {\n                    const distance = date.index - kwIndex;\n                    if (distance > 0 && distance < 3000 && distance < minDistance) {\n                       minDistance = distance;\n                       bestDate = date.full;\n                    }\n                }\n            }\n        }\n        if (bestDate) deadlineStr = bestDate;\n    }\n\n    return {\n        json: {\n            title: title,\n            url: 'https://acebidx.com' + originalItem.url,\n            source: 'AceBidX',\n            org_name: originalItem.org_name,\n            keyword_tag: $('Prepare Loop').item.json.keyword,\n            publish_date: parseRocDate(originalItem.post_date),\n            deadline_date: parseRocDate(deadlineStr),\n            status: status\n        }\n    };\n});\n"
+            },
+            "id": "process-dates",
+            "name": "Process Dates",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://goyonrowhfphooryfzif.supabase.co/rest/v1/tenders?on_conflict=url",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdveW9ucm93aGZwaG9vcnlmemlmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTYxMTA4NywiZXhwIjoyMDgxMTg3MDg3fQ.O49nmTt-80E0oAx70B_QYMU7rZpcoe26x5FQr6IuKnU"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
+                        },
+                        {
+                            "name": "Prefer",
+                            "value": "resolution=merge-duplicates"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "title",
+                            "value": "={{ $json.title }}"
+                        },
+                        {
+                            "name": "url",
+                            "value": "={{ $json.url }}"
+                        },
+                        {
+                            "name": "source",
+                            "value": "={{ $json.source }}"
+                        },
+                        {
+                            "name": "org_name",
+                            "value": "={{ $json.org_name }}"
+                        },
+                        {
+                            "name": "keyword_tag",
+                            "value": "={{ $json.keyword_tag }}"
+                        },
+                        {
+                            "name": "publish_date",
+                            "value": "={{ $json.publish_date }}"
+                        },
+                        {
+                            "name": "deadline_date",
+                            "value": "={{ $json.deadline_date }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "={{ $json.status }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "save-tenders",
+            "name": "Save Tenders",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1850,
+                400
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Ku7I5ahwnWdwj5SM",
+                    "name": "Supabase Header Auth"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Triggers",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Schedule": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Triggers",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Triggers": {
+            "main": [
+                [
+                    {
+                        "node": "Get Subscriptions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Subscriptions": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Loop": {
+            "main": [
+                [
+                    {
+                        "node": "Search AceBidX",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search AceBidX": {
+            "main": [
+                [
+                    {
+                        "node": "Split Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Results": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Tender Page",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Tender Page": {
+            "main": [
+                [
+                    {
+                        "node": "Process Dates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Dates": {
+            "main": [
+                [
+                    {
+                        "node": "Save Tenders",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

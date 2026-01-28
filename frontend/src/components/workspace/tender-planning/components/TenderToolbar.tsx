@@ -7,11 +7,11 @@
 import { Save, Loader2, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
 
 interface TenderToolbarProps {
@@ -86,6 +86,9 @@ export function TenderToolbar({
                 </Button>
             </div>
 
+    // Removed Generate All Content logic
+
+
             {/* Right: Save Button */}
             <Button
                 onClick={onSave}
@@ -104,6 +107,6 @@ export function TenderToolbar({
                     </>
                 )}
             </Button>
-        </div>
+        </div >
     );
 }

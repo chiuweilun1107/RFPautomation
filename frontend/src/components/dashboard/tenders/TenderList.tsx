@@ -291,10 +291,11 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted border-b border-black dark:border-white hover:bg-muted font-mono">
-                                        <TableHead className="w-[120px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Publish_Date</TableHead>
+                                        <TableHead className="w-[110px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Publish_Date</TableHead>
+                                        <TableHead className="w-[110px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Deadline</TableHead>
                                         <TableHead className="text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Tender_Title</TableHead>
-                                        <TableHead className="w-[180px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Agency_Entity</TableHead>
-                                        <TableHead className="w-[100px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Keyword</TableHead>
+                                        <TableHead className="w-[160px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Agency_Entity</TableHead>
+                                        <TableHead className="w-[90px] text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Status</TableHead>
                                         <TableHead className="w-[80px] text-right text-[10px] font-black uppercase tracking-wider text-black dark:text-white py-3">Ops</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -304,9 +305,30 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                                             <TableCell className="font-mono text-[11px] font-black whitespace-nowrap text-black/60 dark:text-white/60">
                                                 {tender.publish_date}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="font-mono text-[11px] font-bold whitespace-nowrap text-[#FA4028] border-l border-black/5 dark:border-white/5">
+                                                {(() => {
+                                                    const dateStr = tender.deadline_date;
+                                                    if (!dateStr) return '--';
+                                                    if (dateStr.includes('T')) {
+                                                        try {
+                                                            const date = new Date(dateStr);
+                                                            const yyyy = date.getFullYear();
+                                                            const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                                            const dd = String(date.getDate()).padStart(2, '0');
+                                                            const hh = String(date.getHours()).padStart(2, '0');
+                                                            const min = String(date.getMinutes()).padStart(2, '0');
+                                                            return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+                                                        } catch (e) { return dateStr; }
+                                                    }
+                                                    return dateStr;
+                                                })()}
+                                            </TableCell>
+                                            <TableCell className="border-l border-black/5 dark:border-white/5">
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span className="font-mono text-xs font-black uppercase group-hover:text-[#FA4028] transition-colors line-clamp-1">
+                                                    <span className={cn(
+                                                        "font-mono text-xs font-black uppercase group-hover:text-[#FA4028] transition-colors line-clamp-1",
+                                                        tender.status === '已撤案' && "line-through opacity-40"
+                                                    )}>
                                                         {tender.title}
                                                     </span>
                                                     <div className="flex items-center gap-2">
@@ -322,8 +344,14 @@ export function TenderList({ searchQuery: externalSearchQuery = "", syncButtonPo
                                                 </span>
                                             </TableCell>
                                             <TableCell className="border-l border-black/5 dark:border-white/5">
-                                                <Badge className="rounded-none bg-[#FA4028] text-white text-[9px] font-black uppercase px-1.5 py-0.5">
-                                                    {tender.keyword_tag}
+                                                <Badge className={cn(
+                                                    "rounded-none text-[9px] font-black uppercase px-1.5 py-0.5",
+                                                    tender.status === '已撤案' ? "bg-red-500 text-white" :
+                                                        tender.status === '已廢標' ? "bg-gray-500 text-white" :
+                                                            tender.status === '已決標' ? "bg-green-600 text-white" :
+                                                                "bg-[#FA4028] text-white"
+                                                )}>
+                                                    {tender.status || '招標中'}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right border-l border-black/5 dark:border-white/5">

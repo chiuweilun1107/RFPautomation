@@ -79,8 +79,10 @@ export function EditProjectDialog({
             if (error) throw error
 
             toast.success("專案資訊已更新")
-            onOpenChange(false)
+
+            // ✅ 關閉對話框前先調用 onSuccess，確保畫面更新
             if (onSuccess) onSuccess()
+            onOpenChange(false)
         } catch (error: any) {
             console.error("Error updating project details:", {
                 message: error.message,

@@ -153,6 +153,95 @@ export function useContentGeneration({
         }
     }, [projectId, outline, setGenerating, fetchData, handleApiError]);
 
+    // WF12: Generate content for ALL tasks (Magic Button)
+    const executeBatchContentGeneration = useCallback(async (
+        sourceIds: string[]
+    ) => {
+        setGenerating(true);
+        // Correctly traverse outline -> sections -> tasks
+        const sectionsWithTasks = outline.flatMap(chapter =>
+            (chapter.sections || []).filter(section =>
+                section.tasks && section.tasks.length > 0
+            )
+        );
+
+        logger.info('Starting Batch Content Generation (All)', 'TenderPlanning:WF12', {
+            totalSections: sectionsWithTasks.length,
+            projectId
+        });
+
+        // Loop through sections sequentially to ensure stability
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < sectionsWithTasks.length; i++) {
+            const section = sectionsWithTasks[i];
+            const sectionTitle = section.title;
+            const tasks = section.tasks || [];
+
+            // Toast progress
+            toast.loading(`Generating content for section ${i + 1}/${sectionsWithTasks.length}: ${sectionTitle}`, {
+                id: 'batch-gen-progress'
+            });
+
+            try {
+                // Gather all section titles for context
+                const allSections = outline.flatMap(c =>
+                    [c.title, ...(c.sections?.map(s => s.title) || [])]
+                );
+
+                const response = await fetch('/api/webhook/generate-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'section',
+                        projectId,
+                        sectionId: section.id,
+                        sectionTitle,
+                        tasks: tasks.map((t: any) => ({
+                            id: t.id,
+                            requirement_text: t.requirement_text
+                        })),
+                        selectedSourceIds: sourceIds,
+                        allSections
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed section ${section.id}`);
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+
+            } catch (error) {
+                console.error(`Error generating section ${section.id}:`, error);
+                failCount++;
+            }
+        }
+
+        toast.dismiss('batch-gen-progress');
+
+        if (successCount > 0) {
+            toast.success(`Batch generation complete!`, {
+                description: `Success: ${successCount}, Failed: ${failCount}`
+            });
+            // Update data
+            setTimeout(() => {
+                fetchData();
+                setGenerating(false);
+            }, 1000);
+        } else {
+            toast.error("Batch generation failed");
+            setGenerating(false);
+        }
+
+    }, [projectId, outline, setGenerating, fetchData]);
+
     return {
         executeContentGeneration,
         executeSectionContentGeneration

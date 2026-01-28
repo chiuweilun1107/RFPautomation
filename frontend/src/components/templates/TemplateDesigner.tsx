@@ -106,6 +106,9 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
         paragraphsCount: template.paragraphs?.length || 0,
         tablesCount: template.parsed_tables?.length || 0
       });
+
+      // ✅ 刷新頁面確保其他頁面同步更新
+      router.refresh()
     } catch (error) {
       handleDbError(error, 'UpdateTemplate', {
         userMessage: '更新失敗，請重試',

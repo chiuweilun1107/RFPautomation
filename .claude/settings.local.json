@@ -166,7 +166,11 @@
       "Bash(export SUPABASE_URL=\"https://goyonrowhfphooryfzif.supabase.co\")",
       "Bash(export:*)",
       "Bash(cloudflared tunnel list:*)",
-      "Bash(ps:*)"
+      "Bash(ps:*)",
+      "Bash(supabase db remote status:*)",
+      "Bash(supabase db remote commit:*)",
+      "Bash(supabase link:*)",
+      "Bash(CONFIRM_DELETE=true node:*)"
     ]
   }
 }

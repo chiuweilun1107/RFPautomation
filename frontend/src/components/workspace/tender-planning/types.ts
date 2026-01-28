@@ -38,6 +38,8 @@ export interface Task {
     is_modified?: boolean;
     /** Type of workflow that generated this task */
     workflow_type?: 'wf11_functional' | 'wf13_article';
+    /** Whether content has been generated for this task */
+    has_content?: boolean;
 }
 
 /**

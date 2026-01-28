@@ -9,6 +9,7 @@ import { useState, memo } from "react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { DraggableTaskPopup } from "./DraggableTaskPopup";
+import { FileText } from "lucide-react";
 import type { Task, Section } from "../types";
 
 interface TaskItemProps {
@@ -81,14 +82,21 @@ function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemPro
                         </div>
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-1">
-                        <span className={cn(
-                            "text-[9px] uppercase font-bold px-1.5 py-0.5 border",
-                            task.status === 'pending' ? 'bg-yellow-100/50 text-yellow-700 border-yellow-200' :
-                                task.status === 'approved' ? 'bg-green-100/50 text-green-700 border-green-200' :
-                                    'bg-zinc-100 text-zinc-500 border-zinc-200'
-                        )}>
-                            {task.status}
-                        </span>
+                        <div className="flex items-center gap-1">
+                            {task.has_content && (
+                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-700 border border-purple-200 rounded-sm" title="Content Generated">
+                                    <FileText className="w-2.5 h-2.5" />
+                                </span>
+                            )}
+                            <span className={cn(
+                                "text-[9px] uppercase font-bold px-1.5 py-0.5 border",
+                                task.status === 'pending' ? 'bg-yellow-100/50 text-yellow-700 border-yellow-200' :
+                                    task.status === 'approved' ? 'bg-green-100/50 text-green-700 border-green-200' :
+                                        'bg-zinc-100 text-zinc-500 border-zinc-200'
+                            )}>
+                                {task.status}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -111,11 +119,12 @@ function TaskItemComponent({ task, section, handleGenerateContent }: TaskItemPro
 export const TaskItem = memo(
     TaskItemComponent,
     (prevProps, nextProps) => {
-        // Only re-render if task ID, requirement text, or status changes
+        // Only re-render if task ID, requirement text, status, or content flag changes
         return (
             prevProps.task.id === nextProps.task.id &&
             prevProps.task.requirement_text === nextProps.task.requirement_text &&
-            prevProps.task.status === nextProps.task.status
+            prevProps.task.status === nextProps.task.status &&
+            prevProps.task.has_content === nextProps.task.has_content
         );
     }
 );

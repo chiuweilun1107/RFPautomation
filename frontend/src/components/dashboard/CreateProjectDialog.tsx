@@ -16,12 +16,14 @@ interface CreateProjectDialogProps {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     trigger?: React.ReactNode;
+    onSuccess?: () => void; // ✅ 新增：創建成功後的回調
 }
 
 export function CreateProjectDialog({
     open: controlledOpen,
     onOpenChange: controlledOnOpenChange,
-    trigger
+    trigger,
+    onSuccess
 }: CreateProjectDialogProps = {}) {
     const [internalOpen, setInternalOpen] = React.useState(false)
     const [isLoading, setIsLoading] = React.useState(false)
@@ -133,12 +135,19 @@ export function CreateProjectDialog({
 
             toast.success(`Project initialized. ${files.length} documents queued.`)
 
+            // ✅ 調用成功回調，讓父組件刷新列表
+            if (onSuccess) {
+                onSuccess()
+            } else {
+                // ✅ Fallback: 如果沒有提供 onSuccess，使用 router.refresh() 確保頁面更新
+                router.refresh()
+            }
+
             setOpen(false)
             setTitle("")
             setAgency("")
             setDeadline("")
             setFiles([])
-            // Removed router.refresh() - Realtime subscription will auto-update the project list
 
         } catch (error) {
             console.error("Error creating project:", error)

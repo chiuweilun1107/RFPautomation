@@ -73,6 +73,15 @@ export function TemplateList({
     isLoading = false
 }: TemplateListProps) {
     const { handleError, handleApiError, handleDbError } = useErrorHandler()
+
+    // ✅ 使用本地狀態管理樂觀更新
+    const [localTemplates, setLocalTemplates] = React.useState<Template[]>(templates)
+
+    // ✅ 當 templates prop 變化時同步
+    React.useEffect(() => {
+        setLocalTemplates(templates)
+    }, [templates])
+
     const [templateToDelete, setTemplateToDelete] = React.useState<Template | null>(null)
     const [deletingId, setDeletingId] = React.useState<string | null>(null)
     const [editingTemplate, setEditingTemplate] = React.useState<Template | null>(null)
@@ -132,34 +141,47 @@ export function TemplateList({
     const confirmEdit = async () => {
         if (!editingTemplate) return
 
+        const oldTemplate = editingTemplate
+        const newValues = {
+            name: editName,
+            description: editDescription || null,
+            category: editCategory || null,
+        }
+
+        // ✅ 樂觀更新：立即更新 UI
+        setLocalTemplates(prev => prev.map(t =>
+            t.id === editingTemplate.id ? { ...t, ...newValues } : t
+        ))
+        setIsEditDialogOpen(false)
+        setEditingTemplate(null)
+
         try {
             const { error } = await supabase
                 .from('templates')
-                .update({
-                    name: editName,
-                    description: editDescription || null,
-                    category: editCategory || null,
-                })
-                .eq('id', editingTemplate.id)
+                .update(newValues)
+                .eq('id', oldTemplate.id)
 
             if (error) throw error
 
             toast.success("範本資訊已更新")
-            setIsEditDialogOpen(false)
-            setEditingTemplate(null)
 
             logger.info('Template info updated', 'TemplateList', {
-                templateId: editingTemplate.id,
-                changes: { name: editName, description: editDescription, category: editCategory }
+                templateId: oldTemplate.id,
+                changes: newValues
             });
 
+            // ✅ 背景同步
             if (onTemplateUpdate) {
                 onTemplateUpdate()
             }
         } catch (error) {
+            // ✅ 失敗時回滾
+            setLocalTemplates(prev => prev.map(t =>
+                t.id === oldTemplate.id ? oldTemplate : t
+            ))
             handleDbError(error, 'UpdateTemplateInfo', {
                 userMessage: '更新失敗，請重試',
-                metadata: { templateId: editingTemplate.id }
+                metadata: { templateId: oldTemplate.id }
             });
         }
     }
@@ -167,19 +189,23 @@ export function TemplateList({
     const confirmDelete = async () => {
         if (!templateToDelete) return
 
-        const templateId = templateToDelete.id
-        setDeletingId(templateId)
+        const templateToRemove = templateToDelete
+
+        // ✅ 樂觀更新：立即從 UI 中移除
+        setLocalTemplates(prev => prev.filter(t => t.id !== templateToRemove.id))
+        setTemplateToDelete(null)
+        setDeletingId(templateToRemove.id)
 
         try {
-            if (templateToDelete.file_path) {
+            if (templateToRemove.file_path) {
                 const { error: storageError } = await supabase.storage
                     .from('raw-files')
-                    .remove([templateToDelete.file_path])
+                    .remove([templateToRemove.file_path])
 
                 if (storageError) {
                     logger.warn('Storage file delete failed', 'TemplateList', {
-                        templateId,
-                        filePath: templateToDelete.file_path,
+                        templateId: templateToRemove.id,
+                        filePath: templateToRemove.file_path,
                         error: storageError
                     });
                 }
@@ -188,25 +214,29 @@ export function TemplateList({
             const { error: dbError } = await supabase
                 .from('templates')
                 .delete()
-                .eq('id', templateId)
+                .eq('id', templateToRemove.id)
 
             if (dbError) throw dbError
 
             toast.success("範本已刪除")
-            setTemplateToDelete(null)
 
             logger.info('Template deleted successfully', 'TemplateList', {
-                templateId,
-                templateName: templateToDelete.name
+                templateId: templateToRemove.id,
+                templateName: templateToRemove.name
             });
 
+            // ✅ 背景同步
             if (onTemplateUpdate) {
                 onTemplateUpdate()
             }
         } catch (error) {
+            // ✅ 失敗時回滾：恢復被刪除的範本
+            setLocalTemplates(prev => [...prev, templateToRemove].sort((a, b) =>
+                new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+            ))
             handleDbError(error, 'DeleteTemplate', {
                 userMessage: '刪除失敗，請重試',
-                metadata: { templateId }
+                metadata: { templateId: templateToRemove.id }
             });
         } finally {
             setDeletingId(null)
@@ -265,7 +295,7 @@ export function TemplateList({
         return <TemplateListSkeleton viewMode={viewMode} count={8} />
     }
 
-    if (templates.length === 0) {
+    if (localTemplates.length === 0) {
         return (
             <div className="text-center py-20 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-black/5 dark:bg-white/5">
                 <FileText className="h-16 w-16 mx-auto text-black/20 dark:text-white/20 mb-6" strokeWidth={1.5} />
@@ -283,7 +313,7 @@ export function TemplateList({
         <>
             {viewMode === 'grid' ? (
                 <div className="grid gap-4 sm:gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {templates.filter(t => t.id !== deletingId).map((template) => (
+                    {localTemplates.filter(t => t.id !== deletingId).map((template) => (
                         <Card
                             key={template.id}
                             onClick={() => handleTemplateClick(template)}
@@ -370,7 +400,7 @@ export function TemplateList({
                         </div>
 
                         <div className="divide-y divide-black/10 dark:divide-white/10 min-w-[640px]">
-                            {templates.filter(t => t.id !== deletingId).map((template) => (
+                            {localTemplates.filter(t => t.id !== deletingId).map((template) => (
                                 <div
                                     key={template.id}
                                     onClick={() => handleTemplateClick(template)}

@@ -146,7 +146,7 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
     // Content Generation (WF12)
     const {
         executeContentGeneration,
-        executeSectionContentGeneration
+        executeSectionContentGeneration,
     } = useContentGeneration({
         projectId,
         supabase,
@@ -373,6 +373,8 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         });
         setIsSourceSelectionOpen(true);
     };
+
+
 
     return (
         <div className="h-full w-full">

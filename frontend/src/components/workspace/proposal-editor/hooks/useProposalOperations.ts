@@ -20,34 +20,122 @@ export function useProposalOperations(
   // ============ 章節操作 ============
 
   /**
-   * 添加新章節
+   * 添加新章節（樂觀更新）
    */
   const addSection = useCallback(
     async (title: string, parentId?: string) => {
+      // ✅ 生成臨時 ID 用於樂觀更新
+      const tempId = `temp-${Date.now()}`;
+      const tempSection: Section = {
+        id: tempId,
+        project_id: projectId,
+        title,
+        parent_id: parentId || null,
+        order_index: 0,
+        tasks: [],
+        children: [],
+      };
+
+      // ✅ 樂觀更新：立即在 UI 中顯示新章節
+      setSections((prev) => {
+        if (parentId) {
+          // 添加為子章節
+          const addChildRecursive = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              if (node.id === parentId) {
+                return {
+                  ...node,
+                  children: [...(node.children || []), tempSection],
+                };
+              }
+              if (node.children) {
+                return { ...node, children: addChildRecursive(node.children) };
+              }
+              return node;
+            });
+          };
+          return addChildRecursive(prev);
+        }
+        // 添加為頂層章節
+        return [...prev, tempSection];
+      });
+
       try {
-        const { error } = await supabase.from("sections").insert({
-          project_id: projectId,
-          title,
-          parent_id: parentId || null,
-          order_index: 0, // Will be updated by database trigger
-        });
+        const { data, error } = await supabase
+          .from("sections")
+          .insert({
+            project_id: projectId,
+            title,
+            parent_id: parentId || null,
+            order_index: 0,
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // ✅ 用真實 ID 替換臨時 ID
+        setSections((prev) => {
+          const replaceIdRecursive = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              if (node.id === tempId) {
+                return { ...node, id: data.id };
+              }
+              if (node.children) {
+                return { ...node, children: replaceIdRecursive(node.children) };
+              }
+              return node;
+            });
+          };
+          return replaceIdRecursive(prev);
+        });
+
         toast.success("章節已添加");
-        await fetchData();
       } catch (error) {
+        // ✅ 失敗時回滾：移除臨時章節
+        setSections((prev) => {
+          const removeRecursive = (nodes: Section[]): Section[] => {
+            return nodes
+              .filter((node) => node.id !== tempId)
+              .map((node) => ({
+                ...node,
+                children: node.children ? removeRecursive(node.children) : [],
+              }));
+          };
+          return removeRecursive(prev);
+        });
         toast.error(`添加失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
-    [projectId, supabase, fetchData]
+    [projectId, supabase, setSections]
   );
 
   /**
-   * 編輯章節
+   * 編輯章節（樂觀更新）
    */
   const editSection = useCallback(
     async (sectionId: string, title: string) => {
+      // ✅ 保存舊值用於回滾
+      let oldTitle = "";
+
+      // ✅ 樂觀更新：立即更新 UI
+      setSections((prev) => {
+        const updateRecursive = (nodes: Section[]): Section[] => {
+          return nodes.map((node) => {
+            if (node.id === sectionId) {
+              oldTitle = node.title; // 保存舊值
+              return { ...node, title };
+            }
+            if (node.children) {
+              return { ...node, children: updateRecursive(node.children) };
+            }
+            return node;
+          });
+        };
+        return updateRecursive(prev);
+      });
+
       try {
         const { error } = await supabase
           .from("sections")
@@ -56,23 +144,61 @@ export function useProposalOperations(
 
         if (error) throw error;
         toast.success("章節已更新");
-        await fetchData();
       } catch (error) {
+        // ✅ 失敗時回滾
+        setSections((prev) => {
+          const rollbackRecursive = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              if (node.id === sectionId) {
+                return { ...node, title: oldTitle };
+              }
+              if (node.children) {
+                return { ...node, children: rollbackRecursive(node.children) };
+              }
+              return node;
+            });
+          };
+          return rollbackRecursive(prev);
+        });
         toast.error(`更新失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
-    [supabase, fetchData]
+    [supabase, setSections]
   );
 
   /**
-   * 刪除章節
+   * 刪除章節（樂觀更新）
    */
   const deleteSection = useCallback(
     async (sectionId: string) => {
       if (!confirm("確定要刪除此章節嗎？這將刪除所有子章節和任務。")) {
         return;
       }
+
+      // ✅ 保存被刪除的章節用於回滾
+      let deletedSection: Section | null = null;
+      let parentId: string | null = null;
+
+      // ✅ 樂觀更新：立即從 UI 中移除
+      setSections((prev) => {
+        const removeRecursive = (nodes: Section[], parent: string | null = null): Section[] => {
+          return nodes
+            .filter((node) => {
+              if (node.id === sectionId) {
+                deletedSection = node;
+                parentId = parent;
+                return false;
+              }
+              return true;
+            })
+            .map((node) => ({
+              ...node,
+              children: node.children ? removeRecursive(node.children, node.id) : [],
+            }));
+        };
+        return removeRecursive(prev);
+      });
 
       try {
         const { error } = await supabase
@@ -82,46 +208,165 @@ export function useProposalOperations(
 
         if (error) throw error;
         toast.success("章節已刪除");
-        await fetchData();
       } catch (error) {
+        // ✅ 失敗時回滾：恢復被刪除的章節
+        if (deletedSection) {
+          setSections((prev) => {
+            if (parentId) {
+              const restoreRecursive = (nodes: Section[]): Section[] => {
+                return nodes.map((node) => {
+                  if (node.id === parentId) {
+                    return {
+                      ...node,
+                      children: [...(node.children || []), deletedSection!],
+                    };
+                  }
+                  if (node.children) {
+                    return { ...node, children: restoreRecursive(node.children) };
+                  }
+                  return node;
+                });
+              };
+              return restoreRecursive(prev);
+            }
+            return [...prev, deletedSection!];
+          });
+        }
         toast.error(`刪除失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
-    [supabase, fetchData]
+    [supabase, setSections]
   );
 
   // ============ 任務操作 ============
 
   /**
-   * 添加任務到章節
+   * 添加任務到章節（樂觀更新）
    */
   const addTask = useCallback(
     async (sectionId: string, requirementText: string) => {
+      // ✅ 生成臨時 ID 用於樂觀更新
+      const tempId = `temp-task-${Date.now()}`;
+      const tempTask: Task = {
+        id: tempId,
+        project_id: projectId,
+        section_id: sectionId,
+        requirement_text: requirementText,
+        status: "pending",
+        order_index: Date.now(), // 臨時排序
+      };
+
+      // ✅ 樂觀更新：立即在 UI 中顯示新任務
+      setSections((prev) => {
+        const addTaskRecursive = (nodes: Section[]): Section[] => {
+          return nodes.map((node) => {
+            if (node.id === sectionId) {
+              return {
+                ...node,
+                tasks: [...(node.tasks || []), tempTask],
+              };
+            }
+            if (node.children) {
+              return { ...node, children: addTaskRecursive(node.children) };
+            }
+            return node;
+          });
+        };
+        return addTaskRecursive(prev);
+      });
+
       try {
-        const { error } = await supabase.from("tasks").insert({
-          project_id: projectId,
-          section_id: sectionId,
-          requirement_text: requirementText,
-          status: "pending",
-        });
+        const { data, error } = await supabase
+          .from("tasks")
+          .insert({
+            project_id: projectId,
+            section_id: sectionId,
+            requirement_text: requirementText,
+            status: "pending",
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // ✅ 用真實資料替換臨時任務
+        setSections((prev) => {
+          const replaceTaskRecursive = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              if (node.id === sectionId) {
+                return {
+                  ...node,
+                  tasks: (node.tasks || []).map((t) =>
+                    t.id === tempId ? { ...t, ...data } : t
+                  ),
+                };
+              }
+              if (node.children) {
+                return { ...node, children: replaceTaskRecursive(node.children) };
+              }
+              return node;
+            });
+          };
+          return replaceTaskRecursive(prev);
+        });
+
         toast.success("任務已添加");
-        await fetchData();
       } catch (error) {
+        // ✅ 失敗時回滾：移除臨時任務
+        setSections((prev) => {
+          const removeTaskRecursive = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              if (node.id === sectionId) {
+                return {
+                  ...node,
+                  tasks: (node.tasks || []).filter((t) => t.id !== tempId),
+                };
+              }
+              if (node.children) {
+                return { ...node, children: removeTaskRecursive(node.children) };
+              }
+              return node;
+            });
+          };
+          return removeTaskRecursive(prev);
+        });
         toast.error(`添加失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
-    [projectId, supabase, fetchData]
+    [projectId, supabase, setSections]
   );
 
   /**
-   * 編輯任務
+   * 編輯任務（樂觀更新）
    */
   const editTask = useCallback(
     async (taskId: string, requirementText: string) => {
+      // ✅ 保存舊值用於回滾
+      let oldText = "";
+
+      // ✅ 樂觀更新：立即更新 UI
+      setSections((prev) => {
+        const updateTaskRecursive = (nodes: Section[]): Section[] => {
+          return nodes.map((node) => {
+            const updatedTasks = (node.tasks || []).map((t) => {
+              if (t.id === taskId) {
+                oldText = t.requirement_text;
+                return { ...t, requirement_text: requirementText };
+              }
+              return t;
+            });
+            return {
+              ...node,
+              tasks: updatedTasks,
+              children: node.children ? updateTaskRecursive(node.children) : [],
+            };
+          });
+        };
+        return updateTaskRecursive(prev);
+      });
+
       try {
         const { error } = await supabase
           .from("tasks")
@@ -130,13 +375,31 @@ export function useProposalOperations(
 
         if (error) throw error;
         toast.success("任務已更新");
-        await fetchData();
       } catch (error) {
+        // ✅ 失敗時回滾
+        setSections((prev) => {
+          const rollbackTaskRecursive = (nodes: Section[]): Section[] => {
+            return nodes.map((node) => {
+              const rolledBackTasks = (node.tasks || []).map((t) => {
+                if (t.id === taskId) {
+                  return { ...t, requirement_text: oldText };
+                }
+                return t;
+              });
+              return {
+                ...node,
+                tasks: rolledBackTasks,
+                children: node.children ? rollbackTaskRecursive(node.children) : [],
+              };
+            });
+          };
+          return rollbackTaskRecursive(prev);
+        });
         toast.error(`更新失敗: ${error instanceof Error ? error.message : "Unknown error"}`);
         throw error;
       }
     },
-    [supabase, fetchData]
+    [supabase, setSections]
   );
 
   /**

@@ -33,7 +33,7 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
   const [isMounted, setIsMounted] = useState(false);
 
   // Fetch projects with realtime updates
-  const { projects, loading, deleteProject } = useProjects();
+  const { projects, loading, deleteProject, refetch } = useProjects();
 
   // Prevent hydration mismatch by only rendering after mount
   React.useEffect(() => {
@@ -101,6 +101,11 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
       toast.error('Failed to delete project');
       console.error('Delete error:', error);
     }
+  };
+
+  const handleEditSuccess = async () => {
+    // ✅ 編輯成功後立即重新載入專案列表，確保畫面更新
+    await refetch(true); // forceRefresh = true
   };
 
   // Prevent hydration mismatch - always show consistent structure on initial render
@@ -218,6 +223,7 @@ export function ProjectListContainer({ externalSearchQuery = "" }: { externalSea
         project={projectToEdit}
         open={!!projectToEdit}
         onOpenChange={(open) => !open && setProjectToEdit(null)}
+        onSuccess={handleEditSuccess}
       />
     </div>
   );
