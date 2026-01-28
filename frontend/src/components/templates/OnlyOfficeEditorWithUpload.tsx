@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OnlyOfficeEditorSkeleton } from '@/components/ui/skeletons/OnlyOfficeEditorSkeleton';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { logger } from '@/lib/errors/logger';
+import { logAIConfig, getAIProxyUrl } from '@/lib/onlyoffice-ai-config';
 
 interface OnlyOfficeEditorWithUploadProps {
   template: Template;
@@ -167,6 +168,7 @@ export function OnlyOfficeEditorWithUpload({
               toolbarNoTabs: false,
               chat: true, // 啟用聊天功能
               comments: true, // 啟用評論功能
+              plugins: true, // 啟用插件支持（包含 AI 插件）
             },
           },
           height: '100%',
@@ -174,6 +176,10 @@ export function OnlyOfficeEditorWithUpload({
           events: {
             onDocumentReady: () => {
               console.log('[編輯器] 文檔已就緒');
+
+              // 輸出 AI 配置信息（方便用戶配置 AI 插件）
+              logAIConfig();
+
               setEditorReady(true);
               setIsAutoLoading(false);
               setIsProcessing(false);
