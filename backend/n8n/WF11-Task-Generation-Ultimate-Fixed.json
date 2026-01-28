@@ -1,0 +1,482 @@
+{
+  "name": "WF11-Task-Generation-Advanced",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "generate-tasks-advanced",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook: Generate Tasks",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $('Webhook: Generate Tasks').first().json.body;\nconst ids = body.sourceIds || [];\nconst sectionId = body.sectionId;\nconst projectId = body.projectId;\nconst allSections = body.allSections || [];\nconst filter = ids.length > 0 ? '(' + ids.map(id => '\"' + id + '\"').join(',') + ')' : null;\n\nreturn { \n    json: { \n        filter, \n        sectionId,\n        projectId,\n        sectionTitle: body.sectionTitle,\n        userDescription: body.userDescription || '',\n        allSections\n    } \n};"
+      },
+      "id": "prepare-inputs",
+      "name": "Prepare Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const metaItem = $('Prepare Inputs').first();\nconst meta = metaItem?.json || {};\nconst sourceIds = meta.filter ? meta.filter.replace(/[()\"]/g, '').split(',').map(id => id.trim()).filter(Boolean) : [];\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst azure_config = {\n    endpoint: $env.AZURE_OPENAI_ENDPOINT,\n    deployment: $env.AZURE_OPENAI_DEPLOYMENT,\n    api_version: $env.AZURE_OPENAI_API_VERSION,\n    api_key: $env.AZURE_OPENAI_API_KEY\n};\nconst supabase_config = {\n    url: $env.SUPABASE_URL,\n    anon_key: $env.SUPABASE_ANON_KEY,\n    service_key: $env.SUPABASE_SERVICE_KEY\n};\n\n// Fetch sources\nconst sources = [];\nfor (const id of sourceIds) {\n    try {\n        const url = `${supabaseUrl}/rest/v1/sources?id=eq.${id}&select=id,title,content,pages`;\n        const data = await this.helpers.httpRequest({\n            method: 'GET',\n            url: url,\n            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },\n            json: true\n        });\n        if (data && data.length > 0) sources.push(data[0]);\n    } catch (e) { console.log('Fetch error', e.message); }\n}\n\n// Format Content (WF02 Style)\nlet combinedContent = '';\nfor (const source of sources) {\n    if (!source || (!source.content && !source.pages)) continue;\n    \n    // Parse pages safely\n    let pages = [];\n    if (source.pages && Array.isArray(source.pages)) {\n        pages = source.pages;\n    } else {\n        try {\n            pages = typeof source.content === 'string' ? JSON.parse(source.content) : source.content;\n        } catch(e) {\n            pages = [{page: 1, content: source.content}];\n        }\n    }\n    \n    if (!Array.isArray(pages)) pages = [{page: 1, content: source.content}];\n\n    for (const page of pages) {\n        const pageNum = page.page || 1;\n        const sourceId = source.id;\n        const title = source.title || 'Untitled';\n        \n        // CLEANING\n        let cleanContent = page.content || '';\n        cleanContent = cleanContent.replace(/(\\n|^)\\s*(-?\\s*\\d+\\s*-?|第\\s*\\d+\\s*頁)\\s*$/gm, '');\n        cleanContent = cleanContent.replace(/Page\\s+\\d+\\s+of\\s+\\d+/gi, '');\n        \n        // INJECT MARKERS\n        combinedContent += `\\n\\n===PAGE_BEGIN===\\nSOURCE_ID: ${sourceId}\\nPAGE_NUMBER: ${pageNum}\\nTITLE: ${title}\\n===CONTENT===\\n${cleanContent}\\n===PAGE_END===`;\n    }\n}\nif (!combinedContent) combinedContent = 'No content.';\ncombinedContent = combinedContent.slice(0, 600000);\n\n// Existing Tasks\nlet existingTasks = [];\ntry {\n    const tasksUrl = `${supabaseUrl}/rest/v1/tasks?section_id=eq.${meta.sectionId}&select=requirement_text`;\n    const data = await this.helpers.httpRequest({\n        method: 'GET',\n        url: tasksUrl,\n        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },\n        json: true\n    });\n    existingTasks = (data || []).map(t => t.requirement_text);\n} catch(e) {}\n\n// Generate System Prompt here to avoid syntax errors in n8n expression\nconst systemPrompt = `你是一位【系統執行計畫-總架構師 (Lead System Architect)】。\n\n你的任務是【完全依據標案文件】，為本章節【${meta.sectionTitle}】制定全方位的系統建置計畫。\n\n**🔴 最高指導原則：嚴格依據文件 (Strict Grounding)**\n1. **絕不無中生有**：系統架構中的每一個功能模組/頁面，都必須在【標案文件內容】中有對應的關鍵字或需求描述。\n2. **來源驗證**：在規劃每一個功能時，請自我檢核「這項功能在文件的哪一段提到？」。若無法找到明確依據，請勿列入。\n3. **避免慣性補全**：請避免依據過往經驗自動補全常見的網站功能，除非文件確實有此需求。請忠實呈現文件要求的範圍。\n\n**任務一：使用者流程設計 (User Flow)**\n1. **角色識別 (Actors)**：首先識別系統中所有的使用者角色（如：市民、承辦人、管理員）。\n2. **Mermaid 流程圖**：請使用 **Mermaid \\`graph TD\\`** 語法繪製完整的業務流程圖。\n   - 必須包含：開始/結束、使用者操作、系統檢核、後台處理、通知流程。\n   - 請確保流程邏輯連貫。\n\n**任務二：系統架構拆解 (System Architecture)**\n請嚴格區分為「前台」、「後台」與「系統管理」三個部分，並詳細列出每個頁面/模組包含的**關鍵功能項目**：\n1. **前台架構 (Frontend)**：以**「頁面 (Pages)」**為單位。每一頁請列出 3-5 個關鍵功能點（如：共同登入、通報區塊）。\n2. **後台架構 (Backend - Business Logic)**：以**「業務功能模組 (Modules)」**為單位。針對業務操作（如：案件管理、審核作業）。\n3. **系統管理 (System Administration)**：以**「管理模組 (Admin Modules)」**為單位。針對全域設定（如：帳號權限、系統參數、日誌管理）。\n\n**特殊指令優先級與動態加值任務**：\n若【使用者補充說明】中有指定架構調整或**額外產出要求**（例如：「請產出測試計畫」、「說明部署策略」、「撰寫整體規劃構想」），請：\n1. **調整架構**：依指示調整前/後台結構。\n2. **新增章節**：將額外要求的內容放入 \\`additional_sections\\` 陣列中。\n\n**任務三：實作模組清單 (Worker Tasks)**\n請列出需要交派給工程師詳細撰寫的模組名稱清單（混合前台與後台模組）。\n\n**🚨 排除非功能性交付物 (Exclude Non-Functional Items)**：\n請專注於**「軟體系統本身」**的開發模組。\n- **❌ 禁止列入**：測試計畫、教育訓練計畫、專案管理計畫、會議記錄、進度報告。\n- **❌ 禁止列入**：硬體規格、機房建置（除非是軟體定義基礎設施）。\n- **✅ 僅限列入**：真正需要寫程式碼開發的功能模組（如：案件管理、報表系統、APP）。\n\n**規則與排他性：**\n1. **來源優先**：所有規劃必須有標案文件依據。\n2. **檢查重複**：檢查【完整章節清單】，避免跨章節重複。\n\n**輸出格式 (JSON)：**\n請回傳 JSON Object，格式如下：\n{\n  \"additional_sections\": [\n      { \"title\": \"整體規劃構想\", \"content\": \"Markdown內容...\" },\n      { \"title\": \"測試計畫\", \"content\": \"Markdown內容...\" }\n  ] (若無額外要求可為空陣列),\n  \"actors\": [\"市民\", \"承辦人員\"],\n  \"user_flow_mermaid\": \"graph TD\\nClient[市民] -->|進入| Env[首頁]...\",\n  \"architecture\": {\n    \"frontend_pages\": [\n       { \"name\": \"首頁\", \"items\": [\"共同登入\", \"通報區塊\"] }\n    ],\n    \"backend_modules\": [\n       { \"name\": \"案件受理模組\", \"items\": [\"案件分流\", \"審核作業\"] }\n    ],\n    \"sysadmin_modules\": [\n       { \"name\": \"使用者認證模組\", \"items\": [\"帳號管理\", \"權限設定\"] }\n    ]\n  },\n  \"modules\": [\"前台-首頁\", \"後台-案件受理模組\", ...] (這是給 Worker 寫詳細規格用的清單)\n}`;\n\nreturn { json: { combinedContent, sectionTitle: meta.sectionTitle, userDescription: meta.userDescription, existingTasks, projectId: meta.projectId, sectionId: meta.sectionId, allSections: meta.allSections, azure_config, supabase_config, validSourceIds: sourceIds, systemPrompt } };"
+      },
+      "id": "format-context",
+      "name": "Format Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Format Context').first().json.azure_config.endpoint + 'openai/deployments/' + $('Format Context').first().json.azure_config.deployment + '/chat/completions?api-version=' + $('Format Context').first().json.azure_config.api_version }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "={{ $('Format Context').first().json.azure_config.api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messages: [{ role: 'system', content: $json.systemPrompt }, { role: 'user', content: \"本章節名稱：\" + $json.sectionTitle + \"\\n\\n【使用者補充說明/需求】：\\n\" + ($json.userDescription || \"無\") + \"\\n\\n【完整章節架構】（請參考以避免重複）：\\n\" + JSON.stringify($json.allSections) + \"\\n\\n【標案文件內容】：\\n\" + $json.combinedContent }], response_format: { type: 'json_object' } }) }}"
+      },
+      "id": "llm-plan",
+      "name": "LLM: Plan Modules",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.item.json.choices[0].message.content;\nconst clean = content.replace(/```json/g, '').replace(/```/g, '').trim();\nlet data;\ntry {\n    data = JSON.parse(clean);\n} catch(e) {\n    data = { modules: [] };\n}\n\nlet modules = [];\nif (Array.isArray(data)) {\n    modules = data;\n} else if (typeof data === 'object') {\n    if (data.modules && Array.isArray(data.modules)) {\n        modules = data.modules;\n    } else {\n        const keys = Object.keys(data);\n        for (const key of keys) {\n            if (Array.isArray(data[key])) {\n                modules = data[key];\n                break;\n            }\n        }\n    }\n}\n\nif (!modules || modules.length === 0) {\n    modules = [\"系統功能規劃\"];\n}\n\nconst context = $('Format Context').first().json;\n\n// Context Polyfill for Worker Nodes\nlet legacyArch = '無';\nif (data.architecture) {\n    const formatArchItem = (list) => {\n        if (!list || list.length === 0) return '';\n        // Handle both string arrays (legacy) and object arrays (new detailed)\n        if (typeof list[0] === 'string') return list.join('、');\n        return list.map(item => `${item.name} (${item.items?.join(', ') || ''})`).join('、');\n    };\n\n    const fe = formatArchItem(data.architecture.frontend_pages);\n    const be = formatArchItem(data.architecture.backend_modules);\n    const sys = formatArchItem(data.architecture.sysadmin_modules);\n    legacyArch = `【前台】：${fe}\\n【後台】：${be}\\n【系統管理】：${sys}`;\n} else if (data.architecture_summary) {\n    legacyArch = data.architecture_summary;\n}\n\nlet legacyFlows = [];\nif (data.user_flow_mermaid) {\n    legacyFlows = [\"請參考 Mermaid 流程圖:\\n\" + data.user_flow_mermaid];\n} else if (data.user_flows) {\n    legacyFlows = data.user_flows;\n}\n\n// Determine who gets the plan details (only the first module)\nreturn modules.map((m, index) => ({\n    json: {\n        moduleName: m,\n        projectId: context.projectId,\n        sectionId: context.sectionId,\n        sectionTitle: context.sectionTitle,\n        validSourceIds: context.validSourceIds,\n        \n        // Pass Legacy Context to ALL items so Worker LLM can see it\n        architecture_summary: legacyArch,\n        user_flows: legacyFlows,\n\n        // Attach new Plan structure to the first item\n        plan_additional: index === 0 ? (data.additional_sections || []) : null,\n        plan_actors: index === 0 ? (data.actors || []) : null,\n        plan_mermaid: index === 0 ? (data.user_flow_mermaid || '') : null,\n        plan_architecture: index === 0 ? (data.architecture || {}) : null\n    }\n}));"
+      },
+      "id": "parse-modules",
+      "name": "Parse Modules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-start",
+      "name": "Loop Modules",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Smart Router - Minimal Version\n// Only detect projectType, pass it through, don't modify LLM prompt\n\nconst body = $('Webhook: Generate Tasks').first().json.body;\nlet projectType = body.projectType || 'auto';\n\n// If user manually selected a type, use it directly\nif (projectType !== 'auto' && projectType) {\n    console.log('[Smart Router] User selected projectType:', projectType);\n    return [{\n        json: {\n            ...$json,\n            projectType: projectType\n        }\n    }];\n}\n\n// Otherwise, perform auto-detection\nconsole.log('[Smart Router] Performing auto-detection...');\n\nconst moduleName = $json.moduleName || '';\nconst architecture = $json.architecture_summary || '';\nconst userFlows = JSON.stringify($json.user_flows || []);\nconst contentLower = (moduleName + architecture + userFlows).toLowerCase();\n\n// Auto-detection logic\nif (contentLower.match(/網站|官網|前台|後台|頁面|web|portal|homepage|website/i)) {\n    projectType = 'website';\n} else if (contentLower.match(/維護|升級|優化|改善|擴充|maintenance|upgrade|improve/i)) {\n    projectType = 'maintenance';\n} else if (contentLower.match(/app|ios|android|行動|手機|mobile/i)) {\n    projectType = 'mobile';\n} else if (contentLower.match(/ar|vr|擴增|虛擬|3d|互動體驗|augmented|virtual/i)) {\n    projectType = 'arvr';\n} else if (contentLower.match(/iot|物聯網|感測器|設備|sensor|device/i)) {\n    projectType = 'iot';\n} else if (contentLower.match(/報表|數據|bi|dashboard|analytics|視覺化|visualization/i)) {\n    projectType = 'analytics';\n} else {\n    projectType = 'general';\n}\n\nconsole.log('[Smart Router] Detected projectType:', projectType);\n\n// Simply pass through the data with projectType added\nreturn [{\n    json: {\n        ...$json,\n        projectType: projectType\n    }\n}];"
+      },
+      "id": "smart-router",
+      "name": "Smart Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Format Context').first().json.azure_config.endpoint + 'openai/deployments/' + $('Format Context').first().json.azure_config.deployment + '/chat/completions?api-version=' + $('Format Context').first().json.azure_config.api_version }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "={{ $('Format Context').first().json.azure_config.api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messages: [{ role: 'system', content: \"你是一位【資深系統實作工程師 (Senior System Implementation Engineer)】。\\n\\n你的任務是【完全依據標案文件】，為【\" + $json.moduleName + \"】撰寫具體的【軟體實作規格】。\\n\\n【重點指引】：\\n1. **技術深度**：請以工程師視角撰寫，包含資料欄位定義、驗證邏輯、系統行為、API 互動等具體細節，而非泛泛的功能描述。\\n2. **實作導向**：內容必須足夠具體，讓開發人員可以直接依據此規格進行程式碼開發。\\n3. **❌ 排除專案管理交付物 (Exclude Project Management)**：請專注於「系統軟體功能」的開發規格。除非系統本身包含「文件管理模組」功能，否則請【忽略】純粹的專案管理文件（如：會議記錄、測試計畫書文件撰寫、進度報告）等行政要求。不要將「撰寫測試報告」視為一個系統功能模組。\\n\\n【全域系統架構】：\\n\" + $json.architecture_summary + \"\\n\\n【使用者流程參考】：\\n\" + JSON.stringify($json.user_flows) + \"\\n\\n【本模組職責】：\\n\" + $json.moduleName + \"\\n\\n===== 🚨 極其重要：多文件整合規則 (Multi-Document Integration) 🚨 =====\\n**這是你的核心考核指標：必須參考所有相關文件！**\\n\\n1. **閱讀全部文件**：你必須閱讀【全部】提供的標案文件，包括「需求說明書」、「工作說明書」、「投標須知」等，而非只看第一份。\\n2. **功能需求優先**：當撰寫內容時，請優先引用「需求說明書」或「工作說明書」中的功能規格。「投標須知」僅用於行政規範（如資格審查、履約保證）。\\n3. **禁止單一來源偏誤**：如果你發現自己只引用了「投標須知」，請務必再次檢查其他文件是否有更相關的內容。\\n4. **多來源引用**：若同一要求在多份文件中都有提及，請在 citations 中列出所有相關來源。\\n\\n===== 引用準確性：絕對原則 (Citation Precision) =====\\n**這是你的核心考核指標：引文必須「精準對齊」。**\\n\\n1. **精準引文 (Exact Matching)**：你所生成的 `requirement_text` 中的每一項要求，對應的 `citation` 必須是標案文件中**真正描述該要求**的段落。\\n   - **嚴禁張冠李戴**：若任務是寫「資安防護」，引文不能是「系統登入」。\\n\\n2. **嚴禁「首段偏誤」 (Anti-Bias Policy)**：絕對不可因為某個段落出現在文件開頭（如：專案緣起、願景）就將其作為所有任務的引用來源。\\n\\n3. **真實性檢核**：引文必須真實存在於下方提供的 Content 中，且 Page Number 必須正確。\\n\\n4. **🚨 嚴禁重複引用同一段話 (CRITICAL) 🚨**：\\n   - 這是最常見且最嚴重的錯誤！\\n   - 如果你生成了多個 citations，每個 quote 都必須是獨一無二的。\\n   - 請為每個引文找到真正對應的段落，而不是偷懶重複使用同一段話。\\n\\n===== 極其重要的標準 Markdown 格式規則 (CRITICAL) =====\\n**你的輸出將直接顯示在前端，必須遵守標準 Markdown 格式！**\\n\\n**標準 Markdown 換行規則**：\\n- **段落之間**：必須使用**雙換行**（空行）分隔\\n- **列表項目之間**：必須使用**雙換行**（空行）分隔\\n- **行內強制換行**：在行尾加上**兩個空格**然後換行\\n- **禁止**：不可使用單一換行，否則內容會被合併成一行\\n\\n**列表格式**：\\n1. **編號列表**：使用 `1.` `2.` `3.` 格式\\n   - 列表前後必須有**空行**\\n   - 每個列表項目之間必須有**空行**\\n   - 列表項目完整內容必須在同一行\\n\\n2. **無序列表**：使用 `-` 格式\\n   - 列表前後必須有**空行**\\n   - 每個列表項目之間必須有**空行**\\n\\n**Markdown 格式檢查清單**：\\n- ✅ 使用編號列表或無序列表\\n- ✅ 列表前後有**空行**\\n- ✅ 每個列表項目之間有**空行**\\n- ✅ 列表項目完整內容在同一行\\n- ✅ 段落之間使用**空行**分隔\\n- ❌ 禁止使用逗號連接多個要點\\n- ❌ 禁止使用單一換行（會被 Markdown 忽略）\\n\\n請輸出以下資訊（JSON Format）：\\n1. `requirement_text`：詳細的實作規格。**必須使用標準 Markdown 條列式格式 (List)**。\\n   **重要規則：每一點的結尾，必須具體標註來源 `(出處: 標題 P.頁碼)`。注意：文件標題僅需包含檔名，請勿包含章節名稱，以免格式錯誤。**\\n2. `citations`：Array of Objects (請列出所有引用來源)，每個物件包含：\\n   - `source_id`：**重要**：請查看引文所在的區塊標頭 `SOURCE_ID: ...`，必須填寫該 UUID。\\n   - `quote`：引用到的原文片段（必須與原文完全一致）。\\n   - `page`：**重要**：請查看引文所在的區塊標頭 `PAGE_NUMBER: ...`，填寫該數字。嚴禁推測頁碼。\\n   - `title`：文件標題。\\n\\n請參考以下原始文件內容來撰寫（這就是你的聖經）：\\n\" + $('Format Context').first().json.combinedContent.substring(0, 200000) }], response_format: { type: 'json_object' } }) }}"
+      },
+      "id": "llm-generate-detail",
+      "name": "LLM: Worker Detail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst loopItems = $('Loop Modules').all();\nconst results = [];\n\n// Get existing tasks from context\nlet existingTasks = [];\ntry {\n    const formatContextNode = $('Format Context').first();\n    if (formatContextNode && formatContextNode.json && Array.isArray(formatContextNode.json.existingTasks)) {\n        existingTasks = formatContextNode.json.existingTasks;\n    }\n} catch(e) {}\n\n\nfor (let i = 0; i < items.length; i++) {\n    const item = items[i];\n    const loopItem = loopItems[i] || {};\n    const context = loopItem.json || {};\n\n    const validSourceIds = context.validSourceIds || [];\n\n    const content = item.json.choices?.[0]?.message?.content || '';\n    const clean = content.replace(/```json/g, '').replace(/```/g, '').trim();\n\n    let parsedObj = {};\n    try {\n        parsedObj = JSON.parse(clean);\n    } catch(e) {}\n\n    let finalText = '';\n    let parts = [];\n    if (Array.isArray(parsedObj)) {\n        parts = parsedObj.map(p => typeof p === 'string' ? p : p.requirement_text);\n    } else if (parsedObj.tasks && Array.isArray(parsedObj.tasks)) {\n        parts = parsedObj.tasks.map(t => t.requirement_text);\n    } else if (parsedObj.requirement_text) {\n        parts = [parsedObj.requirement_text];\n    }\n\n    finalText = parts.filter(Boolean).join('\\n\\n');\n    if (!finalText) continue;\n\n    // Prepend Module Name - FIXED: Use string concatenation to avoid SyntaxError\n    if (!finalText.includes(context.moduleName)) {\n        finalText = '【' + context.moduleName + '】實作規格：\\n\\n' + finalText;\n    }\n\n    // Deduplication check - FIXED: Use string concatenation\n    const isDuplicate = existingTasks.some(existingText => {\n         return existingText.includes('【' + context.moduleName + '】');\n    });\n\n    const getPageNum = (p) => {\n        const match = String(p).match(/\\d+/);\n        return match ? parseInt(match[0]) : null;\n    };\n\n    let citations = parsedObj.citations || [];\n    if (!Array.isArray(citations) && parsedObj.citation) {\n        citations = [parsedObj.citation];\n    }\n\n    const primary = citations[0] || {};\n    let primarySourceId = primary.source_id;\n\n    if (primarySourceId) {\n        const isValid = validSourceIds.includes(primarySourceId);\n        if (!isValid) {\n             const cleanId = primarySourceId.replace(/['\\\"]/g, '').trim();\n             if (validSourceIds.includes(cleanId)) {\n                 primarySourceId = cleanId;\n             } else {\n                 primarySourceId = null;\n             }\n        }\n    }\n\n    const primaryPage = getPageNum(primary.page);\n\n    if (!isDuplicate) {\n        results.push({\n            project_id: context.projectId,\n            section_id: context.sectionId,\n            requirement_text: finalText,\n            status: 'pending',\n            citation_source_id: primarySourceId,\n            citation_page: primaryPage,\n            citation_quote: primary.quote,\n            citations: citations\n        });\n        existingTasks.push(finalText);\n    }\n}\n\nreturn results.map(r => ({ json: r }));"
+      },
+      "id": "format-db-item",
+      "name": "Format DB Item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (items.length === 0) return [];\n\nconst firstItem = items.find(i => i.json.plan_mermaid || i.json.plan_architecture) || items[0];\nconst context = items[0].json;\n\n// Extract Plan Data\nconst additional = firstItem.json.plan_additional || [];\nconst actors = firstItem.json.plan_actors || [];\nconst mermaid = firstItem.json.plan_mermaid || '';\nconst arch = firstItem.json.plan_architecture || {};\n\nconst tasks = [];\n\n// 0. Dynamic Additional Sections (Replaces Hard-coded Concept)\nif (additional && Array.isArray(additional) && additional.length > 0) {\n    additional.forEach(section => {\n        if (section.title && section.content) {\n            tasks.push({\n                json: {\n                    project_id: context.projectId,\n                    section_id: context.sectionId,\n                    requirement_text: `【${section.title}】\\n\\n${section.content}`,\n                    status: 'pending'\n                }\n            });\n        }\n    });\n}\n\n// 1. User Flow Task (Mermaid)\nif (mermaid && mermaid.length > 5) {\n    let actorsText = '';\n    if (actors.length > 0) {\n        actorsText = `### 1. 系統使用者角色 (Actors)\\n` + \n                     actors.map(a => `- ${a}`).join('\\n') + `\\n\\n`;\n    }\n\n    // Construct Mermaid Block\n    const mermaidBlock = `### 2. 業務流程圖 (User Flow)\\n\\n\\`\\`\\`mermaid\\n${mermaid}\\n\\`\\`\\``;\n\n    tasks.push({\n        json: {\n            project_id: context.projectId,\n            section_id: context.sectionId,\n            requirement_text: `【使用者流程設計 (User Flow)】\\n\\n${actorsText}${mermaidBlock}`,\n            status: 'pending'\n        }\n    });\n}\n\n// 2. System Architecture Task (Frontend/Backend/SysAdmin Split)\nconst frontendPages = arch.frontend_pages || [];\nconst backendModules = arch.backend_modules || [];\nconst sysadminModules = arch.sysadmin_modules || [];\n\nif (frontendPages.length > 0 || backendModules.length > 0 || sysadminModules.length > 0) {\n    let archText = '';\n\n    const formatArchSection = (title, items) => {\n        if (!items || items.length === 0) return '';\n        let text = `### ${title}\\n`;\n        text += items.map((item, i) => {\n            // Handle both simple strings and detailed objects\n            if (typeof item === 'string') return `${i+1}. ${item}`;\n            \n            let line = `${i+1}. **${item.name}**`;\n            if (item.items && item.items.length > 0) {\n                // Use 'a. Item', 'b. Item' format\n                const subItems = item.items.map((sub, j) => {\n                    const bullet = String.fromCharCode(97 + j); // a, b, c...\n                    return `   ${bullet}. ${sub}`;\n                }).join('\\n');\n                line += `\\n${subItems}`;\n            }\n            return line;\n        }).join('\\n\\n'); // Extra newline for spacing between main items\n        return text + '\\n\\n';\n    };\n\n    // 1. Frontend Section\n    archText += formatArchSection('1. 前台架構 (Frontend Pages)', frontendPages);\n\n    // 2. Backend Section\n    archText += formatArchSection('2. 後台架構 (Backend Modules)', backendModules);\n\n    // 3. System Admin Section\n    archText += formatArchSection('3. 系統管理 (System Administration)', sysadminModules);\n\n    tasks.push({\n        json: {\n            project_id: context.projectId,\n            section_id: context.sectionId,\n            requirement_text: `【系統功能架構 (System Architecture)】\\n\\n${archText}`,\n            status: 'pending'\n        }\n    });\n}\n\nreturn tasks;"
+      },
+      "id": "format-plan-tasks",
+      "name": "Format Plan Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Format Context').first().json.supabase_config.url + '/rest/v1/tasks' }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Format Context').first().json.supabase_config.service_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Format Context').first().json.supabase_config.service_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}"
+      },
+      "id": "insert-plan-db",
+      "name": "Insert Plan DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Format Context').first().json.supabase_config.url + '/rest/v1/tasks' }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Format Context').first().json.supabase_config.anon_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Format Context').first().json.supabase_config.service_key }}"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "insert-db",
+      "name": "Insert DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: { result: 'done_background_processing' } };"
+      },
+      "id": "success",
+      "name": "Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { \n    json: { \n        result: 'success', \n        message: 'Request received. Task generation started in background.', \n        timestamp: new Date().toISOString()\n    } \n};"
+      },
+      "id": "immediate-response",
+      "name": "Immediate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({\"result\": \"success\", \"message\": \"Tasks generated via Manager-Worker loop\", \"total_modules\": $input.all().length }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "response",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Restore the modules list for the Loop node\n// Logic: The original modules were output by 'Parse Modules'.\n// We simply retrieve them here.\nreturn $('Parse Modules').all();"
+      },
+      "id": "restore-data",
+      "name": "Restore Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Generate Tasks": {
+      "main": [
+        [
+          {
+            "node": "Prepare Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Inputs": {
+      "main": [
+        [
+          {
+            "node": "Immediate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Context": {
+      "main": [
+        [
+          {
+            "node": "LLM: Plan Modules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Plan Modules": {
+      "main": [
+        [
+          {
+            "node": "Parse Modules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Modules": {
+      "main": [
+        [
+          {
+            "node": "Format Plan Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Modules": {
+      "main": [
+        [
+          {
+            "node": "Smart Router",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Worker Detail": {
+      "main": [
+        [
+          {
+            "node": "Format DB Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format DB Item": {
+      "main": [
+        [
+          {
+            "node": "Insert DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert DB": {
+      "main": [
+        [
+          {
+            "node": "Loop Modules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Immediate Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response": {
+      "main": [
+        [
+          {
+            "node": "Format Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Plan Tasks": {
+      "main": [
+        [
+          {
+            "node": "Insert Plan DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Plan DB": {
+      "main": [
+        [
+          {
+            "node": "Restore Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Modules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Smart Router": {
+      "main": [
+        [
+          {
+            "node": "LLM: Worker Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
