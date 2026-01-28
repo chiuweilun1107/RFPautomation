@@ -91,7 +91,9 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
 
                 collectCitations(assessmentData);
                 setEvidences(collectedEvidences);
-                setIsAnalyzing(false);
+                // Only stop analyzing if we actually have data that isn't just a skeleton (if we had a status flag)
+                // For now, we trust the Realtime update to set this to false when new data arrives
+                // setIsAnalyzing(false); 
             } else {
                 setData(null);
             }
@@ -100,6 +102,27 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleStartAnalysis = async () => {
+        setIsAnalyzing(true);
+        try {
+            await n8nApi.evaluateProject(projectId);
+
+            toast.success("AI Analysis Started", {
+                description: "The deconstruction process has been initiated. This may take a few minutes."
+            });
+            // Optimistically fetch, though Realtime will likely catch it later
+            setTimeout(() => fetchData(), 2000);
+        } catch (err: any) {
+            console.error("[AssessmentTable] Catch error:", err);
+            toast.error("Analysis Failed", {
+                description: err.message || "Could not initiate the AI workflow. Please try again."
+            });
+        } finally {
+            // DO NOT setIsAnalyzing(false) here, we wait for Realtime update
+            // setIsAnalyzing(false); 
         }
     };
 
@@ -119,6 +142,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                 },
                 (payload) => {
                     fetchData(); // Re-fetch the full object to ensure we have all fields
+                    setIsAnalyzing(false); // Stop loading when real update arrives
                     toast.success("Intelligence Sequence Updated", {
                         description: "New analysis results have been received."
                     });
@@ -210,25 +234,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
     }
 
     if (!data) {
-        const handleStartAnalysis = async () => {
-            setIsAnalyzing(true);
-            try {
-                await n8nApi.evaluateProject(projectId);
-
-                toast.success("AI Analysis Started", {
-                    description: "The deconstruction process has been initiated. This may take a few minutes."
-                });
-                // Optimistically fetch, though Realtime will likely catch it later
-                setTimeout(() => fetchData(), 2000);
-            } catch (err: any) {
-                console.error("[AssessmentTable] Catch error:", err);
-                toast.error("Analysis Failed", {
-                    description: err.message || "Could not initiate the AI workflow. Please try again."
-                });
-            } finally {
-                setIsAnalyzing(false);
-            }
-        };
+        // handleStartAnalysis is now defined at component scope
 
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] border border-black dark:border-white bg-white dark:bg-black p-12 text-center font-mono relative overflow-hidden group">
@@ -323,6 +329,23 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderExpanded ? 'max-h-[200px] opacity-100 mb-8' : 'max-h-0 opacity-0 mb-0'}`}>
                                 <div className="flex flex-col items-center">
                                     <div className="relative inline-flex items-center">
+                                        {/* Re-analyze Button (Left) */}
+                                        <div className="absolute -left-20 top-1/2 -translate-y-1/2">
+                                            <button
+                                                onClick={handleStartAnalysis}
+                                                disabled={isAnalyzing}
+                                                title="RE-ANALYZE"
+                                                className="group relative w-12 h-12 border-2 border-black dark:border-white bg-white dark:bg-black transition-all hover:translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 shadow-[-4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[-4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[-8px_8px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[-8px_8px_0px_0px_rgba(255,255,255,1)] active:shadow-none flex items-center justify-center overflow-hidden"
+                                            >
+                                                {isAnalyzing ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin text-black dark:text-white" />
+                                                ) : (
+                                                    <Sparkles className="w-6 h-6 text-black dark:text-white transition-transform group-hover:scale-110" />
+                                                )}
+                                                <div className="absolute inset-0 bg-[#FA4028] translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-10 opacity-10" />
+                                            </button>
+                                        </div>
+
                                         {/* Title Block */}
                                         <div className="bg-[#FA4028] text-white px-10 py-4 flex flex-col items-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.2)]">
                                             <h2 className="text-4xl font-black tracking-tighter uppercase italic leading-none">
@@ -390,6 +413,14 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                                     <Card className="rounded-none border-0 bg-transparent shadow-none">
                                         <CardContent className="pt-12 pb-16 px-0 md:px-4">
                                             <div className="max-w-4xl mx-auto">
+                                                {isAnalyzing && (
+                                                    <div className="mb-8 p-4 bg-[#FA4028]/5 border-l-4 border-[#FA4028] flex items-center gap-3 animate-pulse">
+                                                        <Loader2 className="w-4 h-4 animate-spin text-[#FA4028]" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#FA4028]">
+                                                            Analysis in Progress // background sequence active
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <div className="h-full w-full">
                                                     <RecursiveAssessmentRenderer
                                                         data={data[key]?.content || data[key]}
