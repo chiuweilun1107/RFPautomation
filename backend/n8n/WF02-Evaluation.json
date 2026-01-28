@@ -1,0 +1,345 @@
+{
+    "id": "EEvv6SHHu37dAyil",
+    "name": "WF02-Evaluation (SYNC-VERIFIED-16:21)",
+    "active": true,
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "evaluate-project",
+                "responseMode": "onReceived",
+                "options": {
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "http://localhost:3000"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "GET,POST,PUT,DELETE,OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type,Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "name": "Webhook (Synced-Success-16:21)",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Get all source_ids from webhook body\nconst sourceIds = $json.body.source_ids || ($json.body.source_id ? [$json.body.source_id] : []);\nconst projectId = $json.body.project_id;\n\nif (sourceIds.length === 0) {\n    throw new Error('No source IDs provided');\n}\n\n// Supabase config\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_ROLE_KEY;\n\n// Fetch all sources sequentially using helpers\nconst sources = [];\nfor (const id of sourceIds) {\n    try {\n        const url = `${supabaseUrl}/rest/v1/sources?id=eq.${id}&select=id,title,content,pages`;\n        const data = await this.helpers.httpRequest({\n            method: 'GET',\n            url: url,\n            headers: {\n                'apikey': supabaseKey,\n                'Authorization': `Bearer ${supabaseKey}`\n            },\n            json: true\n        });\n        if (data && data.length > 0) {\n            sources.push(data[0]);\n        }\n    } catch (e) {\n        console.log('Failed to fetch source:', id, e.message);\n    }\n}\n\n// Merge all content WITH PAGE MARKERS (v3 - Include Structured Tables)\nlet fullText = '';\nfor (const source of sources) {\n    if (!source || !source.content) continue;\n    \n    // Parse pages safely\n    let pages = [];\n    if (source.pages && Array.isArray(source.pages)) {\n        pages = source.pages;\n    } else {\n        try {\n            pages = typeof source.content === 'string' ? JSON.parse(source.content) : source.content;\n        } catch(e) {\n            pages = [{page: 1, content: source.content}];\n        }\n    }\n    \n    if (!Array.isArray(pages)) pages = [{page: 1, content: source.content}];\n\n    // Inject Markers - clearer format with BEGIN/END markers\n    for (const page of pages) {\n        const pageNum = page.page || 1;\n        const sourceId = source.id;\n        const title = source.title || 'Untitled';\n        \n        // CLEANING: Strip likely footers/headers from content to avoid confusion\n        let cleanContent = page.content || '';\n        // 1. Remove floating page numbers at end of lines (English and Chinese)\n        cleanContent = cleanContent.replace(/(\\n|^)\\s*(-?\\s*\\d+\\s*-?|第\\s*\\d+\\s*頁)\\s*$/gm, '');\n        // 2. Remove 'Page X of Y' patterns\n        cleanContent = cleanContent.replace(/Page\\s+\\d+\\s+of\\s+\\d+/gi, '');\n        // 3. Remove 'X / Y' patterns\n        cleanContent = cleanContent.replace(/\\d+\\s*\\/\\s*\\d+/g, '');\n\n        // INJECT STRUCTURED TABLES (If available)\n        if (page.tables && Array.isArray(page.tables) && page.tables.length > 0) {\n            const tableJson = JSON.stringify(page.tables, null, 2);\n            cleanContent += \"\\n\\n=== [SYSTEM] STRUCTURED TABLE DATA (PRIORITIZE THIS OVER TEXT) ===\\n\" + tableJson + \"\\n============================================================\\n\";\n        }\n\n        // Format: ===PAGE_BEGIN=== ... ===PAGE_END===\n        fullText += `\\n\\n===PAGE_BEGIN===\\nSOURCE_ID: ${sourceId}\\nPAGE_NUMBER: ${pageNum}\\nTITLE: ${title}\\n===CONTENT===\\n${cleanContent}\\n===PAGE_END===`;\n    }\n}\n\nreturn { fullText: fullText.trim(), project_id: projectId, source_count: sources.length };"
+            },
+            "name": "Fetch All Sources",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.AZURE_OPENAI_ENDPOINT }}openai/deployments/{{ $env.AZURE_OPENAI_DEPLOYMENT }}/chat/completions?api-version={{ $env.AZURE_OPENAI_API_VERSION }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "api-key",
+                            "value": "={{ $env.AZURE_OPENAI_API_KEY }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({\n    messages: [\n        { role: 'user', content: 'You are a Tender Bidding Consultant (標案備標專家). Your goal is to help the user WIN this tender.\\n\\n**CORE OBJECTIVE:**\\nAnalyze the RFP to extract critical information for WRITING THE SERVICE PROPOSAL (撰寫服務建議書).\\n\\n**INPUT DATA STRUCTURE:**\\nThe text is divided into logical blocks. Each block has a HEADER and CONTENT.\\n```\\n===PAGE_BEGIN===\\nSOURCE_ID: uuid-here\\nPAGE_NUMBER: 9    <-- THIS IS THE TRUTH\\nTITLE: filename.pdf\\n===CONTENT===\\n...document text...\\n===PAGE_END===\\n```\\n\\n**⚠️ CRITICAL RULE: PAGE NUMBERS ⚠️**\\nWhen you cite evidence, you must provide the `page` number.\\n*   **PROTOCOL**: Look at the header of the block containing your quote. Copy the value of `PAGE_NUMBER`.\\n*   **RESTRICTION**: NEVER use page numbers found inside the `...document text...` (e.g., footers \"Page 5 of 10\"). These are often wrong/offset.\\n*   **ONLY SOURCE OF TRUTH**: The `PAGE_NUMBER:` field in the ===PAGE_BEGIN=== header.\\n*   **CONFLICT RESOLUTION**: If the text/footer says \"Page 5\" but the `PAGE_NUMBER` header says 7, **YOU MUST USE 7**. The Header is the system-truth absolute index.\\n\\n**⚠️ CRITICAL RULE: CITATIONS (VERBATIM QUOTES) ⚠️**\\nThe `quote` field is used for highlighting text in the document viewer. It MUST be an EXACT character-for-character copy.\\n1. **DO NOT PARAPHRASE**.\\n2. **DO NOT FIX TYPOS**.\\n3. **DO NOT USE ELLIPSES (...)**: You MUST extract the FULL text segment. Do not truncate with \"...\" or \"etc\".\\n4. **FULL SENTENCES**: If the relevant text is long, copy the ENTIRE sentence or paragraph exactly as it appears. Frontend highlighting depends on exact matching.\\n5. **DO NOT IGNORE WHITESPACE**: If the source says \"倉儲 業者\", you MUST write \"倉儲 業者\", NOT \"倉儲業者\".\\n6. **STRICT COPY-PASTE**: The string must be findable in the original text.\\n7. **MANDATORY CITATIONS**: All `basic_info` fields MUST have citations. **CRITICAL**: For `採購性質` (Procurement Nature) and `採購方式` (Procurement Method), ONLY extract if explicitly stated in text (e.g. \"本案性質為...\"). **DO NOT INFER FROM THE TITLE**. If not explicitly stated, return \"尚無相關資訊\".\\n8. **NO CITATIONS FOR EMPTY VALUES**: If the field value is \"尚無相關資訊\" or \"無特別規定\", the `citations` array MUST BE EMPTY `[]`. DO NOT cite the title or any unrelated text if there is no specific answer.\\n9. **CITATION PAGE EXACTNESS**: The `page` field in citation MUST match the `PAGE_NUMBER` header exactly. Do NOT calculate offsets.\\n\\n**REQUIRED JSON OUTPUT:**\\nReturn strictly valid JSON in Traditional Chinese (繁體中文).\\n\\n**⚠️ LANGUAGE ENFORCEMENT ⚠️**\\n1. ALL values must be in Traditional Chinese.\\n2. If a field has No Information (e.g. Risk not applicable), write \"無特別規定\" or \"尚無相關資訊\".\\n3. **FORBIDDEN**: Do NOT write \"Not applicable\", \"N/A\", \"None\", or any English phrases.\\n\\n**STANDARD FIELD STRUCTURE:**\\n```json\\n\"FIELD_NAME\": {\\n  \"text\": \"Analysis text...\",\\n  \"citations\": [\\n    {\\n      \"source_id\": \"uuid-from-SOURCE_ID\",\\n      \"page\": 9,  // Copied from PAGE_NUMBER header\\n      \"title\": \"filename\",\\n      \"quote\": \"EXACT VERBATIM COPY OF SOURCE TEXT\"\\n    }\\n  ]\\n}\\n```\\n\\n**SPECIAL FIELD: RED LINES (Hard Constraints - EXTRACT AGGRESSIVELY):**\\n```json\\n\"red_lines\": {\\n  \"team_requirements\": [\\n    { \"role\": \"專案經理\", \"min_years\": 5, \"certs\": [\"PMP\"], \"is_full_time\": true, \"custom_constraints\": \"不得兼任計畫主持人\" },\\n    { \"role\": \"資安人員\", \"certs\": [\"ISO 27001 LA\"] }\\n  ],\\n  \"qualification_check\": {\\n    \"capital_min\": 10000000,\\n    \"track_record_years\": 5,\\n    \"iso_certified\": true\\n  },\\n  \"constraints\": {\\n    \"page_limit\": 200,\\n    \"budget_ceiling\": 15000000\\n  }\\n}\\n```\\n\\n**FULL SCHEMA:**\\n{\\n  \"red_lines\": { \"team_requirements\": [ { \"role\": \"專案經理\", \"min_years\": 5, \"certs\": [\"PMP\"], \"is_full_time\": true, \"custom_constraints\": \"不得兼任計畫主持人\" } ], \"qualification_check\": { \"capital_min\": 10000000, \"track_record_years\": 5, \"iso_certified\": true }, \"constraints\": { \"page_limit\": 200, \"budget_ceiling\": 15000000 } },\\n  \"summary\": { \"label\": \"標案摘要\", \"content\": { \"採購目的\": { \"text\": \"Extract the main purpose/objective of this procurement.\", \"citations\": [] }, \"標的說明\": { \"text\": \"Describe the subject matter of the procurement.\", \"citations\": [] }, \"執行範圍\": { \"text\": \"Summarize the scope of work.\", \"citations\": [] }, \"摘要\": { \"緣由\": { \"text\": \"Analyze the background and origin. Why is this project being launched?\", \"citations\": [] }, \"需求\": { \"text\": \"Summarize the core requirements and objectives.\", \"citations\": [] }, \"痛點\": { \"text\": \"Identify existing pain points or problems mentioned in the RFP.\", \"citations\": [] } } } },\\n  \"requirements\": { \"label\": \"投標規範\", \"content\": { \"頁數限制\": { \"text\": \"Extract strict page limits (e.g. unlimited, max 50 pages).\" }, \"格式要求\": { \"text\": \"Extract paper size (A4), font size, binding method, and output format (PDF/Word).\" }, \"必要章節\": { \"text\": \"Extract specific CHAPTER TITLES (e.g. 壹、計畫概述) ONLY IF a strictly defined Table of Contents is provided. PROHIBITED: Do not extract narrative descriptions of required content (e.g. Must include team info...). If no explicit chapter list exists, return \"未明確規定\".\" }, \"資格限制\": { \"text\": \"Extract specific vendor qualifications (Capital > X, ISO Certs, Specific Licenses). Do NOT include generic capabilities.\" } } },\\n  \"basic_info\": { \"label\": \"基本資料\", \"content\": { \"標案名稱\": { \"text\": \"Extract tender name.\" }, \"標案案號\": { \"text\": \"Extract tender reference number.\" }, \"主辦機關\": { \"text\": \"Extract organizing agency name.\" }, \"採購性質\": { \"text\": \"Extract procurement nature (e.g. Service, Construction). Only citation allowed.\" }, \"採購方式\": { \"text\": \"Extract procurement method (e.g. Open Tender). Only citation allowed.\" }, \"團隊需求\": { \"text\": \"**IMPORTANT**: Step 1: Write a FULL descriptive paragraph in Traditional Chinese summarizing ALL team requirements. Step 2: Append section \\\"🔴 關鍵紅線\\\". **CRITICAL**: You MUST list ALL hard constraints from text here (e.g. \\\"Degree\\\", \\\"10+ Years Exp\\\", \\\"PMP Cert\\\"). Derive these DIRECTLY from text even if not in JSON array.\" }, \"資格條件\": { \"text\": \"**IMPORTANT**: Step 1: Write a FULL descriptive paragraph in Traditional Chinese summarizing ALL qualifications. Step 2: Append section \\\"🔴 關鍵紅線\\\". **CRITICAL**: List ALL hard constraints from text here (e.g. \\\"Capital > 10M\\\", \\\"ISO Cert\\\", \\\"3+ Years Track Record\\\"). Derive these DIRECTLY from text even if not in JSON array.\" } } },\\n  \"budget\": { \"label\": \"預算分析\", \"content\": { \"預估經費\": { \"text\": \"Extract total estimated budget.\" }, \"經費說明\": { \"text\": \"Extract budget details or breakdown.\" }, \"付款條件\": { \"text\": \"Extract payment milestones and conditions.\" } } },\\n  \"dates\": { \"label\": \"重要時程\", \"content\": { \"履約期限\": { \"text\": \"Extract contract performance period.\" }, \"投標截止\": { \"text\": \"Extract bid submission deadline.\" }, \"開標日期\": { \"text\": \"Extract bid opening date.\" }, \"決標日期\": { \"text\": \"Extract award date if available.\" }, \"評選/簡報日期\": { \"text\": \"Extract evaluation/presentation date.\" } } },\\n  \"risks\": { \"label\": \"風險評估\", \"content\": { \"投標與評選不確定性\": { \"text\": \"Assess risks related to bidding process.\" }, \"履約與時程風險\": { \"text\": \"Assess risks related to delivery and schedule.\" }, \"合約責任與違約風險\": { \"text\": \"Assess contractual and penalty risks.\" }, \"資安法遵風險\": { \"text\": \"Assess security and compliance risks.\" } } },\\n  \"selection\": { \"label\": \"評選方式與權重\", \"content\": { \"評選方式\": { \"text\": \"Extract selection method (e.g. Most Advantageous Tender).\" }, \"最有利標\": { \"text\": \"Extract criteria for most advantageous tender.\" }, \"各項配分\": { \"text\": \"Extract the FULL, VERBATIM content of the scoring breakdown/criteria section. Retain all original text including item numbers and full descriptions. Do not summarize row titles.\" } } }\\n}\\n\\nRFP Text:\\n' + $json.fullText },\n        {\n            role: 'system',\n            content: 'You are a helpful assistant designed to output JSON.'\n        }\n    ],\n    response_format: { type: 'json_object' }\n}) }}",
+                "options": {}
+            },
+            "name": "OpenAI Analysis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                850,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "let raw = $json.choices?.[0]?.message?.content || '{}';\nraw = raw.replace(/^```(?:json)?\\s*/i, '').replace(/```\\s*$/i, '').trim();\nconst first = raw.indexOf('{');\nconst last = raw.lastIndexOf('}');\nif (first !== -1 && last !== -1) raw = raw.substring(first, last + 1);\n\nlet assessment = {};\ntry {\n  assessment = JSON.parse(raw);\n} catch (e) {\n  // Attempt naive repair for truncated JSON\n  const closures = ['\"}', '}', ']}', '\"', ']'];\n  for (const end of closures) {\n    try {\n        assessment = JSON.parse(raw + end);\n        break;\n    } catch (e2) {}\n  }\n  if (Object.keys(assessment).length === 0) {\n     try { assessment = JSON.parse(raw + '\"}]}'); } catch(e3) {}\n  }\n}\n\n// Fallback skeleton\nif (!assessment || Object.keys(assessment).length === 0) {\n  assessment = {\n    summary: { content: {} },\n    requirements: { content: {} },\n    basic_info: { content: {} },\n    budget: { content: {} },\n    dates: { content: {} },\n    risks: { content: {} },\n    selection: { content: {} }\n  };\n}\n\n// Move proposal_outline into requirements to match DB schema\nif (assessment.proposal_outline) {\n    if (!assessment.requirements) assessment.requirements = { content: {} };\n    assessment.requirements.proposal_outline = assessment.proposal_outline;\n    delete assessment.proposal_outline;\n}\n\n// Move red_lines into requirements to match DB schema\nif (assessment.red_lines) {\n    if (!assessment.requirements) assessment.requirements = { content: {} };\n    assessment.requirements.red_lines = assessment.red_lines;\n    delete assessment.red_lines;\n}\n\nreturn { ...assessment, project_id: $('Fetch All Sources').item.json.project_id };"
+            },
+            "name": "Parse OpenAI Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1050,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SUPABASE_URL + '/rest/v1/project_assessments?on_conflict=project_id' }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
+                        },
+                        {
+                            "name": "Prefer",
+                            "value": "resolution=merge-duplicates"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "contentType": "json",
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "project_id",
+                            "value": "={{ $json.project_id }}"
+                        },
+                        {
+                            "name": "summary",
+                            "value": "={{ $json.summary }}"
+                        },
+                        {
+                            "name": "requirements",
+                            "value": "={{ $json.requirements }}"
+                        },
+                        {
+                            "name": "basic_info",
+                            "value": "={{ $json.basic_info }}"
+                        },
+                        {
+                            "name": "budget",
+                            "value": "={{ $json.budget }}"
+                        },
+                        {
+                            "name": "dates",
+                            "value": "={{ $json.dates }}"
+                        },
+                        {
+                            "name": "risks",
+                            "value": "={{ $json.risks }}"
+                        },
+                        {
+                            "name": "selection",
+                            "value": "={{ $json.selection }}"
+                        }
+                    ]
+                }
+            },
+            "name": "Upsert Assessment",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.AZURE_OPENAI_ENDPOINT }}openai/deployments/{{ $env.AZURE_OPENAI_DEPLOYMENT }}/chat/completions?api-version={{ $env.AZURE_OPENAI_API_VERSION }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "api-key",
+                            "value": "={{ $env.AZURE_OPENAI_API_KEY }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ messages: [{ role: 'user', content: \"You are an expert tender analyst. Extract the structured scoring criteria from the following text.\\n\\n**INPUT TEXT:**\\n\" + $json.selection?.content?.['各項配分']?.text + \"\\n\\n**INSTRUCTIONS:**\\n1. Parse the text into a JSON object with a 'criteria' key.\\n2. The 'criteria' key MUST be an ARRAY of objects.\\n3. Each object in the 'criteria' array MUST have: 'title', 'weight' (number), and 'description'.\\n4. **CRITICAL**: Do NOT clump all criteria into one string. Each major criterion (e.g., 一、, 二、, 三、) MUST be its own separate object in the array.\\n5. **TITLE NORMALIZATION**: Remove accidental spaces within words (e.g., '專 業' -> '專業') in both titles and descriptions.\\n6. **DESCRIPTION FORMATTING**: If a criterion has sub-points (e.g., (1), (2)), keep them within that object's description but use clear line breaks (`\\\\n`).\\n7. Assign a 'group_name' to each object.\\n8. Return ONLY the JSON object: { \\\"criteria\\\": [ { \\\"title\\\": \\\"...\\\", \\\"weight\\\": 20, \\\"description\\\": \\\"...\\\", \\\"group_name\\\": \\\"General\\\" }, ... ] }\\n9. If no criteria are found, return { \\\"criteria\\\": [] }.\\n\\n**LANGUAGE:** Output must be in Traditional Chinese (繁體中文).\" }], response_format: { type: 'json_object' } }) }}",
+                "options": {}
+            },
+            "id": "openai-extract-criteria",
+            "name": "OpenAI: Extract Criteria",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1250,
+                450
+            ]
+        },
+        {
+            "parameters": {
+                "method": "DELETE",
+                "url": "={{ $env.SUPABASE_URL }}/rest/v1/criteria?project_id=eq.{{ $('Parse OpenAI Response').first().json.project_id }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "supabase-delete-criteria",
+            "name": "Supabase: Delete Criteria",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1450,
+                450
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const aiRes = $('OpenAI: Extract Criteria').item.json;\nlet text = aiRes.choices?.[0]?.message?.content || '{}';\n\ntry {\n    const parsed = JSON.parse(text);\n    const criteria = Array.isArray(parsed) ? (parsed) : (parsed.criteria || []);\n    \n    // Get project_id from Parse OpenAI Response to be safe\n    const projectId = $('Parse OpenAI Response').first().json.project_id;\n    \n    return criteria.map((c, index) => ({\n        json: {\n            project_id: projectId,\n            title: c.title || 'Unknown',\n            weight: parseFloat(c.weight) || 0,\n            description: c.description || '',\n            group_name: c.group_name || 'General',\n            order_index: (index + 1) * 10\n        }\n    }));\n} catch(e) {\n    return [];\n}"
+            },
+            "id": "parse-criteria",
+            "name": "Parse Criteria Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1650,
+                450
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SUPABASE_URL + '/rest/v1/criteria' }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({\n  project_id: $json.project_id,\n  title: $json.title,\n  weight: $json.weight,\n  description: $json.description,\n  group_name: $json.group_name,\n  order_index: $json.order_index\n}) }}",
+                "options": {}
+            },
+            "id": "supabase-insert-criteria",
+            "name": "Supabase: Insert Criteria",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1850,
+                450
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook (Synced-Success-16:21)": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch All Sources",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch All Sources": {
+            "main": [
+                [
+                    {
+                        "node": "OpenAI Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Parse OpenAI Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse OpenAI Response": {
+            "main": [
+                [
+                    {
+                        "node": "Upsert Assessment",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "OpenAI: Extract Criteria",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI: Extract Criteria": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase: Delete Criteria",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase: Delete Criteria": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Criteria Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Criteria Response": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase: Insert Criteria",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
