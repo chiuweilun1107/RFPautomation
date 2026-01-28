@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Task, Section } from "../types";
 import { CitationBadge, Evidence } from "@/components/workspace/CitationBadge";
-import { CitationRenderer } from "@/components/workspace/CitationRenderer";
+import { MarkdownWithCitations } from "@/components/workspace/MarkdownWithCitations";
 import { SourceDetailPanel } from "@/components/workspace/SourceDetailPanel";
 import { convertCitationMarksToNumbers } from "../utils/citationTextParser";
 
@@ -296,7 +296,7 @@ function DraggableTaskPopupComponent({ task, section, isOpen, onClose, handleGen
                                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Requirement_Spec</h4>
                                 </div>
                                 <div className="p-5 bg-zinc-50 dark:bg-zinc-900 border-2 border-black/5 dark:border-white/5 font-mono text-sm leading-relaxed">
-                                    <CitationRenderer
+                                    <MarkdownWithCitations
                                         text={convertedText}
                                         evidences={evidences}
                                         onCitationClick={(evidence) => handleCitationClick(evidence)}

@@ -9,7 +9,7 @@ import { LayoutDashboard, FileText, Settings, BookOpen, LogOut, Menu, User, Gant
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
@@ -214,6 +214,8 @@ export function DashboardSidebar({ className, userEmail, isCollapsed, onToggle }
                         </SheetTrigger>
                     </div>
                     <SheetContent side="left" className="p-0 w-72 border-r border-black dark:border-white bg-background">
+                        <SheetTitle className="sr-only">Dashboard Menu</SheetTitle>
+                        <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
                         <SidebarContent />
                     </SheetContent>
                 </Sheet>

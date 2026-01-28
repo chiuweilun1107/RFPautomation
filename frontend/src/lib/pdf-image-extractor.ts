@@ -73,7 +73,7 @@ export async function extractImagesFromPDF(file: File): Promise<ExtractedImage[]
 
             // 1. External Image (XObject)
             if (fn === pdfjsLib.OPS.paintImageXObject) {
-                const imgName = args[0];
+                const imgName = args[0] as string;
                 try {
                     let imgObj;
                     try {
@@ -91,15 +91,15 @@ export async function extractImagesFromPDF(file: File): Promise<ExtractedImage[]
             }
             // 2. Inline Image
             else if (fn === pdfjsLib.OPS.paintInlineImageXObject) {
-                const imgObj = args[0];
+                const imgObj = args[0] as ImageObject;
                 if (imgObj) await processImageObject(imgObj, page.pageNumber);
             }
             // 3. Form XObject (Recursion)
             else if (fn === pdfjsLib.OPS.paintFormXObjectBegin || fn === pdfjsLib.OPS.paintXObject) {
                 // Note: pdf.js handles Forms differently in different versions.
-                // In some versions, paintXObject delegates to Form. 
+                // In some versions, paintXObject delegates to Form.
                 // We try to get the object and check if it has an operator list.
-                const objName = args[0];
+                const objName = args[0] as string;
                 try {
                     let obj;
                     try { obj = await page.objs.get(objName); } catch {

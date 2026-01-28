@@ -89,6 +89,7 @@ export function useTenderOperations({
             id: crypto.randomUUID(),
             title: "New Chapter",
             sections: [],
+            citations: [],
             generation_method: 'manual',
             is_modified: false
         }]);
@@ -115,6 +116,7 @@ export function useTenderOperations({
                 title: method === 'manual' ? "New Section" : (method === 'ai_gen' ? "New AI Section" : "New Template Section"),
                 parent_id: newOutline[chapterIndex].id,
                 order_index: newOutline[chapterIndex].sections.length + 1,
+                citations: [],
                 generation_method: method,
                 is_modified: false
             });

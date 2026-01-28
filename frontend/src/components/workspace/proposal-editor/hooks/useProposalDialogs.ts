@@ -16,6 +16,7 @@ export function useProposalDialogs() {
   const [isGenerateSubsectionOpen, setIsGenerateSubsectionOpen] = useState(false);
   const [imageGenDialogOpen, setImageGenDialogOpen] = useState(false);
   const [isContentGenerationDialogOpen, setIsContentGenerationDialogOpen] = useState(false);
+  const [isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen] = useState(false);
 
   // ============ 源文献相关 Dialog ============
   const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
@@ -36,6 +37,7 @@ export function useProposalDialogs() {
   const [taskConflictContext, setTaskConflictContext] = useState<any | null>(null);
   const [contentGenerationTarget, setContentGenerationTarget] = useState<any | null>(null);
   const [selectedTaskForImage, setSelectedTaskForImage] = useState<any | null>(null);
+  const [taskGenerationContext, setTaskGenerationContext] = useState<any | null>(null);
   const [subsectionTargetSection, setSubsectionTargetSection] = useState<any | null>(null);
   const [structureWarningSection, setStructureWarningSection] = useState<any | null>(null);
 
@@ -66,6 +68,9 @@ export function useProposalDialogs() {
   const openContentGeneration = useCallback(() => setIsContentGenerationDialogOpen(true), []);
   const closeContentGeneration = useCallback(() => setIsContentGenerationDialogOpen(false), []);
 
+  const openTaskGeneration = useCallback(() => setIsTaskGenerationDialogOpen(true), []);
+  const closeTaskGeneration = useCallback(() => setIsTaskGenerationDialogOpen(false), []);
+
   const openAddSource = useCallback(() => setIsAddSourceDialogOpen(true), []);
   const closeAddSource = useCallback(() => setIsAddSourceDialogOpen(false), []);
 
@@ -93,6 +98,7 @@ export function useProposalDialogs() {
     setIsGenerateSubsectionOpen(false);
     setImageGenDialogOpen(false);
     setIsContentGenerationDialogOpen(false);
+    setIsTaskGenerationDialogOpen(false);
     setIsAddSourceDialogOpen(false);
     setIsConflictDialogOpen(false);
     setIsSubsectionConflictDialogOpen(false);
@@ -116,6 +122,7 @@ export function useProposalDialogs() {
     setIsGenerateSubsectionOpen(false);
     setImageGenDialogOpen(false);
     setIsContentGenerationDialogOpen(false);
+    setIsTaskGenerationDialogOpen(false);
   }, []);
 
   return {
@@ -126,6 +133,7 @@ export function useProposalDialogs() {
     isGenerateSubsectionOpen,
     imageGenDialogOpen,
     isContentGenerationDialogOpen,
+    isTaskGenerationDialogOpen,
     isAddSourceDialogOpen,
     isConflictDialogOpen,
     isSubsectionConflictDialogOpen,
@@ -139,6 +147,7 @@ export function useProposalDialogs() {
     setIsGenerateSubsectionOpen,
     setImageGenDialogOpen,
     setIsContentGenerationDialogOpen,
+    setIsTaskGenerationDialogOpen,
     setIsAddSourceDialogOpen,
     setIsConflictDialogOpen,
     setIsSubsectionConflictDialogOpen,
@@ -158,6 +167,8 @@ export function useProposalDialogs() {
     setContentGenerationTarget,
     selectedTaskForImage,
     setSelectedTaskForImage,
+    taskGenerationContext,
+    setTaskGenerationContext,
     subsectionTargetSection,
     setSubsectionTargetSection,
     structureWarningSection,
@@ -180,6 +191,7 @@ export function useProposalDialogs() {
     openGenerateSubsection,
     openImageGeneration,
     openContentGeneration,
+    openTaskGeneration,
     openAddSource,
     openConflictDialog,
     openSubsectionConflictDialog,
@@ -193,6 +205,7 @@ export function useProposalDialogs() {
     closeGenerateSubsection,
     closeImageGeneration,
     closeContentGeneration,
+    closeTaskGeneration,
     closeAddSource,
     closeConflictDialog,
     closeSubsectionConflictDialog,

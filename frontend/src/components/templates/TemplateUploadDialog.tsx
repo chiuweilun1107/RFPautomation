@@ -127,8 +127,7 @@ export function TemplateUploadDialog({
             onClose();
         } catch (error) {
             handleFileError(error, 'UploadTemplate', file?.name, {
-                userMessage: '上傳失敗，請重試',
-                metadata: { projectId, mode }
+                userMessage: '上傳失敗，請重試'
             });
         } finally {
             setIsUploading(false);

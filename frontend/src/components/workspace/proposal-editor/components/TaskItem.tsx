@@ -86,7 +86,7 @@ function TaskItemComponent({
                     ) : (
                         <div
                             onClick={onStartEdit}
-                            className="text-sm truncate cursor-pointer text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+                            className="text-sm cursor-pointer text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-pre-wrap line-clamp-3"
                         >
                             {task.requirement_text || "Untitled task"}
                         </div>

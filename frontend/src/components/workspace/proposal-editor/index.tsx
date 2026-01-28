@@ -668,6 +668,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
           contentLoading={{}}
           setSelectedEvidence={setSelectedEvidence}
           handleDeleteImage={handleDeleteImage}
+          taskFilter={'all'}
         />
       );
     },

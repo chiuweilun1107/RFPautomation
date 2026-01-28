@@ -79,7 +79,7 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
 
   const handleUpdateOriginal = async (designConfig: Template['design_config']) => {
     try {
-      // 直接調用 Supabase 更新 paragraphs 和 parsed_tables
+      // 直接調用 Supabase 更新 paragraphs、parsed_tables 和 semantic_mappings
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
 
@@ -88,6 +88,7 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
         .update({
           paragraphs: template.paragraphs,
           parsed_tables: template.parsed_tables,
+          semantic_mappings: template.semantic_mappings || [],
           updated_at: new Date().toISOString()
         })
         .eq('id', template.id)
@@ -112,6 +113,7 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
       });
     }
   }
+
 
   const handleSaveAsNew = async (newTemplate: Partial<Template>) => {
     try {

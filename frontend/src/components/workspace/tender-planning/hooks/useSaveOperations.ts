@@ -90,7 +90,7 @@ export function useSaveOperations({
         } catch (error: unknown) {
             console.error("Error saving outline:", error);
             toast.error("Save Failed", {
-                description: error.message
+                description: error instanceof Error ? error.message : "An unknown error occurred"
             });
         } finally {
             setSaving(false);

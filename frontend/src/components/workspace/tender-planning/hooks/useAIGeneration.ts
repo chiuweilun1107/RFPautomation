@@ -27,6 +27,7 @@ interface UseAIGenerationReturn {
     executeAIGeneration: (mode: GenerationMode, sourceIds: string[]) => Promise<void>;
     executeSubsectionGeneration: (chapterIndex: number, mode: GenerationMode, sourceIds: string[]) => Promise<void>;
     executeTaskGeneration: (sectionId: string, sectionTitle: string, mode: TaskGenerationMode, conflictMode: GenerationMode, sourceIds: string[]) => Promise<void>;
+    executeTaskGenerationWithType: (sectionId: string, sectionTitle: string, mode: TaskGenerationMode, conflictMode: GenerationMode, sourceIds: string[], projectType?: string, userDescription?: string) => Promise<void>;
 }
 
 /**
@@ -267,9 +268,97 @@ export function useAIGeneration({
         }
     }, [projectId, supabase, outline, setGenerating, fetchData, handleApiError, handleDbError]);
 
+    // Execute task generation with project type (WF11 with Smart Router)
+    const executeTaskGenerationWithType = useCallback(async (
+        sectionId: string,
+        sectionTitle: string,
+        mode: TaskGenerationMode,
+        conflictMode: GenerationMode,
+        sourceIds: string[],
+        projectType?: string,
+        userDescription?: string
+    ) => {
+        setGenerating(true);
+        logger.info('Generating tasks with type', `TenderPlanning:${mode === 'function' ? 'WF11' : 'WF13'}`, {
+            sectionTitle,
+            sectionId,
+            mode,
+            conflictMode,
+            projectType,
+            projectId,
+        });
+        try {
+            if (conflictMode === 'replace_all') {
+                const { error: deleteError } = await supabase
+                    .from('tasks')
+                    .delete()
+                    .eq('section_id', sectionId);
+                if (deleteError) throw deleteError;
+            }
+
+            if (sourceIds.length === 0) {
+                toast.error("No sources selected", { description: "Please select at least one source." });
+                setGenerating(false);
+                return;
+            }
+
+            const allSections = outline.map(c => c.title);
+            const endpoint = mode === 'function' ? '/api/webhook/generate-tasks-advanced' : '/api/webhook/generate-tasks-management';
+
+            logger.debug('Posting to task generation endpoint', 'TenderPlanning', {
+                endpoint,
+                sourceCount: sourceIds.length,
+                projectType: projectType || 'auto-detect'
+            });
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectId,
+                    sectionId,
+                    sectionTitle,
+                    sourceIds,
+                    allSections,
+                    projectType, // Pass user-selected project type (or undefined for AI auto-detect)
+                    userDescription // Pass user description for additional context
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to trigger task generation");
+            }
+
+            toast.success("Task Generation Started", {
+                description: mode === 'function'
+                    ? `AI is designing function specs (WF11) using ${sourceIds.length} sources...`
+                    : `AI is designing content draft (WF13) using ${sourceIds.length} sources...`
+            });
+
+            setTimeout(() => {
+                fetchData();
+                setGenerating(false);
+                toast.success("Tasks Updated", { description: "New tasks have been added to the section." });
+            }, 5000);
+        } catch (error) {
+            handleApiError(error, `TenderPlanning:${mode === 'function' ? 'WF11' : 'WF13'}`, {
+                userMessage: 'Failed to generate tasks. Please try again.',
+                metadata: {
+                    sectionTitle,
+                    mode,
+                    conflictMode,
+                    projectType,
+                    projectId,
+                },
+            });
+            setGenerating(false);
+        }
+    }, [projectId, supabase, outline, setGenerating, fetchData, handleApiError, handleDbError]);
+
     return {
         executeAIGeneration,
         executeSubsectionGeneration,
         executeTaskGeneration,
+        executeTaskGenerationWithType,
     };
 }

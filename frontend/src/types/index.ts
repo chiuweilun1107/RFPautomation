@@ -48,7 +48,14 @@ export type {
   PropertyPanelProps,
   TemplateFolder,
   TemplateUploadMode,
+  // Semantic Marking Types
+  SemanticRole,
+  SemanticMapping,
+  SemanticRoleInfo,
 } from './template';
+
+// Template Constants
+export { SEMANTIC_ROLES } from './template';
 
 // Content Types
 export type {

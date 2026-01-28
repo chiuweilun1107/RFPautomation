@@ -9,6 +9,7 @@ import { AddChapterMethodDialog } from "../../dialogs/AddChapterMethodDialog";
 import { GenerationModeDialog } from "../../dialogs/GenerationModeDialog";
 import { TemplateUploadDialog } from "@/components/templates/TemplateUploadDialog";
 import { SourceSelectionDialog } from "../../dialogs/SourceSelectionDialog";
+import { TaskGenerationDialog, TaskGenerationOptions } from "../../dialogs/TaskGenerationDialog";
 import type { DialogContext, GenerationMode } from "../types";
 
 interface TenderDialogsProps {
@@ -46,6 +47,14 @@ interface TenderDialogsProps {
     onSourceSelectionChange: (open: boolean) => void;
     /** Source selection confirmation handler */
     onSourceSelectionConfirm: (sourceIds: string[]) => void;
+    /** Task generation dialog state */
+    isTaskGenerationDialogOpen: boolean;
+    /** Task generation dialog change handler */
+    onTaskGenerationDialogChange: (open: boolean) => void;
+    /** Task generation section title */
+    taskGenerationSectionTitle: string;
+    /** Task generation confirmation handler */
+    onTaskGenerationConfirm: (options: TaskGenerationOptions) => Promise<void>;
 }
 
 /**
@@ -68,7 +77,11 @@ export function TenderDialogs({
     onTaskModeConfirm,
     isSourceSelectionOpen,
     onSourceSelectionChange,
-    onSourceSelectionConfirm
+    onSourceSelectionConfirm,
+    isTaskGenerationDialogOpen,
+    onTaskGenerationDialogChange,
+    taskGenerationSectionTitle,
+    onTaskGenerationConfirm
 }: TenderDialogsProps) {
     return (
         <>
@@ -112,6 +125,14 @@ export function TenderDialogs({
                 onOpenChange={onSourceSelectionChange}
                 projectId={projectId}
                 onConfirm={onSourceSelectionConfirm}
+            />
+
+            {/* Task Generation Type Dialog (WF11 Project Type Selection) */}
+            <TaskGenerationDialog
+                open={isTaskGenerationDialogOpen}
+                onOpenChange={onTaskGenerationDialogChange}
+                sectionTitle={taskGenerationSectionTitle}
+                onGenerate={onTaskGenerationConfirm}
             />
         </>
     );

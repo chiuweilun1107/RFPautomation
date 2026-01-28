@@ -158,7 +158,15 @@
       "Bash(./scripts/check-error-handling.sh:*)",
       "Bash(test:*)",
       "Bash(for:*)",
-      "Bash(do grep -l \"project_assessments\" \"$f\")"
+      "Bash(do grep -l \"project_assessments\" \"$f\")",
+      "Bash(npx ts-node:*)",
+      "Bash(if [ -f .env.local ])",
+      "Bash(then cat .env.local)",
+      "Bash(fi)",
+      "Bash(export SUPABASE_URL=\"https://goyonrowhfphooryfzif.supabase.co\")",
+      "Bash(export:*)",
+      "Bash(cloudflared tunnel list:*)",
+      "Bash(ps:*)"
     ]
   }
 }

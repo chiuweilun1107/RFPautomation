@@ -7,6 +7,7 @@ export interface Citation {
 
 export interface Task {
     id: string;
+    title?: string;
     requirement_text: string;
     status: string;
     section_id: string;
@@ -61,8 +62,10 @@ export interface Source {
     summary?: string;
     topics?: string[];
     project_id?: string;
-    status?: string;
+    status?: "processing" | "ready" | "error";
     url?: string;
+    pages?: number;
+    updated_at?: string;
 }
 
 export interface TaskImage {

@@ -79,9 +79,9 @@ export function useMutationWithError<TData = unknown, TError = Error, TVariables
     ...mutationOptions,
 
     mutationFn: enableRetry && mutationFn
-      ? async (variables: TVariables) => {
+      ? async (variables: TVariables, mutationContext: any) => {
           return withRetry(
-            () => mutationFn(variables),
+            () => mutationFn(variables, mutationContext),
             {
               context,
               showToast: false, // We'll handle toast in onError

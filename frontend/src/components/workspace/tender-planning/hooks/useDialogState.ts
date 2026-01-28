@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import type { DialogContext, TaskGenerationContext, SourceSelectionContext } from '../types';
+import type { DialogContext, TaskGenerationContext, SourceSelectionContext, TaskGenerationMode, GenerationMode } from '../types';
 
 interface UseDialogStateReturn {
     // Method Dialog
@@ -36,6 +36,12 @@ interface UseDialogStateReturn {
     setIsSourceSelectionOpen: React.Dispatch<React.SetStateAction<boolean>>;
     sourceSelectionContext: SourceSelectionContext | null;
     setSourceSelectionContext: React.Dispatch<React.SetStateAction<SourceSelectionContext | null>>;
+
+    // Task Generation Type Dialog (WF11 Project Type Selection)
+    isTaskGenerationDialogOpen: boolean;
+    setIsTaskGenerationDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    taskGenerationTypeContext: { sectionTitle: string; sectionId: string; mode: TaskGenerationMode; conflictMode: GenerationMode; sourceIds: string[] } | null;
+    setTaskGenerationTypeContext: React.Dispatch<React.SetStateAction<{ sectionTitle: string; sectionId: string; mode: TaskGenerationMode; conflictMode: GenerationMode; sourceIds: string[] } | null>>;
 }
 
 /**
@@ -61,6 +67,10 @@ export function useDialogState(): UseDialogStateReturn {
     const [isSourceSelectionOpen, setIsSourceSelectionOpen] = useState(false);
     const [sourceSelectionContext, setSourceSelectionContext] = useState<SourceSelectionContext | null>(null);
 
+    // Task Generation Type Dialog (WF11 Project Type Selection)
+    const [isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen] = useState(false);
+    const [taskGenerationTypeContext, setTaskGenerationTypeContext] = useState<{ sectionTitle: string; sectionId: string; mode: TaskGenerationMode; conflictMode: GenerationMode; sourceIds: string[] } | null>(null);
+
     return {
         isMethodDialogOpen,
         setIsMethodDialogOpen,
@@ -80,5 +90,9 @@ export function useDialogState(): UseDialogStateReturn {
         setIsSourceSelectionOpen,
         sourceSelectionContext,
         setSourceSelectionContext,
+        isTaskGenerationDialogOpen,
+        setIsTaskGenerationDialogOpen,
+        taskGenerationTypeContext,
+        setTaskGenerationTypeContext,
     };
 }

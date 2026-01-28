@@ -7,7 +7,7 @@ import { GenerateSubsectionDialog } from '@/components/workspace/dialogs/Generat
 import { ContentGenerationDialog } from '@/components/workspace/dialogs/ContentGenerationDialog';
 import { ImageGenerationDialog } from '@/components/workspace/dialogs/ImageGenerationDialog';
 import { ConflictConfirmationDialog } from '@/components/ui/ConflictConfirmationDialog';
-import type { Section, Source, Task } from '../types';
+import type { Section, Source, Task, ImageGenerationOptions } from '../types';
 
 interface ProposalDialogsProps {
   // Dialog 狀態
@@ -79,12 +79,7 @@ interface ProposalDialogsProps {
   onGenerateManagement: () => void;
   onGenerateTaskContent: () => void;
   onGenerateSubsections: () => void;
-  onGenerateImage: (options: {
-    prompt?: string;
-    style?: string;
-    size?: string;
-    [key: string]: unknown;
-  }) => Promise<void>;
+  onGenerateImage: (options: ImageGenerationOptions) => Promise<void>;
   onAddSource: () => void;
   onSwitchToAIGeneration: () => void;
 

@@ -11,6 +11,15 @@ export async function POST(request: Request) {
         const body = await request.json();
         console.log('[Proxy] Calling n8n Task Generation (WF11):', body);
 
+        // Extract projectType and userDescription from request
+        const { projectType, userDescription } = body;
+        if (projectType) {
+            console.log('[Proxy] User selected projectType:', projectType);
+        }
+        if (userDescription) {
+            console.log('[Proxy] User description:', userDescription);
+        }
+
         // Fetch sourceIds if missing (Fallback)
         if (!body.sourceIds || body.sourceIds.length === 0) {
             console.log('[Proxy] DEBUG - Supabase Config - URL Defined:', !!supabaseUrl, 'Key Defined:', !!supabaseServiceKey);
@@ -43,7 +52,11 @@ export async function POST(request: Request) {
         const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...body, workflow_type: 'wf11_functional' }),
+            body: JSON.stringify({
+                ...body,
+                workflow_type: 'wf11_functional',
+                projectType // Pass projectType to n8n (undefined if not provided)
+            }),
         });
 
         const responseText = await response.text();

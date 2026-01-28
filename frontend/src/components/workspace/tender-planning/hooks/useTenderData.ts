@@ -8,7 +8,7 @@
 import { useCallback } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import type { Chapter, Section, Task } from '@/components/workspace/types';
+import type { Chapter, Section, Task } from '../types';
 
 interface UseTenderDataProps {
     projectId: string;

@@ -13,3 +13,4 @@ export { TenderHeader } from './TenderHeader';
 export { ChapterList } from './ChapterList';
 export { TenderToolbar } from './TenderToolbar';
 export { TenderDialogs } from './TenderDialogs';
+export { TemplatePreviewDialog } from './TemplatePreviewDialog';

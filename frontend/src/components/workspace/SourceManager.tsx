@@ -621,7 +621,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
 
                 {/* 3. Source List Area (Only show if not in results mode, or push down?) */}
                 {/* NotebookLM shows list below results panel, so we keep it */}
-                <CardContent className="px-0 space-y-6 flex-1 overflow-y-auto">
+                <CardContent className="px-0 space-y-6 flex-1 overflow-y-auto no-scrollbar">
                     {filteredSources.length === 0 && sources.length === 0 && searchState === 'idle' && (
                         <div className="text-center py-16 border-2 border-dashed border-black/10 dark:border-white/10 rounded-none bg-black/5 dark:bg-white/5 m-1">
                             <Globe className="h-14 w-14 mx-auto text-black/20 dark:text-white/20 mb-5" strokeWidth={1.5} />
@@ -678,7 +678,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
                                                         <Checkbox
                                                             checked={isLinked}
                                                             disabled={saving || source.status !== 'ready'}
-                                                            className="pointer-events-none rounded-none border-black dark:border-white data-[state=checked]:bg-black data-[state=checked]:text-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black"
+                                                            className="pointer-events-none rounded-none border-black dark:border-white data-[state=checked]:bg-black data-[state=checked]:text-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black group-hover:border-white dark:group-hover:border-black"
                                                         />
                                                     </div>
 

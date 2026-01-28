@@ -2,6 +2,13 @@
  * 提案编辑器的类型定义
  */
 
+export interface Citation {
+  source_id: string;
+  page: number;
+  quote?: string;
+  title?: string;
+}
+
 export interface Section {
   id: string;
   title: string;
@@ -12,8 +19,11 @@ export interface Section {
   citation_source_id?: string | null;
   citation_page?: number | null;
   citation_quote?: string | null;
+  citations: Citation[];
   content?: string | null;
   last_integrated_at?: string | null;
+  generation_method?: 'manual' | 'wf11_functional' | 'wf13_article' | string;
+  is_modified?: boolean;
 }
 
 export interface Task {
@@ -26,9 +36,12 @@ export interface Task {
   citation_source_id?: string | null;
   citation_page?: number | null;
   citation_quote?: string | null;
-  citations?: { source_id: string; page: number; quote: string; title?: string }[];
+  citations: Citation[];
   order_index?: number;
   task_images?: TaskImage[];
+  workflow_type?: string;
+  created_at?: string;
+  is_modified?: boolean;
 }
 
 export interface TaskImage {
@@ -51,7 +64,7 @@ export interface TaskContent {
   updated_at?: string;
 }
 
-export interface Citation {
+export interface TaskCitation {
   id: string;
   source_id: string;
   task_id: string;
@@ -114,9 +127,9 @@ export interface SectionUpdatePayload {
 }
 
 export interface ImageGenerationOptions {
-  prompt: string;
-  style?: string;
-  size?: string;
+  type: string;
+  customPrompt?: string;
+  referenceImage?: string; // base64
 }
 
 export interface DialogState {

@@ -168,6 +168,8 @@ export interface Template {
   text_boxes?: TextBox[];
   comments?: Comment[];
   revisions?: RevisionsCollection;
+  // Semantic marking system
+  semantic_mappings?: SemanticMapping[]; // 語義標記陣列
 }
 
 // Template Structure (for hierarchical content)
@@ -253,3 +255,121 @@ export interface TemplateFolder {
 
 // Template Upload Mode
 export type TemplateUploadMode = 'replace' | 'merge' | 'new';
+
+// ==================== Semantic Marking System ====================
+
+// 語義角色類型定義
+export type SemanticRole =
+  | 'heading1'      // 主標題
+  | 'heading2'      // 次標題
+  | 'heading3'      // 三級標題
+  | 'content'       // 一般內文
+  | 'list'          // 列表項目
+  | 'quote'         // 引用文字
+  | 'caption'       // 圖說/表格標題
+  | 'emphasis'      // 強調文字
+  | 'note'          // 備註說明
+  | 'footer'        // 頁尾文字
+  | 'custom';       // 自訂角色
+
+// 語義標記
+export interface SemanticMapping {
+  id: string;                    // 唯一標識
+  paragraph_index: number;       // 段落索引（對應 paragraphs 陣列）
+  semantic_role: SemanticRole;   // 語義角色
+  label: string;                 // 顯示標籤（例如：「專案標題」）
+  ai_placeholder?: string;       // AI 佔位符（例如：「{project_title}」）
+  description?: string;          // 描述說明
+  is_required?: boolean;         // 是否為必填
+  metadata?: Record<string, unknown>; // 額外資訊
+}
+
+// 語義角色顯示資訊
+export interface SemanticRoleInfo {
+  role: SemanticRole;
+  label: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+// 語義角色選項清單
+export const SEMANTIC_ROLES: SemanticRoleInfo[] = [
+  {
+    role: 'heading1',
+    label: '主標題',
+    description: '文檔的主要標題（H1）',
+    icon: '📌',
+    color: '#FA4028'
+  },
+  {
+    role: 'heading2',
+    label: '次標題',
+    description: '章節的次要標題（H2）',
+    icon: '📍',
+    color: '#FF6B4A'
+  },
+  {
+    role: 'heading3',
+    label: '三級標題',
+    description: '小節的標題（H3）',
+    icon: '📎',
+    color: '#FF9166'
+  },
+  {
+    role: 'content',
+    label: '一般內文',
+    description: '標準段落文字',
+    icon: '📄',
+    color: '#4A5568'
+  },
+  {
+    role: 'list',
+    label: '列表項目',
+    description: '清單或列舉項目',
+    icon: '📋',
+    color: '#3182CE'
+  },
+  {
+    role: 'quote',
+    label: '引用文字',
+    description: '引用或參考內容',
+    icon: '💬',
+    color: '#805AD5'
+  },
+  {
+    role: 'caption',
+    label: '圖說/表格標題',
+    description: '圖片或表格的說明文字',
+    icon: '🖼️',
+    color: '#38A169'
+  },
+  {
+    role: 'emphasis',
+    label: '強調文字',
+    description: '需要突出顯示的內容',
+    icon: '⭐',
+    color: '#D69E2E'
+  },
+  {
+    role: 'note',
+    label: '備註說明',
+    description: '附加說明或注意事項',
+    icon: '📝',
+    color: '#667EEA'
+  },
+  {
+    role: 'footer',
+    label: '頁尾文字',
+    description: '頁面底部的資訊',
+    icon: '⬇️',
+    color: '#718096'
+  },
+  {
+    role: 'custom',
+    label: '自訂角色',
+    description: '使用者自定義的特殊角色',
+    icon: '🔧',
+    color: '#A0AEC0'
+  }
+];

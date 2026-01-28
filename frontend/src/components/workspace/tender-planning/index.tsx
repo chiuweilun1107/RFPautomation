@@ -23,7 +23,8 @@ import {
     useDialogState,
     useAIGeneration,
     useSaveOperations,
-    useContentGeneration
+    useContentGeneration,
+    useTemplatePreview
 } from "./hooks";
 
 // Components
@@ -31,7 +32,8 @@ import {
     TenderHeader,
     TenderToolbar,
     ChapterList,
-    TenderDialogs
+    TenderDialogs,
+    TemplatePreviewDialog
 } from "./components";
 
 // Types
@@ -83,6 +85,10 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setIsSourceSelectionOpen,
         sourceSelectionContext,
         setSourceSelectionContext,
+        isTaskGenerationDialogOpen,
+        setIsTaskGenerationDialogOpen,
+        taskGenerationTypeContext,
+        setTaskGenerationTypeContext,
     } = useDialogState();
 
     // Data Operations
@@ -126,7 +132,8 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
     const {
         executeAIGeneration,
         executeSubsectionGeneration,
-        executeTaskGeneration
+        executeTaskGeneration,
+        executeTaskGenerationWithType
     } = useAIGeneration({
         projectId,
         supabase,
@@ -147,6 +154,19 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setGenerating,
         fetchData
     });
+
+    // Template Preview
+    const {
+        templates,
+        selectedTemplateId,
+        setSelectedTemplateId,
+        previewing,
+        previewContent,
+        previewDialogOpen,
+        setPreviewDialogOpen,
+        templateName,
+        handlePreview
+    } = useTemplatePreview(projectId);
 
     // Load data on mount
     useEffect(() => {
@@ -230,7 +250,17 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setSourceSelectionContext({
             type: 'task',
             data: { sectionId, sectionTitle, mode },
-            next: (sourceIds) => executeTaskGeneration(sectionId, sectionTitle, mode, 'append_only', sourceIds)
+            next: (sourceIds) => {
+                // After source selection, show TaskGenerationDialog for project type selection
+                setTaskGenerationTypeContext({
+                    sectionId,
+                    sectionTitle,
+                    mode,
+                    conflictMode: 'append_only',
+                    sourceIds
+                });
+                setIsTaskGenerationDialogOpen(true);
+            }
         });
         setIsSourceSelectionOpen(true);
     };
@@ -243,7 +273,31 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         setSourceSelectionContext({
             type: 'task',
             data: { sectionId, sectionTitle, mode, conflictMode },
-            next: (sourceIds) => executeTaskGeneration(sectionId, sectionTitle, mode, conflictMode, sourceIds)
+            next: (sourceIds) => {
+                // Check if we should skip the dialog (WF13 + Overwrite)
+                if (mode === 'content' && conflictMode === 'replace_all') {
+                    executeTaskGenerationWithType(
+                        sectionId,
+                        sectionTitle,
+                        mode,
+                        conflictMode,
+                        sourceIds,
+                        undefined, // Default project type
+                        "" // Default description
+                    );
+                    return;
+                }
+
+                // After source selection, show TaskGenerationDialog for project type selection
+                setTaskGenerationTypeContext({
+                    sectionId,
+                    sectionTitle,
+                    mode,
+                    conflictMode,
+                    sourceIds
+                });
+                setIsTaskGenerationDialogOpen(true);
+            }
         });
         setIsSourceSelectionOpen(true);
         setTaskGenerationContext(null);
@@ -254,6 +308,27 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
             sourceSelectionContext.next(sourceIds);
             setSourceSelectionContext(null);
         }
+    };
+
+    const handleTaskGenerationConfirm = async (options: any) => {
+        if (!taskGenerationTypeContext) return;
+
+        const { sectionId, sectionTitle, mode, conflictMode, sourceIds } = taskGenerationTypeContext;
+
+        // Call executeTaskGeneration with projectType and userDescription
+        await executeTaskGenerationWithType(
+            sectionId,
+            sectionTitle,
+            mode,
+            conflictMode,
+            sourceIds,
+            options.projectType, // Pass user-selected project type (or undefined for AI auto-detect)
+            options.userDescription // Pass user description for additional context
+        );
+
+        // Close dialog and clear context
+        setIsTaskGenerationDialogOpen(false);
+        setTaskGenerationTypeContext(null);
     };
 
     const handleGenerateContent = (task: any, section: any) => {
@@ -312,7 +387,15 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                     />
 
                     {/* Toolbar */}
-                    <TenderToolbar saving={saving} onSave={handleSave} />
+                    <TenderToolbar
+                        saving={saving}
+                        onSave={handleSave}
+                        selectedTemplateId={selectedTemplateId}
+                        templates={templates}
+                        onTemplateSelect={setSelectedTemplateId}
+                        onPreview={handlePreview}
+                        previewing={previewing}
+                    />
 
                     {/* Chapter List */}
                     <ChapterList
@@ -355,6 +438,18 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                 isSourceSelectionOpen={isSourceSelectionOpen}
                 onSourceSelectionChange={setIsSourceSelectionOpen}
                 onSourceSelectionConfirm={handleSourceSelectionConfirm}
+                isTaskGenerationDialogOpen={isTaskGenerationDialogOpen}
+                onTaskGenerationDialogChange={setIsTaskGenerationDialogOpen}
+                taskGenerationSectionTitle={taskGenerationTypeContext?.sectionTitle || ''}
+                onTaskGenerationConfirm={handleTaskGenerationConfirm}
+            />
+
+            {/* Template Preview Dialog */}
+            <TemplatePreviewDialog
+                open={previewDialogOpen}
+                onOpenChange={setPreviewDialogOpen}
+                previewContent={previewContent}
+                templateName={templateName}
             />
         </div>
     );

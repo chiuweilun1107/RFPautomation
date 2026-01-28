@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { getErrorMessage } from '@/lib/errorUtils';
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import { sourcesApi } from "@/features/sources/api/sourcesApi";
 import { AddTaskDialog } from "./dialogs/AddTaskDialog";
 import { ContentGenerationDialog } from "./dialogs/ContentGenerationDialog";
 import { ImageGenerationDialog, ImageGenerationOptions } from "./dialogs/ImageGenerationDialog";
+import { TaskGenerationDialog, TaskGenerationOptions } from "./dialogs/TaskGenerationDialog";
 import { GenerateSubsectionDialog } from "./dialogs/GenerateSubsectionDialog";
 import { AddSectionDialog } from "./dialogs/AddSectionDialog";
 import { AddSubsectionDialog } from "./dialogs/AddSubsectionDialog";
@@ -132,6 +133,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         isGenerateSubsectionOpen, setIsGenerateSubsectionOpen,
         imageGenDialogOpen, setImageGenDialogOpen,
         isContentGenerationDialogOpen, setIsContentGenerationDialogOpen,
+        isTaskGenerationDialogOpen, setIsTaskGenerationDialogOpen,
         isAddSourceDialogOpen, setIsAddSourceDialogOpen,
         isConflictDialogOpen, setIsConflictDialogOpen,
         isSubsectionConflictDialogOpen, setIsSubsectionConflictDialogOpen,
@@ -146,6 +148,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         taskConflictContext, setTaskConflictContext,
         contentGenerationTarget, setContentGenerationTarget,
         selectedTaskForImage, setSelectedTaskForImage,
+        taskGenerationContext, setTaskGenerationContext,
         subsectionTargetSection, setSubsectionTargetSection,
         structureWarningSection, setStructureWarningSection,
 
@@ -157,8 +160,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         pendingContentGeneration, setPendingContentGeneration,
     } = dialogState;
 
-    // 初始化业务操作 Hook
-    const operations = useProposalOpsHook(projectId, state);
+    // 注意：operations hook 需要 fetchData，所以在 fetchData 定义后初始化
 
     // ============ Query Hooks - 数据获取和缓存 ============
     // 源文献数据查询（自动缓存 5 分钟）
@@ -463,6 +465,9 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         }
     }, [projectId, supabase]);
 
+    // 初始化业务操作 Hook (需要在 fetchData 定义后)
+    const operations = useProposalOpsHook(projectId, sections, setSections, fetchData);
+
     const handleGenerateClick = useCallback(() => {
         if (sections.length > 0) {
             setIsConflictDialogOpen(true);
@@ -542,7 +547,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         }
     };
 
-    const confirmTaskGeneration = async (mode: 'append' | 'replace') => {
+    const confirmTaskConflict = async (mode: 'append' | 'replace') => {
         if (!taskConflictContext) return;
 
         const { sourceIds, userDesc, targetSection, workflowType } = taskConflictContext;
@@ -754,7 +759,23 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
     };
 
     // ===== NEW: Task Generation (WF11) =====
+    // Step 1: Open dialog with context
     const executeTaskGeneration = async (sourceIds: string[], targetSection: Section, workflowType: 'technical' | 'management' = 'technical') => {
+        // Save context and open dialog
+        setTaskGenerationContext({
+            sourceIds,
+            targetSection,
+            workflowType
+        });
+        setIsTaskGenerationDialogOpen(true);
+    };
+
+    // Step 2: Confirm and execute generation with user options
+    const confirmTaskGeneration = async (options: TaskGenerationOptions) => {
+        if (!taskGenerationContext) return;
+
+        const { sourceIds, targetSection, workflowType } = taskGenerationContext;
+
         setGenerating(true);
         try {
             // Gather all parent section titles (for context to avoid duplicates)
@@ -770,7 +791,8 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                     sectionId: targetSection.id,
                     sectionTitle: targetSection.title,
                     sourceIds,
-                    userDescription: '',
+                    userDescription: options.userDescription || '',
+                    projectType: options.projectType, // Pass user-selected project type (or undefined for AI auto-detect)
                     allSections: allParentSections // Pass context
                 })
             });
@@ -798,6 +820,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
 
             toast.success("任務生成成功！");
             setIsAddTaskOpen(false);
+            setIsTaskGenerationDialogOpen(false);
             fetchData();
         } catch (error) {
             console.error("Task generation error:", error);
@@ -1104,8 +1127,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                     tasks: section.tasks.map(t => ({
                         id: t.id,
                         requirement_text: t.requirement_text,
-                        citation_source_id: t.citation_source_id,
-                        citation_page: t.citation_page
+                        citations: t.citations || []
                     })),
                     selectedSourceIds: sourceIds,
                     allSections: allFlattenedTitles
@@ -2027,8 +2049,8 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                             showWarning: true,
                         }}
                         onCancel={() => setTaskConflictContext(null)}
-                        onAppend={() => confirmTaskGeneration('append')}
-                        onReplace={() => confirmTaskGeneration('replace')}
+                        onAppend={() => confirmTaskConflict('append')}
+                        onReplace={() => confirmTaskConflict('replace')}
                         cancelLabel="取消"
                     />
 
@@ -2223,6 +2245,14 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                 task={selectedTaskForImage}
                 projectImages={allProjectImages}
                 onGenerate={executeImageGeneration}
+            />
+
+            {/* Task Generation Dialog (WF11) */}
+            <TaskGenerationDialog
+                open={isTaskGenerationDialogOpen}
+                onOpenChange={setIsTaskGenerationDialogOpen}
+                sectionTitle={taskGenerationContext?.targetSection?.title || ''}
+                onGenerate={confirmTaskGeneration}
             />
 
         </div>

@@ -17,7 +17,7 @@ import type { Evidence } from '@/components/workspace/CitationBadge';
  * - (出處：3-需求說明書.docx P.1, RFP.xlsx P.5)
  * - (出處：RFP.xlsx P.1)
  */
-const CITATION_PATTERN = /\(出處\s*[：:]\s*([^)]+)\)/g;  // Match both fullwidth ： and halfwidth : with optional spaces
+const CITATION_PATTERN = /[\(（]出處\s*[：:]\s*([^)）]+?)[）\)]/g;  // Match both ASCII and fullwidth parentheses
 const SOURCE_ITEM_PATTERN = /([^,]+?)\s+P\.(\d+)/g;
 
 /**
@@ -180,8 +180,8 @@ export function convertCitationMarksToNumbers(
       }
     });
 
-    // Return converted number tags separated by spaces
-    return numberTags.join(' ');
+    // Return converted number tags separated by spaces (deduplicated)
+    return Array.from(new Set(numberTags)).join(' ');
   });
 
   return { textWithNumbers, evidences };

@@ -102,7 +102,7 @@ export function ProjectWorkspaceLayout({ project, children }: ProjectWorkspaceLa
                 <div className="shrink-0 bg-white dark:bg-gray-950 z-30 border-b border-gray-50 dark:border-gray-900/50">
                     <EditorHeader
                         title={project.title}
-                        status={project.status}
+                        status={project.status || 'active'}
                         projectId={project.id}
                         stage={currentStage}
                     // onStageSelect is no longer needed as we use Links
