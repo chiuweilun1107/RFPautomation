@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, FileText, ChevronUp, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ContentSkeleton } from "@/components/ui/skeletons/ContentSkeleton";
+import { useWritingTableData } from "./hooks/useWritingTableData";
 
 const SectionList = dynamic(
     () => import("@/components/editor/SectionList").then((mod) => ({ default: mod.SectionList })),
@@ -24,101 +24,10 @@ interface WritingTableProps {
 
 export function WritingTable({ projectId }: WritingTableProps) {
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [sections, setSections] = useState<any[]>([]);
-    const [chapters, setChapters] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<string>('summary');
-    const [error, setError] = useState<string | null>(null);
     const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
-    const supabase = createClient();
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // Fetch Sections
-            const { data: sectionsData, error: sectionsError } = await supabase
-                .from('sections')
-                .select('*')
-                .eq('project_id', projectId)
-                .order('order_index', { ascending: true });
-
-            if (sectionsError) throw sectionsError;
-
-            // Fetch tasks separately
-            const { data: tasksData, error: tasksError } = await supabase
-                .from('tasks')
-                .select('*')
-                .eq('project_id', projectId);
-
-            if (tasksError) throw tasksError;
-
-            // Group tasks by section_id
-            const tasksBySection: Record<string, any[]> = {};
-            const orphanTasks: any[] = [];
-
-            tasksData?.forEach((task: any) => {
-                if (task.section_id) {
-                    if (!tasksBySection[task.section_id]) {
-                        tasksBySection[task.section_id] = [];
-                    }
-                    tasksBySection[task.section_id].push(task);
-                } else {
-                    orphanTasks.push(task);
-                }
-            });
-
-            // Recursive function to build section tree
-            const buildSectionTree = (parentId: string | null): any[] => {
-                const sections = sectionsData?.filter((s: any) => s.parent_id === parentId) || [];
-
-                return sections.map((section: any) => ({
-                    ...section,
-                    content: section.title,
-                    tasks: tasksBySection[section.id] || [],
-                    children: buildSectionTree(section.id)
-                }));
-            };
-
-            const fullTree = buildSectionTree(null);
-
-            // If we have orphan tasks, act as if they are in a virtual root or handle them?
-            // Existing logic put them in a virtual root. We can stick to that or just ignore if empty.
-            if (orphanTasks.length > 0) {
-                fullTree.unshift({
-                    id: 'virtual-root',
-                    title: 'General Requirements',
-                    content: 'General Requirements',
-                    type: 'chapter',
-                    children: [],
-                    tasks: orphanTasks
-                });
-            }
-
-            setSections(fullTree);
-
-            // Filter top-level items to be our "Chapters" (Tabs)
-            // We assume top-level sections are chapters.
-            setChapters(fullTree);
-
-            // Set default tab if not set
-            if (activeTab === 'summary' && fullTree.length === 0) {
-                // Stay on summary
-            }
-
-        } catch (err: any) {
-            console.error("[WritingTable] Fetch error:", err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchData();
-
-        // Setup realtime subscription for tasks or sections if needed
-        // For now, we'll rely on basic fetch to keep it simple, as per plan.
-    }, [projectId, supabase]);
+    const { loading, error, chapters, flatSections } = useWritingTableData({ projectId });
 
     if (error) {
         return (
@@ -251,28 +160,7 @@ export function WritingTable({ projectId }: WritingTableProps) {
                                 <div className="space-y-8">
                                     <TableOfContentsGenerator
                                         projectId={projectId}
-                                        sections={sections.flatMap((s: any) => {
-                                            const flat = [{ id: s.id, title: s.title || s.content, parent_id: null, order_index: sections.indexOf(s) + 1 }]
-                                            if (s.children) {
-                                                const flattenChildren = (children: any[], parentId: string) => {
-                                                    let result: any[] = [];
-                                                    children.forEach((child: any, idx: number) => {
-                                                        result.push({
-                                                            id: child.id,
-                                                            title: child.title || child.content,
-                                                            parent_id: parentId,
-                                                            order_index: idx + 1
-                                                        });
-                                                        if (child.children) {
-                                                            result = [...result, ...flattenChildren(child.children, child.id)];
-                                                        }
-                                                    });
-                                                    return result;
-                                                };
-                                                flat.push(...flattenChildren(s.children, s.id));
-                                            }
-                                            return flat;
-                                        })}
+                                        sections={flatSections}
                                     />
                                 </div>
                             </div>
@@ -282,12 +170,6 @@ export function WritingTable({ projectId }: WritingTableProps) {
                         {chapters.map((chapter) => {
                             if (activeTab !== chapter.id) return null;
 
-                            // For a chapter tab, we want to show itself (maybe as a header?) and its children?
-                            // Or just its children as the "sections" list.
-                            // The SectionList component takes an array of sections. 
-                            // If we pass [chapter], it will render the chapter + its children if expanded.
-                            // Let's pass [chapter] to maintain the full tree structure for that tab, but maybe we want it auto-expanded?
-                            // SectionList renders a list of SectionCards.
                             return (
                                 <div key={chapter.id} className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-4xl mx-auto">
                                     <SectionList sections={[chapter]} projectId={projectId} />

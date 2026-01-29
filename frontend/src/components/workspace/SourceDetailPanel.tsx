@@ -1,4 +1,3 @@
-
 import { Evidence } from "./CitationBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { PageNavigation } from "./PageNavigation";
 import { useRef, useState, useEffect, useMemo } from "react";
 import { PageContent } from "@/types/content";
 import { createClient } from "@/lib/supabase/client";
+import { useContentHighlight, useSearchHighlight } from "./hooks";
 
 interface Source {
     id: string;
@@ -39,7 +39,6 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-    const [matches, setMatches] = useState<{ start: number, end: number }[]>([]);
 
 
 
@@ -132,76 +131,40 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         return source?.content;
     }, [evidence, source, showFullContentWithHighlight, shouldShowPageNavigation, currentPage]);
 
-    // Search logic
+    // Use search highlight hook
+    const {
+        highlightedContent: searchHighlightedContent,
+        matchCount,
+    } = useSearchHighlight({
+        content,
+        query: searchQuery,
+        currentMatchIndex,
+    });
+
+    // Reset current match index when search query changes
     useEffect(() => {
-        if (!data || !content || !searchQuery.trim()) {
-            setMatches([]);
-            setCurrentMatchIndex(0);
-            return;
-        }
-
-        const query = searchQuery.toLowerCase();
-        const text = content.toLowerCase();
-        const newMatches: { start: number, end: number }[] = [];
-
-        let pos = text.indexOf(query);
-        while (pos !== -1) {
-            newMatches.push({ start: pos, end: pos + query.length });
-            pos = text.indexOf(query, pos + 1);
-        }
-
-        setMatches(newMatches);
         setCurrentMatchIndex(0);
-    }, [content, searchQuery, data]);
+    }, [searchQuery]);
 
     // Scroll to match
     useEffect(() => {
-        if (matches.length > 0 && currentMatchIndex >= 0 && currentMatchIndex < matches.length) {
+        if (matchCount > 0 && currentMatchIndex >= 0 && currentMatchIndex < matchCount) {
             const matchId = `search-match-${currentMatchIndex}`;
             const element = document.getElementById(matchId);
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
-    }, [currentMatchIndex, matches.length, searchQuery]);
-
-    // Render search highlights
-    const searchHighlightedContent = useMemo(() => {
-        if (!content || matches.length === 0) return null;
-
-        const parts = [];
-        let lastIndex = 0;
-
-        matches.forEach((match, index) => {
-            if (match.start > lastIndex) {
-                parts.push(content.substring(lastIndex, match.start));
-            }
-            const isCurrent = index === currentMatchIndex;
-            parts.push(
-                <mark
-                    key={`match-${index}`}
-                    id={`search-match-${index}`}
-                    className={`${isCurrent ? 'bg-orange-500 text-white' : 'bg-yellow-200 dark:bg-yellow-800/60 text-black dark:text-white'} font-semibold px-0.5 rounded-sm transition-colors duration-200`}
-                >
-                    {content.substring(match.start, match.end)}
-                </mark>
-            );
-            lastIndex = match.end;
-        });
-        if (lastIndex < content.length) {
-            parts.push(content.substring(lastIndex));
-        }
-        return <>{parts}</>;
-    }, [content, matches, currentMatchIndex]);
+    }, [currentMatchIndex, matchCount, searchQuery]);
 
     const handleNextMatch = () => {
-        if (matches.length === 0) return;
-        setCurrentMatchIndex((prev) => (prev + 1) % matches.length);
+        if (matchCount === 0) return;
+        setCurrentMatchIndex((prev) => (prev + 1) % matchCount);
     };
 
     const handlePrevMatch = () => {
-        if (matches.length === 0) return;
-        setCurrentMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
+        if (matchCount === 0) return;
+        setCurrentMatchIndex((prev) => (prev - 1 + matchCount) % matchCount);
     };
 
     // Initialize page to evidence.page when badge is clicked
@@ -225,136 +188,12 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         }
     }, [showFullContentWithHighlight, evidence?.quote, currentPage, content]);
 
-    // Helper function to highlight quote in content
-    const highlightContent = useMemo(() => {
-        if (!showFullContentWithHighlight || !evidence?.quote || !content) {
-            return null;
-        }
-
-        const quote = evidence.quote.trim();
-
-        // Handle ellipsis in quotes - find start and end positions
-        const hasEllipsis = quote.includes('...');
-        let quoteSegments: string[] = [];
-
-        if (hasEllipsis) {
-            // Split by ellipsis and filter out short segments
-            quoteSegments = quote.split('...').map(s => s.trim()).filter(s => s.length > 15);
-        }
-
-        // Aggressive normalization for better matching
-        const normalizeForMatching = (str: string) => {
-            return str
-                .replace(/\s+/g, '') // Remove ALL whitespace
-                .replace(/[#*|]/g, '') // Remove Markdown characters (#, *, |)
-                .replace(/[，。！？；：、]/g, (m) => { // Normalize Chinese punctuation
-                    const map: Record<string, string> = { '，': ',', '。': '.', '！': '!', '？': '?', '；': ';', '：': ':', '、': ',' };
-                    return map[m] || m;
-                });
-        };
-
-        const normalizedContent = normalizeForMatching(content);
-
-        // Helper to find position in original content from normalized index
-        const findOriginalPosition = (normalizedIdx: number): number => {
-            let normalizedCharCount = 0;
-            for (let i = 0; i < content.length; i++) {
-                // Must skip the same characters that were stripped in normalizeForMatching (\s, #, *, |)
-                if (!/[\s#*|]/.test(content[i])) {
-                    if (normalizedCharCount === normalizedIdx) {
-                        return i;
-                    }
-                    normalizedCharCount++;
-                }
-            }
-            return -1;
-        };
-
-        let startIndex = -1;
-        let endIndex = -1;
-
-        if (hasEllipsis && quoteSegments.length >= 2) {
-            // Find first and last segments
-            const firstSegment = quoteSegments[0];
-            const lastSegment = quoteSegments[quoteSegments.length - 1];
-
-            const normalizedFirst = normalizeForMatching(firstSegment);
-            const normalizedLast = normalizeForMatching(lastSegment);
-
-            // Find first segment position
-            const firstNormalizedIdx = normalizedContent.indexOf(normalizedFirst);
-            if (firstNormalizedIdx !== -1) {
-                startIndex = findOriginalPosition(firstNormalizedIdx);
-            }
-
-            // Find last segment position
-            const lastNormalizedIdx = normalizedContent.indexOf(normalizedLast, firstNormalizedIdx + normalizedFirst.length);
-            if (lastNormalizedIdx !== -1) {
-                const lastStartPos = findOriginalPosition(lastNormalizedIdx);
-                // Calculate end position by counting through the last segment
-                let normalizedMatched = 0;
-                for (let i = lastStartPos; i < content.length && normalizedMatched < normalizedLast.length; i++) {
-                    if (!/[\s#*|]/.test(content[i])) {
-                        normalizedMatched++;
-                    }
-                    if (normalizedMatched >= normalizedLast.length) {
-                        endIndex = i + 1;
-                        break;
-                    }
-                }
-            }
-
-        } else {
-            // No ellipsis, find single quote
-            const normalizedQuote = normalizeForMatching(quote);
-            const normalizedIdx = normalizedContent.indexOf(normalizedQuote);
-
-            if (normalizedIdx !== -1) {
-                startIndex = findOriginalPosition(normalizedIdx);
-
-                // Calculate end position
-                let normalizedMatched = 0;
-                for (let i = startIndex; i < content.length && normalizedMatched < normalizedQuote.length; i++) {
-                    if (!/[\s#*|]/.test(content[i])) {
-                        normalizedMatched++;
-                    }
-                    if (normalizedMatched >= normalizedQuote.length) {
-                        endIndex = i + 1;
-                        break;
-                    }
-                }
-            }
-
-            // Fallback: exact match
-            if (startIndex === -1) {
-                startIndex = content.indexOf(quote);
-                if (startIndex !== -1) {
-                    endIndex = startIndex + quote.length;
-                }
-            }
-        }
-
-        if (startIndex === -1 || endIndex === -1) {
-            return null;
-        }
-
-        const beforeQuote = content.substring(0, startIndex);
-        const quotePart = content.substring(startIndex, endIndex);
-        const afterQuote = content.substring(endIndex);
-
-        return (
-            <>
-                {beforeQuote}
-                <mark
-                    className="bg-yellow-200 dark:bg-yellow-800/80 text-black dark:text-white font-semibold px-1 py-0.5 rounded-sm"
-                    data-highlighted="true"
-                >
-                    {quotePart}
-                </mark>
-                {afterQuote}
-            </>
-        );
-    }, [showFullContentWithHighlight, evidence?.quote, content]);
+    // Use content highlight hook for quote highlighting
+    const { highlightedContent: highlightContent } = useContentHighlight({
+        content,
+        quote: evidence?.quote,
+        enabled: showFullContentWithHighlight,
+    });
 
     // 處理章節導航
     const handleNavigate = (itemId: string) => {
@@ -431,10 +270,10 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                    {matches.length > 0 && (
+                    {matchCount > 0 && (
                         <div className="flex items-center gap-1 pr-1">
                             <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-[30px] text-center">
-                                {currentMatchIndex + 1} / {matches.length}
+                                {currentMatchIndex + 1} / {matchCount}
                             </span>
                             <div className="flex gap-0.5">
                                 <Button
@@ -530,7 +369,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                             )}
                         </div>
                         <div className="p-4 border border-black/10 dark:border-white/10 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap max-h-[500px] overflow-y-auto custom-scrollbar">
-                            {searchQuery && matches.length > 0
+                            {searchQuery && matchCount > 0
                                 ? searchHighlightedContent
                                 : (showFullContentWithHighlight && highlightContent
                                     ? highlightContent

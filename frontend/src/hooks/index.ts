@@ -1,6 +1,15 @@
 // 事件和生命周期
 export { useEventListener, useDocumentEventListener, useOnEvent } from './useEventListener';
 
+// 拖拽功能
+export {
+  useDraggableDialog,
+  type Position,
+  type DraggableBounds,
+  type UseDraggableDialogOptions,
+  type UseDraggableDialogReturn,
+} from './useDraggableDialog';
+
 // 状态管理
 export { useDialog, useDialogs } from './useDialog';
 export { useSourceSelection } from './useSourceSelection';

@@ -35,3 +35,11 @@ export type { UseImageGenerationReturn } from './useImageGeneration';
 
 export { useTaskContents } from './useTaskContents';
 export type { UseTaskContentsReturn } from './useTaskContents';
+
+export { useMultiPanelDrag } from './useMultiPanelDrag';
+export type {
+  PanelSize,
+  PanelState,
+  UseMultiPanelDragOptions,
+  UseMultiPanelDragReturn,
+} from './useMultiPanelDrag';
