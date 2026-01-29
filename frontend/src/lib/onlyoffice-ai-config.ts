@@ -61,18 +61,8 @@ OnlyOffice AI 插件配置：
 }
 
 /**
- * 在控制台輸出配置信息（用於調試）
+ * 在控制台輸出配置信息（No-op，保留函數簽名以保持向後兼容）
  */
 export function logAIConfig() {
-  if (typeof window !== 'undefined') {
-    console.log('═══════════════════════════════════════════');
-    console.log('OnlyOffice AI 配置信息');
-    console.log('═══════════════════════════════════════════');
-    console.log('API 端點:', getAIProxyUrl());
-    console.log('環境:', process.env.NODE_ENV);
-    console.log('Origin:', window.location.origin);
-    console.log('\n複製以下 URL 到 AI 插件配置：');
-    console.log(getAIProxyUrl());
-    console.log('═══════════════════════════════════════════');
-  }
+  // 靜默執行，不輸出任何日誌
 }

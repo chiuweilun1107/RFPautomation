@@ -73,17 +73,15 @@ export function configureAIViaLocalStorage(config: AIProviderConfig): boolean {
           });
 
           localStorage.setItem(key, JSON.stringify(existing));
-          console.log(`[AI Helper] 已保存配置到 localStorage[${key}]`);
           configured = true;
         }
-      } catch (err) {
+      } catch {
         // 忽略單個 key 的錯誤
       }
     });
 
     return configured;
-  } catch (error) {
-    console.error('[AI Helper] localStorage 配置失敗:', error);
+  } catch {
     return false;
   }
 }
@@ -109,23 +107,18 @@ export function configureAIViaAPI(config: AIProviderConfig): boolean {
     for (const apiMethod of apiPaths) {
       if (typeof apiMethod === 'function') {
         try {
-          apiMethod('AddAIProvider', [config], (result: any) => {
-            if (result?.error) {
-              console.warn('[AI Helper] API 配置失敗:', result.error);
-            } else {
-              console.log('[AI Helper] ✅ AI 提供商已通過 API 配置');
-            }
+          apiMethod('AddAIProvider', [config], () => {
+            // 靜默處理結果
           });
           return true;
-        } catch (err) {
-          console.warn('[AI Helper] API 調用失敗:', err);
+        } catch {
+          // 靜默失敗，嘗試下一個方法
         }
       }
     }
 
     return false;
-  } catch (error) {
-    console.error('[AI Helper] API 配置失敗:', error);
+  } catch {
     return false;
   }
 }
@@ -136,37 +129,11 @@ export function configureAIViaAPI(config: AIProviderConfig): boolean {
 export function autoConfigureAI(): void {
   const config = getAIProviderConfig();
 
-  console.log('═══════════════════════════════════════════');
-  console.log('  OnlyOffice AI 自動配置');
-  console.log('═══════════════════════════════════════════');
-  console.log('提供商:', config.name);
-  console.log('API URL:', config.baseUrl);
-  console.log('模型:', config.model);
-  console.log('═══════════════════════════════════════════');
-
   // 嘗試方法 1: API
-  const apiSuccess = configureAIViaAPI(config);
-  if (apiSuccess) {
-    console.log('✅ 通過 API 配置成功');
-  }
+  configureAIViaAPI(config);
 
   // 嘗試方法 2: localStorage
-  const storageSuccess = configureAIViaLocalStorage(config);
-  if (storageSuccess) {
-    console.log('✅ 通過 localStorage 配置成功');
-  }
-
-  if (!apiSuccess && !storageSuccess) {
-    console.log('⚠️  自動配置未成功，請手動配置：');
-    console.log('1. 點擊 AI 插件圖標');
-    console.log('2. 打開設置 → 編輯 AI 模型');
-    console.log('3. 添加模型：');
-    console.log(`   - URL: ${config.baseUrl}`);
-    console.log(`   - 密鑰: ${config.apiKey}`);
-    console.log(`   - 模型: ${config.model}`);
-  }
-
-  console.log('═══════════════════════════════════════════\n');
+  configureAIViaLocalStorage(config);
 }
 
 /**

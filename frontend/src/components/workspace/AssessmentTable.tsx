@@ -247,6 +247,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
                     <Image
                         src="/carousel-2-analysis-retro.png"
                         fill
+                        sizes="288px"
                         className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                         alt="AI Analysis Engine"
                     />

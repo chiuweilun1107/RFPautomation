@@ -43,8 +43,9 @@ function getRating(name: string, value: number): 'good' | 'needs-improvement' | 
 }
 
 /**
- * Report Web Vitals to console in development
+ * Report Web Vitals
  * In production, send to analytics service
+ * In development, silently collect (no console output)
  */
 export function reportWebVitals(metric: Metric) {
   const vitalsMetric: VitalsMetric = {
@@ -56,17 +57,7 @@ export function reportWebVitals(metric: Metric) {
     navigationType: metric.navigationType || 'unknown',
   };
 
-  // Log in development
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(`📊 Web Vital: ${vitalsMetric.name}`, {
-      value: vitalsMetric.value.toFixed(2),
-      rating: vitalsMetric.rating,
-      delta: vitalsMetric.delta.toFixed(2),
-      navigationType: vitalsMetric.navigationType
-    });
-  }
-
-  // Send to analytics in production
+  // Send to analytics in production only
   if (process.env.NODE_ENV === 'production') {
     // Option 1: Send to Vercel Analytics (if using Vercel)
     if (typeof window !== 'undefined' && 'va' in window) {
@@ -90,15 +81,16 @@ export function reportWebVitals(metric: Metric) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(vitalsMetric),
       keepalive: true,
-    }).catch((error) => {
-      console.error('Failed to send web vitals:', error);
+    }).catch(() => {
+      // Silently fail
     });
   }
 }
 
 /**
  * Initialize performance monitoring
- * 返回清理函数以防止内存泄漏
+ * Returns cleanup function to prevent memory leaks
+ * Note: Console output disabled - metrics collected silently
  */
 export function initPerformanceMonitoring(): () => void {
   if (typeof window === 'undefined') {
@@ -106,17 +98,12 @@ export function initPerformanceMonitoring(): () => void {
   }
 
   const observers: PerformanceObserver[] = [];
-  const listeners: Array<{ event: string; handler: EventListener }> = [];
 
-  // Monitor long tasks (tasks taking >50ms)
+  // Monitor long tasks (tasks taking >50ms) - collect silently
   if ('PerformanceObserver' in window) {
     try {
-      const longTaskObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.duration > 50) {
-            console.warn(`⚠️ Long Task detected: ${entry.duration.toFixed(2)}ms`, entry);
-          }
-        }
+      const longTaskObserver = new PerformanceObserver(() => {
+        // Silently observe - no console output
       });
       longTaskObserver.observe({ entryTypes: ['longtask'] });
       observers.push(longTaskObserver);
@@ -124,17 +111,10 @@ export function initPerformanceMonitoring(): () => void {
       // Long task API not supported
     }
 
-    // Monitor resource timing
+    // Monitor resource timing - collect silently
     try {
-      const resourceObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          const resourceEntry = entry as PerformanceResourceTiming;
-          if (resourceEntry.duration > 1000) {
-            console.warn(
-              `⚠️ Slow resource: ${resourceEntry.name} (${resourceEntry.duration.toFixed(2)}ms)`
-            );
-          }
-        }
+      const resourceObserver = new PerformanceObserver(() => {
+        // Silently observe - no console output
       });
       resourceObserver.observe({ entryTypes: ['resource'] });
       observers.push(resourceObserver);
@@ -143,35 +123,10 @@ export function initPerformanceMonitoring(): () => void {
     }
   }
 
-  // Log navigation timing on page load
-  const handleLoad = () => {
-    setTimeout(() => {
-      const perfData = window.performance.timing;
-      const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-      const connectTime = perfData.responseEnd - perfData.requestStart;
-      const renderTime = perfData.domComplete - perfData.domLoading;
-
-      console.warn('📈 Page Performance', {
-        totalLoadTime: `${pageLoadTime}ms`,
-        connectTime: `${connectTime}ms`,
-        renderTime: `${renderTime}ms`
-      });
-    }, 0);
-  };
-
-  window.addEventListener('load', handleLoad);
-  listeners.push({ event: 'load', handler: handleLoad as EventListener });
-
-  // 返回清理函数
+  // Return cleanup function
   return () => {
-    // 断开所有 PerformanceObserver
     observers.forEach((observer) => {
       observer.disconnect();
-    });
-
-    // 移除所有事件监听器
-    listeners.forEach(({ event, handler }) => {
-      window.removeEventListener(event, handler);
     });
   };
 }

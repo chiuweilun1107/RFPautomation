@@ -391,17 +391,6 @@ export function OnlyOfficeEditorWithUpload({
         }}
       />
 
-      {/* AI 自動配置腳本 */}
-      <Script
-        src="/onlyoffice-ai-auto-config.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          console.log('[AI Auto-Config] 配置腳本已載入');
-        }}
-        onError={(e) => {
-          console.warn('[AI Auto-Config] 配置腳本載入失敗:', e);
-        }}
-      />
 
       <div className="w-full h-full relative bg-white">
         {/* 上傳界面 */}
