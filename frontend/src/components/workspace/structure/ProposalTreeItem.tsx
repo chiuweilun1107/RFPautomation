@@ -12,123 +12,159 @@ import { Trash2, Edit2, GripVertical, Check, X, ChevronRight, ChevronDown, Folde
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useProposalEditorOptional, ProposalEditorContextType } from "../proposal-editor/context/ProposalEditorContext";
 
+/**
+ * Simplified Props interface - only requires section-specific data
+ * All shared state and callbacks are accessed via Context
+ */
 interface ProposalTreeItemProps {
+    // Required: Section-specific data
     section: Section;
     depth: number;
     dragHandleProps?: any; // from dnd-kit attributes/listeners
+}
 
-    // State passed from parent
-    expandedSections: Set<string>;
-    toggleExpand: (id: string) => void;
-    sectionViewModes: Record<string, 'tasks' | 'content'>;
-    setSectionViewModes: React.Dispatch<React.SetStateAction<Record<string, 'tasks' | 'content'>>>;
-    fullSources: Record<string, Source>;
-    sources: Source[]; // For citation fallback
+/**
+ * Legacy Props interface - for backward compatibility when used without Context
+ */
+interface ProposalTreeItemLegacyProps extends ProposalTreeItemProps {
+    // State passed from parent (can be omitted if using Context)
+    expandedSections?: Set<string>;
+    toggleExpand?: (id: string) => void;
+    sectionViewModes?: Record<string, 'tasks' | 'content'>;
+    setSectionViewModes?: React.Dispatch<React.SetStateAction<Record<string, 'tasks' | 'content'>>>;
+    fullSources?: Record<string, Source>;
+    sources?: Source[];
 
     // Section Actions
-    handleIntegrateSection: (section: Section) => void;
-    continueAddTask: (section: Section) => void;
-    openAddSection: (parentId: string | null) => void;
-    openAddSubsection: (section: Section) => void;
-    openEditSection: (section: Section) => void;
-    handleDeleteSection: (id: string) => void;
-    integratingSectionId: string | null;
+    handleIntegrateSection?: (section: Section) => void;
+    continueAddTask?: (section: Section) => void;
+    openAddSection?: (parentId: string | null) => void;
+    openAddSubsection?: (section: Section) => void;
+    openEditSection?: (section: Section) => void;
+    handleDeleteSection?: (id: string) => void;
+    integratingSectionId?: string | null;
 
     // Inline Section Content Editing
-    inlineEditingSectionId: string | null;
-    inlineSectionValue: string;
-    setInlineSectionValue: (val: string) => void;
-    startEditingSectionContent: (section: Section) => void;
-    saveEditingSectionContent: (id: string) => void;
-    cancelEditingSectionContent: () => void;
+    inlineEditingSectionId?: string | null;
+    inlineSectionValue?: string;
+    setInlineSectionValue?: (val: string) => void;
+    startEditingSectionContent?: (section: Section) => void;
+    saveEditingSectionContent?: (id: string) => void;
+    cancelEditingSectionContent?: () => void;
 
     // Task Actions & State
-    expandedTaskIds: Set<string>;
-    toggleTaskExpansion: (id: string) => void;
-    inlineEditingTaskId: string | null;
-    inlineTaskValue: string;
-    setInlineTaskValue: (val: string) => void;
-    saveInlineEdit: () => void;
-    cancelInlineEdit: () => void;
-    startInlineEdit: (task: Task) => void; // Need to verify this exists or if we use openEditTask differently
+    expandedTaskIds?: Set<string>;
+    toggleTaskExpansion?: (id: string) => void;
+    inlineEditingTaskId?: string | null;
+    inlineTaskValue?: string;
+    setInlineTaskValue?: (val: string) => void;
+    saveInlineEdit?: () => void;
+    cancelInlineEdit?: () => void;
+    startInlineEdit?: (task: Task) => void;
+    openEditTask?: (task: Task) => void;
 
-    // Note: The original code had openEditTask which seems to open a dialog or perform inline edit?
-    // Looking at line 1836: onClick={() => openEditTask(task)}
-    // And also inline editing logic. Let's assume openEditTask is for the dialog, 
-    // but there is also inline editing logic for task Requirement text?
-    // Wait, line 1787 `inlineEditingTaskId === task.id` checks for inline edit.
-    // Who sets inlineEditingTaskId? 
-    // In original code, I don't see a `startInlineEdit` function call in the buttons. 
-    // Ah, line 1836 calls `openEditTask`. Maybe `openEditTask` sets inline edit? 
-    // Or maybe it opens a dialog. Let's assume passed in `openEditTask`.
-    openEditTask: (task: Task) => void;
+    handleGenerateTaskContent?: (task: Task, section: Section) => void;
+    handleGenerateTaskImage?: (task: Task, section: Section) => void;
+    openContentPanel?: (task: Task, title: string) => void;
+    handleDeleteTask?: (taskId: string) => void;
 
-    handleGenerateTaskContent: (task: Task, section: Section) => void;
-    handleGenerateTaskImage: (task: Task, section: Section) => void;
-    openContentPanel: (task: Task, title: string) => void;
-    handleDeleteTask: (taskId: string) => void;
+    taskContents?: Map<string, TaskContent>;
+    contentLoading?: Record<string, boolean>;
 
-    taskContents: Map<string, TaskContent>;
-    contentLoading: Record<string, boolean>; // unused in renderSection directly? 
-    // Actually, task content display might check something? 
-    // Checked code: doesn't explicitly usage contentLoading in render logic shown, 
-    // but maybe for button state? 
-    // In lines 1815-1823 (Generate Content Button), it just calls handleGenerateTaskContent.
+    setSelectedEvidence?: (evidence: Evidence) => void;
+    handleDeleteImage?: (imageId: string, imageUrl: string) => void;
 
-    setSelectedEvidence: (evidence: Evidence) => void;
-    handleDeleteImage: (imageId: string, imageUrl: string) => void;
-
-    // NEW: Filter Prop
-    taskFilter: 'all' | 'wf11_functional' | 'wf13_article';
+    // Filter Prop
+    taskFilter?: 'all' | 'wf11_functional' | 'wf13_article';
 }
 
 function ProposalTreeItemComponent({
     section,
     depth,
     dragHandleProps,
+    // Legacy props (optional when using Context)
+    expandedSections: expandedSectionsProp,
+    toggleExpand: toggleExpandProp,
+    sectionViewModes: sectionViewModesProp,
+    setSectionViewModes: setSectionViewModesProp,
+    fullSources: fullSourcesProp,
+    sources: sourcesProp,
+    handleIntegrateSection: handleIntegrateSectionProp,
+    continueAddTask: continueAddTaskProp,
+    openAddSection: openAddSectionProp,
+    openAddSubsection: openAddSubsectionProp,
+    openEditSection: openEditSectionProp,
+    handleDeleteSection: handleDeleteSectionProp,
+    integratingSectionId: integratingSectionIdProp,
+    inlineEditingSectionId: inlineEditingSectionIdProp,
+    inlineSectionValue: inlineSectionValueProp,
+    setInlineSectionValue: setInlineSectionValueProp,
+    startEditingSectionContent: startEditingSectionContentProp,
+    saveEditingSectionContent: saveEditingSectionContentProp,
+    cancelEditingSectionContent: cancelEditingSectionContentProp,
+    expandedTaskIds: expandedTaskIdsProp,
+    toggleTaskExpansion: toggleTaskExpansionProp,
+    inlineEditingTaskId: inlineEditingTaskIdProp,
+    inlineTaskValue: inlineTaskValueProp,
+    setInlineTaskValue: setInlineTaskValueProp,
+    saveInlineEdit: saveInlineEditProp,
+    cancelInlineEdit: cancelInlineEditProp,
+    openEditTask: openEditTaskProp,
+    handleGenerateTaskContent: handleGenerateTaskContentProp,
+    handleGenerateTaskImage: handleGenerateTaskImageProp,
+    openContentPanel: openContentPanelProp,
+    handleDeleteTask: handleDeleteTaskProp,
+    taskContents: taskContentsProp,
+    setSelectedEvidence: setSelectedEvidenceProp,
+    handleDeleteImage: handleDeleteImageProp,
+    taskFilter: taskFilterProp,
+}: ProposalTreeItemLegacyProps) {
+    // Try to get context (optional - for backward compatibility)
+    const ctx = useProposalEditorOptional();
 
-    expandedSections,
-    toggleExpand,
-    sectionViewModes,
-    setSectionViewModes,
-    fullSources,
-    sources,
+    // Resolve values: prefer props, fallback to context
+    const expandedSections = expandedSectionsProp ?? ctx?.expandedSections ?? new Set<string>();
+    const toggleExpand = toggleExpandProp ?? ctx?.toggleExpand ?? (() => {});
+    const sectionViewModes = sectionViewModesProp ?? ctx?.sectionViewModes ?? {};
+    const setSectionViewModes = setSectionViewModesProp ?? ctx?.setSectionViewModes ?? (() => {});
+    const fullSources = fullSourcesProp ?? ctx?.fullSources ?? {};
+    const sources = sourcesProp ?? ctx?.sources ?? [];
 
-    handleIntegrateSection,
-    continueAddTask,
-    openAddSection,
-    openAddSubsection,
-    openEditSection,
-    handleDeleteSection,
-    integratingSectionId,
+    const handleIntegrateSection = handleIntegrateSectionProp ?? ctx?.handleIntegrateSection ?? (() => {});
+    const continueAddTask = continueAddTaskProp ?? ctx?.continueAddTask ?? (() => {});
+    const openAddSection = openAddSectionProp ?? ctx?.openAddSection ?? (() => {});
+    const openAddSubsection = openAddSubsectionProp ?? ctx?.openAddSubsection ?? (() => {});
+    const openEditSection = openEditSectionProp ?? ctx?.openEditSection ?? (() => {});
+    const handleDeleteSection = handleDeleteSectionProp ?? ctx?.handleDeleteSection ?? (() => {});
+    const integratingSectionId = integratingSectionIdProp ?? ctx?.integratingSectionId ?? null;
 
-    inlineEditingSectionId,
-    inlineSectionValue,
-    setInlineSectionValue,
-    startEditingSectionContent,
-    saveEditingSectionContent,
-    cancelEditingSectionContent,
+    const inlineEditingSectionId = inlineEditingSectionIdProp ?? ctx?.inlineEditingSectionId ?? null;
+    const inlineSectionValue = inlineSectionValueProp ?? ctx?.inlineSectionValue ?? "";
+    const setInlineSectionValue = setInlineSectionValueProp ?? ctx?.setInlineSectionValue ?? (() => {});
+    const startEditingSectionContent = startEditingSectionContentProp ?? ctx?.startEditingSectionContent ?? (() => {});
+    const saveEditingSectionContent = saveEditingSectionContentProp ?? ctx?.saveEditingSectionContent ?? (() => {});
+    const cancelEditingSectionContent = cancelEditingSectionContentProp ?? ctx?.cancelEditingSectionContent ?? (() => {});
 
-    expandedTaskIds,
-    toggleTaskExpansion,
-    inlineEditingTaskId,
-    inlineTaskValue,
-    setInlineTaskValue,
-    saveInlineEdit,
-    cancelInlineEdit,
-    openEditTask,
+    const expandedTaskIds = expandedTaskIdsProp ?? ctx?.expandedTaskIds ?? new Set<string>();
+    const toggleTaskExpansion = toggleTaskExpansionProp ?? ctx?.toggleTaskExpansion ?? (() => {});
+    const inlineEditingTaskId = inlineEditingTaskIdProp ?? ctx?.inlineEditingTaskId ?? null;
+    const inlineTaskValue = inlineTaskValueProp ?? ctx?.inlineTaskValue ?? "";
+    const setInlineTaskValue = setInlineTaskValueProp ?? ctx?.setInlineTaskValue ?? (() => {});
+    const saveInlineEdit = saveInlineEditProp ?? ctx?.saveInlineEdit ?? (() => {});
+    const cancelInlineEdit = cancelInlineEditProp ?? ctx?.cancelInlineEdit ?? (() => {});
+    const openEditTask = openEditTaskProp ?? ctx?.openEditTask ?? (() => {});
 
-    handleGenerateTaskContent,
-    handleGenerateTaskImage,
-    openContentPanel,
-    handleDeleteTask,
-    taskContents,
-    setSelectedEvidence,
-    handleDeleteImage,
-    taskFilter = 'all' // Default
+    const handleGenerateTaskContent = handleGenerateTaskContentProp ?? ctx?.handleGenerateTaskContent ?? (() => {});
+    const handleGenerateTaskImage = handleGenerateTaskImageProp ?? ctx?.handleGenerateTaskImage ?? (() => {});
+    const openContentPanel = openContentPanelProp ?? ctx?.openContentPanel ?? (() => {});
+    const handleDeleteTask = handleDeleteTaskProp ?? ctx?.handleDeleteTask ?? (() => {});
+    const taskContents = taskContentsProp ?? ctx?.taskContents ?? new Map<string, TaskContent>();
+    const setSelectedEvidence = setSelectedEvidenceProp ?? ctx?.setSelectedEvidence ?? (() => {});
+    const handleDeleteImage = handleDeleteImageProp ?? ctx?.handleDeleteImage ?? (() => {});
+    const taskFilter = taskFilterProp ?? ctx?.taskFilter ?? 'all';
 
-}: ProposalTreeItemProps) {
     const isExpanded = expandedSections.has(section.id);
     const viewMode = sectionViewModes[section.id] || 'tasks';
     const hasChildren = (section.children && section.children.length > 0) || (section.tasks && section.tasks.length > 0) || (!!section.content);
@@ -266,7 +302,7 @@ function ProposalTreeItemComponent({
                                     // Assuming manual tasks don't show in either specific filter, OR
                                     // if user wants to see "manual" tasks in one of them?
                                     // For now: Strict filter. wf11 only shows wf11. wf13 only shows wf13.
-                                    // Manual tasks only show in 'all'. 
+                                    // Manual tasks only show in 'all'.
                                     if (taskFilter === 'wf11_functional') return task.workflow_type === 'wf11_functional';
                                     if (taskFilter === 'wf13_article') return task.workflow_type === 'wf13_article';
                                     return true;
@@ -281,7 +317,7 @@ function ProposalTreeItemComponent({
                                 }).map((task) => (
                                     <SortableTaskItem key={task.id} id={task.id} sectionId={section.id}>
                                         {({ attributes, listeners, isDragging }) => {
-                                            const isExpanded = expandedTaskIds.has(task.id);
+                                            const isTaskExpanded = expandedTaskIds.has(task.id);
                                             const { title, body } = parseTaskRequirement(task.requirement_text);
 
                                             return (
@@ -297,7 +333,7 @@ function ProposalTreeItemComponent({
                                                                 onClick={() => toggleTaskExpansion(task.id)}
                                                                 className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-800 rounded transition-colors text-gray-400 shrink-0"
                                                             >
-                                                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                                                {isTaskExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                                             </button>
                                                         )}
 
@@ -379,7 +415,7 @@ function ProposalTreeItemComponent({
                                                     </div>
 
                                                     {/* Task Body (Collapsible) - show when expanded OR when editing */}
-                                                    {(isExpanded || inlineEditingTaskId === task.id) && (
+                                                    {(isTaskExpanded || inlineEditingTaskId === task.id) && (
                                                         <div className="px-10 pb-4 animate-in fade-in slide-in-from-top-1 duration-200">
                                                             <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
                                                                 {inlineEditingTaskId === task.id ? (
@@ -447,33 +483,33 @@ function ProposalTreeItemComponent({
                                                                                                                     if (!citTrimmed) return null;
                                                                                                                     const innerMatch = citTrimmed.match(/^(.*?)\s+[Pp]\.?\s*([\d,\-\s]+)$/);
                                                                                                                     const titlePart = innerMatch ? innerMatch[1] : citTrimmed;
-                                                                                                                    const title = titlePart.trim().replace(/[,\s;；]+$/, '');
+                                                                                                                    const titleText = titlePart.trim().replace(/[,\s;；]+$/, '');
                                                                                                                     const pageRangeStr = innerMatch ? innerMatch[2].trim() : "";
                                                                                                                     const pageNum = parseInt(pageRangeStr.replace(/[^\d]/g, '')) || 0;
 
                                                                                                                     let evidence: Evidence;
                                                                                                                     const specificCitation = task.citations?.find(cit => {
                                                                                                                         const sourceTitle = fullSources[cit.source_id]?.title || cit.title || '';
-                                                                                                                        return sourceTitle.includes(title) && (cit.page === pageNum || String(cit.page).includes(pageRangeStr));
+                                                                                                                        return sourceTitle.includes(titleText) && (cit.page === pageNum || String(cit.page).includes(pageRangeStr));
                                                                                                                     });
 
                                                                                                                     if (specificCitation) {
                                                                                                                         const sourceInfo = fullSources[specificCitation.source_id];
-                                                                                                                        evidence = { id: 0, source_id: specificCitation.source_id, page: specificCitation.page, source_title: sourceInfo?.title || specificCitation.title || title, quote: specificCitation.quote || '' };
+                                                                                                                        evidence = { id: 0, source_id: specificCitation.source_id, page: specificCitation.page, source_title: sourceInfo?.title || specificCitation.title || titleText, quote: specificCitation.quote || '' };
                                                                                                                     } else if (task.citations && task.citations.length > 0) {
                                                                                                                         // Try to find matching citation from task.citations array
                                                                                                                         const matchingCitation = task.citations.find(c =>
-                                                                                                                            fullSources[c.source_id]?.title.includes(title)
+                                                                                                                            fullSources[c.source_id]?.title.includes(titleText)
                                                                                                                         );
                                                                                                                         if (matchingCitation) {
-                                                                                                                            evidence = { id: 0, source_id: matchingCitation.source_id, page: matchingCitation.page || pageNum, source_title: fullSources[matchingCitation.source_id]?.title || matchingCitation.title || title, quote: matchingCitation.quote || '' };
+                                                                                                                            evidence = { id: 0, source_id: matchingCitation.source_id, page: matchingCitation.page || pageNum, source_title: fullSources[matchingCitation.source_id]?.title || matchingCitation.title || titleText, quote: matchingCitation.quote || '' };
                                                                                                                         } else {
-                                                                                                                            const source = sources.find(s => s.title === title) || sources.find(s => s.title.includes(title));
-                                                                                                                            evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: title, quote: '' };
+                                                                                                                            const source = sources.find(s => s.title === titleText) || sources.find(s => s.title.includes(titleText));
+                                                                                                                            evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: titleText, quote: '' };
                                                                                                                         }
                                                                                                                     } else {
-                                                                                                                        const source = sources.find(s => s.title === title) || sources.find(s => s.title.includes(title));
-                                                                                                                        evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: title, quote: '' };
+                                                                                                                        const source = sources.find(s => s.title === titleText) || sources.find(s => s.title.includes(titleText));
+                                                                                                                        evidence = { id: 0, source_id: source?.id || 'unknown', page: pageNum, source_title: titleText, quote: '' };
                                                                                                                     }
 
                                                                                                                     return (
@@ -595,20 +631,59 @@ export const ProposalTreeItem = memo(
         // Compare depth
         if (prevDepth !== nextDepth) return false;
 
-        // Compare state
-        if (prevProps.expandedSections.has(prevSection.id) !== nextProps.expandedSections.has(nextSection.id)) return false;
-        if (prevProps.sectionViewModes[prevSection.id] !== nextProps.sectionViewModes[nextSection.id]) return false;
-        if (prevProps.integratingSectionId === prevSection.id || nextProps.integratingSectionId === nextSection.id) {
-            if (prevProps.integratingSectionId !== nextProps.integratingSectionId) return false;
+        // When using Context, most state comparison is handled internally
+        // Only compare props that are passed directly
+        const hasLegacyProps = prevProps.expandedSections !== undefined;
+
+        if (hasLegacyProps) {
+            // Legacy mode: compare state props
+            if (prevProps.expandedSections?.has(prevSection.id) !== nextProps.expandedSections?.has(nextSection.id)) return false;
+            if (prevProps.sectionViewModes?.[prevSection.id] !== nextProps.sectionViewModes?.[nextSection.id]) return false;
+
+            if (prevProps.integratingSectionId === prevSection.id || nextProps.integratingSectionId === nextSection.id) {
+                if (prevProps.integratingSectionId !== nextProps.integratingSectionId) return false;
+            }
+
+            // Compare inline editing state
+            if (prevProps.inlineEditingSectionId === prevSection.id || nextProps.inlineEditingSectionId === nextSection.id) {
+                if (prevProps.inlineEditingSectionId !== nextProps.inlineEditingSectionId) return false;
+                if (prevProps.inlineSectionValue !== nextProps.inlineSectionValue) return false;
+            }
+
+            // Compare children and tasks arrays (shallow length check)
+            const prevChildren = prevSection.children || [];
+            const nextChildren = nextSection.children || [];
+            const prevTasks = prevSection.tasks || [];
+            const nextTasks = nextSection.tasks || [];
+
+            if (prevChildren.length !== nextChildren.length) return false;
+            if (prevTasks.length !== nextTasks.length) return false;
+
+            // Compare expanded task IDs for this section's tasks
+            for (const task of prevTasks) {
+                const wasExpanded = prevProps.expandedTaskIds?.has(task.id);
+                const isExpanded = nextProps.expandedTaskIds?.has(task.id);
+                if (wasExpanded !== isExpanded) return false;
+
+                // Check if this task is being edited
+                if (prevProps.inlineEditingTaskId === task.id || nextProps.inlineEditingTaskId === task.id) {
+                    if (prevProps.inlineEditingTaskId !== nextProps.inlineEditingTaskId) return false;
+                    if (prevProps.inlineTaskValue !== nextProps.inlineTaskValue) return false;
+                }
+            }
+
+            // Compare taskContents for this section's tasks
+            for (const task of prevTasks) {
+                const prevContent = prevProps.taskContents?.get(task.id);
+                const nextContent = nextProps.taskContents?.get(task.id);
+                if (prevContent !== nextContent) return false;
+            }
+
+            // Check taskFilter
+            if (prevProps.taskFilter !== nextProps.taskFilter) return false;
         }
 
-        // Compare inline editing state
-        if (prevProps.inlineEditingSectionId === prevSection.id || nextProps.inlineEditingSectionId === nextSection.id) {
-            if (prevProps.inlineEditingSectionId !== nextProps.inlineEditingSectionId) return false;
-            if (prevProps.inlineSectionValue !== nextProps.inlineSectionValue) return false;
-        }
-
-        // Compare children and tasks arrays (shallow length check)
+        // Compare children and tasks arrays (shallow length check) - always needed
         const prevChildren = prevSection.children || [];
         const nextChildren = nextSection.children || [];
         const prevTasks = prevSection.tasks || [];
@@ -617,31 +692,12 @@ export const ProposalTreeItem = memo(
         if (prevChildren.length !== nextChildren.length) return false;
         if (prevTasks.length !== nextTasks.length) return false;
 
-        // Compare expanded task IDs for this section's tasks
-        for (const task of prevTasks) {
-            const wasExpanded = prevProps.expandedTaskIds.has(task.id);
-            const isExpanded = nextProps.expandedTaskIds.has(task.id);
-            if (wasExpanded !== isExpanded) return false;
-
-            // Check if this task is being edited
-            if (prevProps.inlineEditingTaskId === task.id || nextProps.inlineEditingTaskId === task.id) {
-                if (prevProps.inlineEditingTaskId !== nextProps.inlineEditingTaskId) return false;
-                if (prevProps.inlineTaskValue !== nextProps.inlineTaskValue) return false;
-            }
+        // Deep compare tasks for content changes
+        for (let i = 0; i < prevTasks.length; i++) {
+            if (prevTasks[i].id !== nextTasks[i]?.id) return false;
+            if (prevTasks[i].requirement_text !== nextTasks[i]?.requirement_text) return false;
+            if (prevTasks[i].task_images?.length !== nextTasks[i]?.task_images?.length) return false;
         }
-
-        // Compare taskContents for this section's tasks
-        for (const task of prevTasks) {
-            const prevContent = prevProps.taskContents.get(task.id);
-            const nextContent = nextProps.taskContents.get(task.id);
-            if (prevContent !== nextContent) return false;
-        }
-
-        // All other props (callbacks, sources, etc.) are assumed stable
-        // Parent components should use useCallback for callbacks
-        // and useMemo for complex objects like fullSources
-        // Check taskFilter
-        if (prevProps.taskFilter !== nextProps.taskFilter) return false;
 
         return true;
     }

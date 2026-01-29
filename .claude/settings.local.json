@@ -181,7 +181,10 @@
       "Bash(tar:*)",
       "WebFetch(domain:api.onlyoffice.com)",
       "WebFetch(domain:helpcenter.onlyoffice.com)",
-      "WebFetch(domain:www.onlyoffice.com)"
+      "WebFetch(domain:www.onlyoffice.com)",
+      "Skill(senior-architect)",
+      "Skill(senior-architect:*)",
+      "Bash(do)"
     ]
   }
 }

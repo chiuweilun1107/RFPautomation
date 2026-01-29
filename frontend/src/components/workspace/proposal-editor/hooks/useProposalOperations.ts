@@ -34,6 +34,7 @@ export function useProposalOperations(
         order_index: 0,
         tasks: [],
         children: [],
+        citations: [],
       };
 
       // ✅ 樂觀更新：立即在 UI 中顯示新章節
@@ -255,6 +256,7 @@ export function useProposalOperations(
         requirement_text: requirementText,
         status: "pending",
         order_index: Date.now(), // 臨時排序
+        citations: [],
       };
 
       // ✅ 樂觀更新：立即在 UI 中顯示新任務

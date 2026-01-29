@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { getFontFamily, getTextAlign } from "./config/fontMappings"
 
 interface Template {
   id: string
@@ -52,41 +53,6 @@ export function TableOfContentsGenerator({ projectId, sections }: TableOfContent
   const [previewHtml, setPreviewHtml] = React.useState<string>("")
 
   const supabase = createClient()
-
-  // 統一的字體映射函數（與 EditableParagraph 相同）
-  const getFontFamily = (fontName?: string, cjkFontName?: string): string => {
-    const fontMap: Record<string, string> = {
-      '標楷體': '"BiauKai TC", "BiauKai HK", "標楷體-繁", "標楷體-港澳", "Kaiti TC", STKaiti, DFKai-SB, KaiTi, serif',
-      'DFKai-SB': 'DFKai-SB, "BiauKai TC", "BiauKai HK", "標楷體-繁", "Kaiti TC", STKaiti, KaiTi, serif',
-      'BiauKai': '"BiauKai TC", "BiauKai HK", "標楷體-繁", DFKai-SB, STKaiti, serif',
-      'BiauKaiTC': '"BiauKai TC", BiauKaiTC, "標楷體-繁", DFKai-SB, STKaiti, serif',
-      'BiauKaiHK': '"BiauKai HK", BiauKaiHK, "標楷體-港澳", DFKai-SB, STKaiti, serif',
-      '楷體': '"Kaiti TC", "Kaiti SC", STKaiti, KaiTi, "楷體-繁", DFKai-SB, serif',
-      'KaiTi': '"Kaiti TC", "Kaiti SC", STKaiti, KaiTi, "楷體-繁", DFKai-SB, serif',
-      '新細明體': 'PMingLiU, MingLiU, "Apple LiSung", "PingFang TC", serif',
-      '微軟正黑體': '"Microsoft JhengHei", "PingFang TC", "Heiti TC", "Noto Sans TC", sans-serif',
-      'Times New Roman': '"Times New Roman", Times, Georgia, serif',
-      'Arial': 'Arial, Helvetica, "PingFang TC", sans-serif',
-      'Calibri': 'Calibri, "Helvetica Neue", Arial, sans-serif',
-      'Verdana': 'Verdana, Geneva, Arial, sans-serif'
-    }
-
-    const families = []
-
-    if (fontName) {
-      families.push(fontMap[fontName] || `"${fontName}"`)
-    }
-
-    if (cjkFontName) {
-      families.push(fontMap[cjkFontName] || `"${cjkFontName}"`)
-    }
-
-    if (families.length === 0) {
-      return 'serif'
-    }
-
-    return families.join(', ')
-  }
 
   // 載入範本列表 - 改用 API route 繞過 RLS
   React.useEffect(() => {
@@ -231,23 +197,8 @@ export function TableOfContentsGenerator({ projectId, sections }: TableOfContent
       const titleStyles: string[] = []
 
       // 對齊方式
-      if (titlePara.format?.alignment) {
-        const alignMap: Record<string, string> = {
-          left: 'left',
-          center: 'center',
-          right: 'right',
-          both: 'justify',
-          LEFT: 'left',
-          CENTER: 'center',
-          RIGHT: 'right',
-          BOTH: 'justify',
-          DISTRIBUTE: 'justify'
-        }
-        const align = alignMap[titlePara.format.alignment] || alignMap[titlePara.format.alignment.toLowerCase()] || 'center'
-        titleStyles.push(`text-align: ${align}`)
-      } else {
-        titleStyles.push('text-align: center')
-      }
+      const titleAlign = getTextAlign(titlePara.format?.alignment, 'center')
+      titleStyles.push(`text-align: ${titleAlign}`)
 
       // 使用字體映射函數
       if (titlePara.format?.font_name || titlePara.format?.font_name_cjk) {
@@ -328,23 +279,8 @@ export function TableOfContentsGenerator({ projectId, sections }: TableOfContent
       const lineStyles: string[] = []
 
       // 對齊方式
-      if (format.alignment) {
-        const alignMap: Record<string, string> = {
-          left: 'left',
-          center: 'center',
-          right: 'right',
-          both: 'justify',
-          LEFT: 'left',
-          CENTER: 'center',
-          RIGHT: 'right',
-          BOTH: 'justify',
-          DISTRIBUTE: 'justify'
-        }
-        const align = alignMap[format.alignment] || alignMap[format.alignment?.toLowerCase?.()] || 'left'
-        lineStyles.push(`text-align: ${align}`)
-      } else {
-        lineStyles.push('text-align: left')
-      }
+      const lineAlign = getTextAlign(format.alignment, 'left')
+      lineStyles.push(`text-align: ${lineAlign}`)
 
       // 縮排（左側縮排 + 多層次縮排）
       let totalLeftIndent = indent

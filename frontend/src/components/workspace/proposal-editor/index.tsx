@@ -23,6 +23,7 @@ import { ProposalHeader } from "./components/ProposalHeader";
 import { ProposalDialogs } from "./components/ProposalDialogs";
 import { FloatingContentPanels } from "./components/FloatingContentPanels";
 import { ProposalTreeItem } from "../structure/ProposalTreeItem";
+import { ProposalEditorProvider } from "./context/ProposalEditorContext";
 
 import type { ProposalStructureEditorProps, Section, Task, TaskContent, Source } from "./types";
 
@@ -605,7 +606,49 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
     toast.info("添加源文獻功能待實現");
   }, []);
 
+  // ============ Context 回調函數 ============
+  // 這些回調函數被 Context 使用，需要穩定引用
+  const continueAddTaskCallback = useCallback(
+    (section: Section) => {
+      state.setTargetSection(section);
+      dialogs.setDialogInputValue("");
+      state.setSelectedSourceIds([]);
+      dialogs.setShowSourceSelector(false);
+      dialogs.openAddTask();
+    },
+    [state, dialogs]
+  );
+
+  const openAddSectionCallback = useCallback(
+    (parentId: string | null) => {
+      state.setTargetSectionId(parentId || null);
+      dialogs.setDialogInputValue("");
+      dialogs.openAddSection();
+    },
+    [state, dialogs]
+  );
+
+  const openAddSubsectionCallback = useCallback(
+    (section: Section) => {
+      state.setTargetSection(section);
+      dialogs.setSubsectionInputValue("");
+      dialogs.openAddSubsection();
+    },
+    [state, dialogs]
+  );
+
+  const openEditSectionCallback = useCallback(
+    (section: Section) => {
+      state.setEditingSection(section);
+      dialogs.setDialogInputValue(section.title);
+      dialogs.openAddSection();
+    },
+    [state, dialogs]
+  );
+
   // ============ 渲染章節項 ============
+  // 使用 Context 後，renderSection 變得更簡潔
+  // 只需傳遞 section-specific 的 props
   const renderSection = useCallback(
     (section: Section, depth: number = 0, dragHandleProps?: any) => {
       return (
@@ -614,97 +657,10 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
           section={section}
           depth={depth}
           dragHandleProps={dragHandleProps}
-          expandedSections={expandedSections}
-          toggleExpand={toggleSectionExpansion}
-          sectionViewModes={sectionViewModes}
-          setSectionViewModes={setSectionViewModes}
-          fullSources={fullSources}
-          sources={sources as Source[]}
-          handleIntegrateSection={handleIntegrateSection}
-          continueAddTask={(section) => {
-            state.setTargetSection(section);
-            dialogs.setDialogInputValue("");
-            state.setSelectedSourceIds([]);
-            dialogs.setShowSourceSelector(false);
-            dialogs.openAddTask();
-          }}
-          openAddSection={(parentId) => {
-            state.setTargetSectionId(parentId || null);
-            dialogs.setDialogInputValue("");
-            dialogs.openAddSection();
-          }}
-          openAddSubsection={(section) => {
-            state.setTargetSection(section);
-            dialogs.setSubsectionInputValue("");
-            dialogs.openAddSubsection();
-          }}
-          openEditSection={(section) => {
-            state.setEditingSection(section);
-            dialogs.setDialogInputValue(section.title);
-            dialogs.openAddSection();
-          }}
-          handleDeleteSection={operations.deleteSection}
-          integratingSectionId={integratingSectionId}
-          inlineEditingSectionId={inlineEditingSectionId}
-          inlineSectionValue={inlineSectionValue}
-          setInlineSectionValue={setInlineSectionValue}
-          startEditingSectionContent={startEditingSectionContent}
-          saveEditingSectionContent={saveEditingSectionContent}
-          cancelEditingSectionContent={cancelEditingSectionContent}
-          expandedTaskIds={expandedTaskIds}
-          toggleTaskExpansion={toggleTaskExpansion}
-          inlineEditingTaskId={inlineEditingTaskId}
-          inlineTaskValue={inlineTaskValue}
-          setInlineTaskValue={setInlineTaskValue}
-          saveInlineEdit={saveInlineEdit}
-          cancelInlineEdit={cancelInlineEdit}
-          openEditTask={startInlineEdit}
-          startInlineEdit={startInlineEdit}
-          handleGenerateTaskContent={openContentGenerationDialog}
-          handleGenerateTaskImage={openImageGenerationDialog}
-          openContentPanel={openContentPanel}
-          handleDeleteTask={operations.deleteTask}
-          taskContents={taskContents}
-          contentLoading={{}}
-          setSelectedEvidence={setSelectedEvidence}
-          handleDeleteImage={handleDeleteImage}
-          taskFilter={'all'}
         />
       );
     },
-    [
-      expandedSections,
-      toggleSectionExpansion,
-      sectionViewModes,
-      setSectionViewModes,
-      fullSources,
-      sources,
-      handleIntegrateSection,
-      operations,
-      integratingSectionId,
-      inlineEditingSectionId,
-      inlineSectionValue,
-      setInlineSectionValue,
-      startEditingSectionContent,
-      saveEditingSectionContent,
-      cancelEditingSectionContent,
-      expandedTaskIds,
-      toggleTaskExpansion,
-      inlineEditingTaskId,
-      inlineTaskValue,
-      setInlineTaskValue,
-      saveInlineEdit,
-      cancelInlineEdit,
-      startInlineEdit,
-      openContentPanel,
-      taskContents,
-      setSelectedEvidence,
-      handleDeleteImage,
-      dialogs,
-      state,
-      openContentGenerationDialog,
-      openImageGenerationDialog,
-    ]
+    []
   );
 
   // ============ 計算統計數據 ============
@@ -734,55 +690,99 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
 
   // ============ 渲染 ============
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
-      {/* 主內容區域 */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
-          {/* 頂部工具欄 */}
-          <ProposalHeader
-            generating={state.generating}
-            onGenerate={() => {
-              dialogs.openAddSection();
-              // TODO: 實現自動生成章節功能
-            }}
-            onAddSection={() => {
-              state.setTargetSectionId(null);
-              dialogs.setDialogInputValue("");
-              dialogs.openAddSection();
-            }}
-            generationProgress={state.progress || undefined}
-            totalSections={totalSections}
-            completedSections={completedSections}
-          />
-
-          {/* 章節樹 */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={operations.handleDragEnd}
-          >
-            <ProposalTree
-              sections={sections}
-              loading={loading}
-              expandedSections={expandedSections}
-              renderSection={renderSection}
-              onToggleExpand={toggleSectionExpansion}
+    <ProposalEditorProvider
+      // Expansion State
+      expandedSections={expandedSections}
+      toggleExpand={toggleSectionExpansion}
+      sectionViewModes={sectionViewModes}
+      setSectionViewModes={setSectionViewModes}
+      expandedTaskIds={expandedTaskIds}
+      toggleTaskExpansion={toggleTaskExpansion}
+      // Data Sources
+      fullSources={fullSources}
+      sources={sources as Source[]}
+      taskContents={taskContents}
+      // Section Actions
+      handleIntegrateSection={handleIntegrateSection}
+      continueAddTask={continueAddTaskCallback}
+      openAddSection={openAddSectionCallback}
+      openAddSubsection={openAddSubsectionCallback}
+      openEditSection={openEditSectionCallback}
+      handleDeleteSection={operations.deleteSection}
+      integratingSectionId={integratingSectionId}
+      // Section Inline Edit
+      inlineEditingSectionId={inlineEditingSectionId}
+      inlineSectionValue={inlineSectionValue}
+      setInlineSectionValue={setInlineSectionValue}
+      startEditingSectionContent={startEditingSectionContent}
+      saveEditingSectionContent={saveEditingSectionContent}
+      cancelEditingSectionContent={cancelEditingSectionContent}
+      // Task Inline Edit
+      inlineEditingTaskId={inlineEditingTaskId}
+      inlineTaskValue={inlineTaskValue}
+      setInlineTaskValue={setInlineTaskValue}
+      saveInlineEdit={saveInlineEdit}
+      cancelInlineEdit={cancelInlineEdit}
+      openEditTask={startInlineEdit}
+      // Task Actions
+      handleGenerateTaskContent={openContentGenerationDialog}
+      handleGenerateTaskImage={openImageGenerationDialog}
+      openContentPanel={openContentPanel}
+      handleDeleteTask={operations.deleteTask}
+      handleDeleteImage={handleDeleteImage}
+      setSelectedEvidence={setSelectedEvidence}
+      // Filter Config
+      taskFilter="all"
+    >
+      <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
+        {/* 主內容區域 */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto p-6 space-y-6">
+            {/* 頂部工具欄 */}
+            <ProposalHeader
+              generating={state.generating}
+              onGenerate={() => {
+                dialogs.openAddSection();
+                // TODO: 實現自動生成章節功能
+              }}
+              onAddSection={() => {
+                state.setTargetSectionId(null);
+                dialogs.setDialogInputValue("");
+                dialogs.openAddSection();
+              }}
+              generationProgress={state.progress || undefined}
+              totalSections={totalSections}
+              completedSections={completedSections}
             />
-          </DndContext>
+
+            {/* 章節樹 */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={operations.handleDragEnd}
+            >
+              <ProposalTree
+                sections={sections}
+                loading={loading}
+                expandedSections={expandedSections}
+                renderSection={renderSection}
+                onToggleExpand={toggleSectionExpansion}
+              />
+            </DndContext>
+          </div>
         </div>
-      </div>
 
-      {/* 浮動內容面板 */}
-      {openContentPanels.size > 0 && (
-        <FloatingContentPanels
-          openContentPanels={openContentPanels}
-          taskContents={taskContents}
-          onClose={closeContentPanel}
-        />
-      )}
+        {/* 浮動內容面板 */}
+        {openContentPanels.size > 0 && (
+          <FloatingContentPanels
+            openContentPanels={openContentPanels}
+            taskContents={taskContents}
+            onClose={closeContentPanel}
+          />
+        )}
 
-      {/* 所有對話框 */}
-      <ProposalDialogs
+        {/* 所有對話框 */}
+        <ProposalDialogs
         // Dialog 狀態
         isAddSectionOpen={dialogs.isAddSectionOpen}
         isAddTaskOpen={dialogs.isAddTaskOpen}
@@ -851,6 +851,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
         editingSection={state.editingSection}
         projectImages={state.allProjectImages}
       />
-    </div>
+      </div>
+    </ProposalEditorProvider>
   );
 }

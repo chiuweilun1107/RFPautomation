@@ -3,72 +3,17 @@
 import * as React from "react"
 import { CheckCircle2, Circle, ChevronDown, Sparkles, Loader2, Wand2, Edit3, FileText, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
 import { TaskEditorSheet } from "./TaskEditorSheet"
 import { DraftEditor } from "./DraftEditor"
-import { toast } from "sonner"
 import ReactMarkdown from "react-markdown"
 import { SourceDetailSheet } from "@/components/workspace/SourceDetailSheet"
-import { createClient } from "@/lib/supabase/client"
-import { ragApi } from "@/features/rag/api/ragApi"
-import { templatesApi } from "@/features/templates/api/templatesApi"
-
-// 從 publicUrl 提取 storage path（用於 OnlyOffice）
-function extractStoragePath(publicUrl: string | null): string | null {
-    if (!publicUrl) return null;
-    try {
-        const url = new URL(publicUrl);
-        const pathParts = url.pathname.split('/');
-        // 尋找 bucket 名稱後的路徑
-        const bucketIndex = pathParts.findIndex(p => p === 'raw-files' || p === 'section-templates');
-        if (bucketIndex === -1) return null;
-        return pathParts.slice(bucketIndex + 1).join('/');
-    } catch {
-        return null;
-    }
-}
-
-// Types based on the schema
-interface Task {
-    id: string
-    title?: string
-    description?: string
-    requirement_text: string
-    response_draft?: string
-    status: string
-    ai_confidence?: number
-}
-
-interface DraftSource {
-    id?: string
-    title?: string
-    source_title?: string
-    similarity?: number
-}
-
-interface FullSource {
-    id: string
-    title: string
-    type: string
-    status: string
-    content?: string
-    summary?: string
-    topics?: string[]
-    source_type?: string
-    created_at: string
-    origin_url?: string
-}
-
-interface Section {
-    id: string
-    content: string // Title
-    content_draft?: string // AI 生成的草稿
-    draft_sources?: DraftSource[] // 引用來源
-    title?: string
-    tasks: Task[]
-    children?: Section[]
-    template_file_url?: string // 上傳的模版文件連結
-}
+import {
+    useSectionListState,
+    useSectionCardState,
+    type Task,
+    type DraftSource,
+    type Section,
+} from "./hooks/useSectionState"
 
 interface SectionListProps {
     sections: Section[]
@@ -76,60 +21,22 @@ interface SectionListProps {
 }
 
 export function SectionList({ sections, projectId }: SectionListProps) {
-    const router = useRouter()
-    const supabase = createClient()
-    const [selectedTask, setSelectedTask] = React.useState<Task | null>(null)
-    const [isSheetOpen, setIsSheetOpen] = React.useState(false)
-    const [generatingSectionId, setGeneratingSectionId] = React.useState<string | null>(null)
-    const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set())
-
-    // 來源詳情相關狀態
-    const [selectedSource, setSelectedSource] = React.useState<FullSource | null>(null)
-    const [isSourceDetailOpen, setIsSourceDetailOpen] = React.useState(false)
-    const [loadingSourceId, setLoadingSourceId] = React.useState<string | null>(null)
-
-    // 點擊引用來源，查看詳情
-    const handleViewSource = async (source: DraftSource) => {
-        if (!source.id) {
-            toast.error('來源資訊不完整')
-            return
-        }
-
-        setLoadingSourceId(source.id)
-
-        try {
-            // 從資料庫獲取完整來源資訊
-            const { data, error } = await supabase
-                .from('sources')
-                .select('*')
-                .eq('id', source.id)
-                .single()
-
-            if (error || !data) {
-                // 嘗試用 title 查詢
-                const { data: byTitle } = await supabase
-                    .from('sources')
-                    .select('*')
-                    .eq('title', source.title || source.source_title)
-                    .single()
-
-                if (byTitle) {
-                    setSelectedSource(byTitle as FullSource)
-                    setIsSourceDetailOpen(true)
-                } else {
-                    toast.error('找不到來源詳情')
-                }
-            } else {
-                setSelectedSource(data as FullSource)
-                setIsSourceDetailOpen(true)
-            }
-        } catch (err) {
-            console.error('Failed to fetch source:', err)
-            toast.error('載入來源失敗')
-        } finally {
-            setLoadingSourceId(null)
-        }
-    }
+    const {
+        selectedTask,
+        isSheetOpen,
+        handleEditTask,
+        handleCloseSheet,
+        handleTaskUpdated,
+        expandedSections,
+        toggleSection,
+        generatingSectionId,
+        handleGenerateDraft,
+        selectedSource,
+        isSourceDetailOpen,
+        loadingSourceId,
+        handleViewSource,
+        handleCloseSourceDetail,
+    } = useSectionListState()
 
     if (!sections || sections.length === 0) {
         return (
@@ -143,59 +50,6 @@ export function SectionList({ sections, projectId }: SectionListProps) {
         )
     }
 
-    const handleEditTask = (task: Task) => {
-        setSelectedTask(task)
-        setIsSheetOpen(true)
-    }
-
-    const handleTaskUpdated = () => {
-        router.refresh()
-    }
-
-    const toggleSection = (sectionId: string) => {
-        setExpandedSections(prev => {
-            const next = new Set(prev)
-            if (next.has(sectionId)) {
-                next.delete(sectionId)
-            } else {
-                next.add(sectionId)
-            }
-            return next
-        })
-    }
-
-    // RAG 生成章節草稿
-    const handleGenerateDraft = async (section: Section) => {
-        setGeneratingSectionId(section.id)
-        try {
-            const data = await ragApi.generate({
-                project_id: projectId,
-                section_id: section.id,
-                section_title: section.content || section.title,
-            })
-
-            // 顯示引用來源
-            if (data.sources && data.sources.length > 0) {
-                const sourceNames = data.sources.map((s: any) => s.title || s.source_title).filter(Boolean).slice(0, 3)
-                toast.success(`草稿生成完成！參考了 ${data.sources.length} 個來源: ${sourceNames.join(', ')}`)
-            } else {
-                toast.success('草稿生成完成！（無匹配的知識來源，使用 AI 通用知識生成）')
-            }
-
-            router.refresh()
-        } catch (error: any) {
-            console.error('Generate draft failed:', error)
-            const errorMsg = error.message || '生成草稿失敗'
-            if (errorMsg.includes('404') || errorMsg.includes('not registered')) {
-                toast.error('請先在 n8n 中啟動 WF08 RAG Query workflow')
-            } else {
-                toast.error(`生成失敗：${errorMsg}`)
-            }
-        } finally {
-            setGeneratingSectionId(null)
-        }
-    }
-
     return (
         <div className="w-full max-w-4xl mx-auto space-y-4">
             {sections.map((section) => (
@@ -205,7 +59,7 @@ export function SectionList({ sections, projectId }: SectionListProps) {
                     isExpanded={expandedSections.has(section.id)}
                     isGenerating={generatingSectionId === section.id}
                     onToggle={() => toggleSection(section.id)}
-                    onGenerate={() => handleGenerateDraft(section)}
+                    onGenerate={() => handleGenerateDraft(section, projectId)}
                     onEditTask={handleEditTask}
                     onViewSource={handleViewSource}
                     loadingSourceId={loadingSourceId}
@@ -215,21 +69,20 @@ export function SectionList({ sections, projectId }: SectionListProps) {
             <TaskEditorSheet
                 task={selectedTask}
                 open={isSheetOpen}
-                onOpenChange={setIsSheetOpen}
+                onOpenChange={handleCloseSheet}
                 onTaskUpdated={handleTaskUpdated}
             />
 
-            {/* 來源詳情視窗 */}
             <SourceDetailSheet
                 source={selectedSource}
                 open={isSourceDetailOpen}
-                onOpenChange={setIsSourceDetailOpen}
+                onOpenChange={handleCloseSourceDetail}
             />
         </div>
     )
 }
 
-// 章節卡片組件
+// 章节卡片组件
 interface SectionCardProps {
     section: Section
     isExpanded: boolean
@@ -241,145 +94,34 @@ interface SectionCardProps {
     loadingSourceId: string | null
 }
 
-function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, onEditTask, onViewSource, loadingSourceId }: SectionCardProps) {
-    const [isEditing, setIsEditing] = React.useState(false)
-    const [localDraft, setLocalDraft] = React.useState(section.content_draft || '')
-    const [localTemplateUrl, setLocalTemplateUrl] = React.useState(section.template_file_url || null)
-    const [activeView, setActiveView] = React.useState<'draft' | 'template'>('draft')
-
-    // 模板查看模式（移除編輯模式，改為跳轉到獨立頁面）
-    const [iframeKey, setIframeKey] = React.useState(0)
-    const [isRefreshing, setIsRefreshing] = React.useState(false)
-
-    // Check if we have content for views
-    const hasDraft = localDraft && localDraft.trim().length > 0;
-    const hasTemplate = !!localTemplateUrl;
-
-    // Default to template view if only template exists and no draft
-    React.useEffect(() => {
-        if (hasTemplate && !hasDraft && activeView !== 'template') {
-            setActiveView('template')
-        }
-    }, [hasTemplate, hasDraft, activeView])
-
-    // Sync props to local state if they change (e.g. after SWR revalidation)
-    React.useEffect(() => {
-        setLocalDraft(section.content_draft || '')
-    }, [section.content_draft])
-
-    React.useEffect(() => {
-        if (section.template_file_url) {
-            setLocalTemplateUrl(section.template_file_url)
-        }
-    }, [section.template_file_url])
-
-    const fileInputRef = React.useRef<HTMLInputElement>(null)
-    const [isUploading, setIsUploading] = React.useState(false)
-    const router = useRouter()
-    const supabase = createClient()
-
-    // 跳轉到獨立編輯頁面
-    const openEditorPage = () => {
-        // 從當前 URL 獲取 projectId
-        const pathParts = window.location.pathname.split('/')
-        const dashboardIndex = pathParts.indexOf('dashboard')
-        const projectId = pathParts[dashboardIndex + 1]
-
-        if (projectId) {
-            router.push(`/dashboard/${projectId}/writing/edit/${section.id}`)
-        } else {
-            toast.error('無法獲取項目 ID')
-        }
-    }
-
-    // 刷新模板預覽（從編輯頁面返回時調用）
-    const refreshTemplatePreview = async () => {
-        setIsRefreshing(true)
-
-        try {
-            const { data, error } = await supabase
-                .from('sections')
-                .select('template_file_url')
-                .eq('id', section.id)
-                .single()
-
-            if (error) {
-                console.error('Failed to fetch updated section:', error)
-                toast.error('無法載入最新版本')
-            } else if (data?.template_file_url) {
-                setLocalTemplateUrl(data.template_file_url)
-                setIframeKey(prev => prev + 1)
-                toast.success('已更新至最新版本')
-            }
-        } catch (err) {
-            console.error('Error refreshing template:', err)
-            toast.error('刷新失敗')
-        } finally {
-            setIsRefreshing(false)
-        }
-    }
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        if (!file.name.endsWith('.docx')) {
-            toast.error('僅支援 .docx 格式')
-            return
-        }
-
-        setIsUploading(true)
-        try {
-            // 1. 使用字體處理 API 處理文件
-            toast.info('正在處理字體...')
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('bucket', 'raw-files') // 指定 bucket
-            formData.append('folder', 'section-templates') // 指定文件夾
-
-            const response = await fetch('/api/process-and-upload', {
-                method: 'POST',
-                body: formData,
-            })
-
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || '字體處理失敗')
-            }
-
-            const result = await response.json()
-
-            // 2. 將處理後的文件 URL 保存到 section
-            const supabase = createClient()
-            toast.info('正在保存...')
-
-            const { error: updateError } = await supabase
-                .from('sections')
-                .update({
-                    template_file_url: result.url
-                })
-                .eq('id', section.id)
-
-            if (updateError) throw updateError
-
-            toast.success('文件上傳成功！字體已處理')
-            if (fileInputRef.current) fileInputRef.current.value = ''
-
-            // Optimistic Update
-            setLocalTemplateUrl(result.url)
-
-            // Switch to template view
-            setActiveView('template')
-
-            router.refresh()
-
-        } catch (error: any) {
-            console.error('Upload failed:', error)
-            toast.error(`上傳失敗: ${error.message || '未知錯誤'}`)
-        } finally {
-            setIsUploading(false)
-        }
-    }
+function SectionCard({
+    section,
+    isExpanded,
+    isGenerating,
+    onToggle,
+    onGenerate,
+    onEditTask,
+    onViewSource,
+    loadingSourceId,
+}: SectionCardProps) {
+    const {
+        isEditing,
+        setIsEditing,
+        localDraft,
+        setLocalDraft,
+        localTemplateUrl,
+        activeView,
+        setActiveView,
+        iframeKey,
+        isRefreshing,
+        isUploading,
+        fileInputRef,
+        hasDraft,
+        hasTemplate,
+        openEditorPage,
+        refreshTemplatePreview,
+        handleFileUpload,
+    } = useSectionCardState({ section })
 
     return (
         <div className="border-2 border-black dark:border-white bg-white dark:bg-black overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.1)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[10px_10px_0px_0px_rgba(255,255,255,0.15)]">
@@ -545,7 +287,7 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                                                         {loadingSourceId === source.id ? (
                                                             <Loader2 className="w-3 h-3 mr-2 animate-spin" />
                                                         ) : (
-                                                            <span className="mr-2">📄</span>
+                                                            <span className="mr-2">doc</span>
                                                         )}
                                                         {source.title || source.source_title || `SOURCE_${idx + 1}`}
                                                     </button>
@@ -567,7 +309,7 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                         {activeView === 'template' && (
                             localTemplateUrl ? (
                                 <div className="p-6">
-                                    {/* 標題欄 */}
+                                    {/* Header Bar */}
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-2">
                                             <FileText className="w-4 h-4 text-blue-600" />
@@ -576,7 +318,7 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {/* 編輯按鈕（跳轉到獨立頁面） */}
+                                            {/* Edit Button (navigate to editor page) */}
                                             <Button
                                                 size="sm"
                                                 onClick={openEditorPage}
@@ -585,7 +327,7 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                                                 <Edit3 className="w-3 h-3 mr-2" />
                                                 Open_In_Editor
                                             </Button>
-                                            {/* 刷新按鈕 */}
+                                            {/* Refresh Button */}
                                             <Button
                                                 size="sm"
                                                 variant="outline"
@@ -596,7 +338,7 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                                                 {isRefreshing ? (
                                                     <Loader2 className="w-3 h-3 animate-spin" />
                                                 ) : (
-                                                    '🔄 Refresh'
+                                                    'Refresh'
                                                 )}
                                             </Button>
                                             <a
@@ -605,12 +347,12 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                                                 rel="noopener noreferrer"
                                                 className="text-[10px] text-blue-600 hover:underline font-bold uppercase tracking-widest"
                                             >
-                                                下載原始檔案
+                                                Download Original
                                             </a>
                                         </div>
                                     </div>
 
-                                    {/* 預覽區域 */}
+                                    {/* Preview Area */}
                                     <div className="w-full aspect-[3/4] min-h-[600px] border border-gray-200 shadow-sm bg-white">
                                         <iframe
                                             key={iframeKey}
@@ -665,6 +407,5 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
                 </div>
             )}
         </div>
-
     )
 }

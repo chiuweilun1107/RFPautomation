@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Draggable from 'react-draggable';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -58,10 +57,88 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
   const [open, setOpen] = useState(false);
   const [isSourceDialogOpen, setIsSourceDialogOpen] = useState(false);
 
-  // Draggable 狀態
+  // 摺疊狀態
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Native Dragging State
+  const [position, setPosition] = useState({ x: 0, y: 20 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
   const nodeRef = useRef<HTMLDivElement>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [defaultPos, setDefaultPos] = useState({ x: 0, y: 20 });
+
+  // Ref to store dimensions during drag to avoid reflows
+  const dragInfoRef = useRef({
+    metrics: { width: 0, height: 0 },
+    window: { width: 0, height: 0 }
+  });
+
+  // 初始化並設定初始位置
+  useEffect(() => {
+    setIsMounted(true);
+    // 設定初始位置在右上角
+    setPosition({ x: window.innerWidth - 520, y: 20 });
+  }, []);
+
+  // 處理 Pointer Event 拖曳邏輯
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // 只有左鍵可以拖曳
+    if (e.button !== 0) return;
+    e.preventDefault(); // 防止文字選取等預設行為
+
+    // Cache dimensions ONCE when starting to drag
+    if (nodeRef.current) {
+      dragInfoRef.current = {
+        metrics: {
+          width: nodeRef.current.offsetWidth,
+          height: nodeRef.current.offsetHeight
+        },
+        window: {
+          width: window.innerWidth,
+          height: window.innerHeight
+        }
+      };
+    }
+
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+
+    // 關鍵：鎖定 Pointer，防止滑鼠快速移動或進入 iframe 時失去焦點
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+
+    // 使用 ref 中的數值，避免觸發 Reflow
+    const { metrics, window: winMetrics } = dragInfoRef.current;
+
+    // 計算新位置
+    let newX = e.clientX - dragOffset.x;
+    let newY = e.clientY - dragOffset.y;
+
+    // 邊界檢查
+    newX = Math.max(-metrics.width + 40, Math.min(newX, winMetrics.width - 40));
+    newY = Math.max(0, Math.min(newY, winMetrics.height - 40));
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isDragging) {
+      setIsDragging(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // 忽略可能的錯誤
+      }
+    }
+  };
 
   // 從資料庫讀取上次選擇的專案和文件
   useEffect(() => {
@@ -235,149 +312,182 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
     }
   };
 
-  // 初始化客戶端掛載狀態
-  useEffect(() => {
-    setIsMounted(true);
-    setDefaultPos({ x: window.innerWidth - 420, y: 20 });
-  }, []);
-
   // 等待客戶端掛載
   if (!isMounted) {
     return null;
   }
 
-  return (
-    <div className="fixed inset-0 pointer-events-none z-50">
-      <Draggable
-        nodeRef={nodeRef}
-        handle=".drag-handle"
-        bounds="parent"
-        defaultPosition={defaultPos}
+  // 處理收合/展開
+  const toggleCollapse = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 防止拖曳時觸發
+    setIsCollapsed(!isCollapsed);
+  };
+
+  if (isCollapsed) {
+    return (
+      <div
+        ref={nodeRef}
+        // 收合狀態的樣式：紅色方形，帶有 K 字
+        className="fixed z-50 cursor-move bg-[#FA4028] border-2 border-black dark:border-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.2)] flex items-center justify-center w-12 h-12"
+        style={{
+          left: position.x,
+          top: position.y,
+          // 確保拖曳時沒有過渡動畫，這樣才會跟手
+          transition: isDragging ? 'none' : 'none'
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onClick={toggleCollapse} // 點擊展開
+        title="點擊展開 AI 專案選擇器"
       >
-        <div
-          ref={nodeRef}
-          className="pointer-events-auto bg-white dark:bg-zinc-950 border-2 border-black dark:border-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] dark:shadow-[12px_12px_0px_0px_rgba(255,255,255,0.2)] flex flex-col overflow-hidden"
-          style={{
-            position: 'absolute',
-            width: 'auto',
-            maxWidth: '500px'
-          }}
-        >
-          {/* 紅色拖曳條 - Header / Drag Handle */}
-          <div className="drag-handle cursor-move p-2 border-b-2 border-black dark:border-white bg-[#FA4028] text-white flex justify-between items-center shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
-                <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
-                <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider font-mono">AI_PROJECT_SELECTOR</span>
-            </div>
+        <span className="text-white font-black text-2xl font-mono select-none pointer-events-none">K</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={nodeRef}
+      className="fixed z-50 bg-white dark:bg-zinc-950 border-2 border-black dark:border-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] dark:shadow-[12px_12px_0px_0px_rgba(255,255,255,0.2)] flex flex-col overflow-hidden"
+      style={{
+        left: position.x,
+        top: position.y,
+        width: 'auto',
+        maxWidth: '500px',
+        // 確保拖曳時沒有過渡動畫
+        transition: isDragging ? 'none' : 'none'
+      }}
+    >
+      {/* 紅色拖曳條 - Header / Drag Handle */}
+      <div
+        className="cursor-move p-2 border-b-2 border-black dark:border-white bg-[#FA4028] text-white flex justify-between items-center shrink-0 select-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <div className="flex items-center gap-2 pointer-events-none">
+          <div className="flex gap-1">
+            <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+            <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
+            <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
           </div>
+          <span className="text-xs font-black uppercase tracking-wider font-mono">AI_PROJECT_SELECTOR</span>
+        </div>
 
-          {/* 內容區域 */}
-          <div className="flex gap-2 items-center p-3 bg-white dark:bg-zinc-950">
-            <DropdownMenu open={open} onOpenChange={setOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={selectedProject ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2 rounded-none border-black dark:border-white hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028]"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  {selectedProject ? (
-                    <span className="max-w-[200px] truncate font-bold text-xs uppercase">
-                      {getProjectField(selectedProject, 'name') || '未命名專案'}
-                    </span>
-                  ) : (
-                    <span className="font-bold text-xs uppercase">AI 參考專案</span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
+        {/* 收合按鈕 */}
+        <div
+          className="cursor-pointer hover:bg-white/20 rounded p-0.5 transition-colors"
+          onClick={toggleCollapse}
+          onPointerDown={(e) => e.stopPropagation()} // 防止收合時觸發拖曳與 Pointer Capture
+          onMouseDown={(e) => e.stopPropagation()} // 防止收合時觸發拖曳
+          title="收合"
+        >
+          <div className="w-3 h-0.5 bg-white"></div>
+        </div>
+      </div>
 
-              <DropdownMenuContent align="end" className="w-[350px] max-h-[500px] overflow-y-auto rounded-none border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] font-mono">
-                <DropdownMenuLabel className="text-xs text-muted-foreground uppercase font-bold">
-                  選擇 AI 要參考的專案資料
-                </DropdownMenuLabel>
+      {/* 內容區域 */}
+      <div className="flex gap-2 items-center p-3 bg-white dark:bg-zinc-950">
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={selectedProject ? "default" : "outline"}
+              size="sm"
+              className="gap-2 rounded-none border-black dark:border-white hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028]"
+            >
+              <FolderOpen className="w-4 h-4" />
+              {selectedProject ? (
+                <span className="max-w-[200px] truncate font-bold text-xs uppercase">
+                  {getProjectField(selectedProject, 'name') || '未命名專案'}
+                </span>
+              ) : (
+                <span className="font-bold text-xs uppercase">AI 參考專案</span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-[350px] max-h-[500px] overflow-y-auto rounded-none border-2 border-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] font-mono">
+            <DropdownMenuLabel className="text-xs text-muted-foreground uppercase font-bold">
+              選擇 AI 要參考的專案資料
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-black/10 dark:bg-white/10" />
+
+            {loading ? (
+              <div className="py-6 text-center text-sm text-muted-foreground uppercase font-bold">
+                載入專案列表...
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground uppercase font-bold">
+                尚無專案
+              </div>
+            ) : (
+              <>
+                {projects.map((project) => (
+                  <DropdownMenuItem
+                    key={project.id}
+                    onClick={() => handleSelectProject(project)}
+                    className="flex flex-col items-start gap-1 py-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                  >
+                    <div className="flex items-start justify-between w-full">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm truncate uppercase">
+                          {getProjectField(project, 'name') || '未命名專案'}
+                        </div>
+                        {getProjectField(project, 'agency') && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {getProjectField(project, 'agency')}
+                          </div>
+                        )}
+                        {getProjectField(project, 'deadline') && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            📅 {formatDate(getProjectField(project, 'deadline'))}
+                          </div>
+                        )}
+                      </div>
+                      {selectedProjectId === project.id && (
+                        <Check className="w-4 h-4 text-[#FA4028] ml-2 flex-shrink-0" />
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+
                 <DropdownMenuSeparator className="bg-black/10 dark:bg-white/10" />
 
-                {loading ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground uppercase font-bold">
-                    載入專案列表...
+                <DropdownMenuItem
+                  onClick={() => handleSelectProject(null)}
+                  className="flex items-center justify-between gap-2 cursor-pointer text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  <div className="flex items-center gap-2">
+                    <X className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase">不使用專案資料</span>
                   </div>
-                ) : projects.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground uppercase font-bold">
-                    尚無專案
-                  </div>
-                ) : (
-                  <>
-                    {projects.map((project) => (
-                      <DropdownMenuItem
-                        key={project.id}
-                        onClick={() => handleSelectProject(project)}
-                        className="flex flex-col items-start gap-1 py-3 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                      >
-                        <div className="flex items-start justify-between w-full">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm truncate uppercase">
-                              {getProjectField(project, 'name') || '未命名專案'}
-                            </div>
-                            {getProjectField(project, 'agency') && (
-                              <div className="text-xs text-muted-foreground truncate">
-                                {getProjectField(project, 'agency')}
-                              </div>
-                            )}
-                            {getProjectField(project, 'deadline') && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                📅 {formatDate(getProjectField(project, 'deadline'))}
-                              </div>
-                            )}
-                          </div>
-                          {selectedProjectId === project.id && (
-                            <Check className="w-4 h-4 text-[#FA4028] ml-2 flex-shrink-0" />
-                          )}
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-
-                    <DropdownMenuSeparator className="bg-black/10 dark:bg-white/10" />
-
-                    <DropdownMenuItem
-                      onClick={() => handleSelectProject(null)}
-                      className="flex items-center justify-between gap-2 cursor-pointer text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                    >
-                      <div className="flex items-center gap-2">
-                        <X className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase">不使用專案資料</span>
-                      </div>
-                      {!selectedProjectId && (
-                        <Check className="w-4 h-4 text-[#FA4028]" />
-                      )}
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* 顯示選中的文件數量或提示選擇文件 */}
-            {selectedProject && (
-              <Button
-                variant={selectedSourceIds.length > 0 ? "default" : "outline"}
-                size="sm"
-                className="gap-2 rounded-none border-black dark:border-white hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028]"
-                onClick={() => setIsSourceDialogOpen(true)}
-              >
-                <FileText className="w-4 h-4" />
-                <span className="font-bold text-xs uppercase">
-                  {selectedSourceIds.length > 0
-                    ? `${selectedSourceIds.length} 份文件`
-                    : '選擇文件'}
-                </span>
-              </Button>
+                  {!selectedProjectId && (
+                    <Check className="w-4 h-4 text-[#FA4028]" />
+                  )}
+                </DropdownMenuItem>
+              </>
             )}
-          </div>
-        </div>
-      </Draggable>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* 顯示選中的文件數量或提示選擇文件 */}
+        {selectedProject && (
+          <Button
+            variant={selectedSourceIds.length > 0 ? "default" : "outline"}
+            size="sm"
+            className="gap-2 rounded-none border-black dark:border-white hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028]"
+            onClick={() => setIsSourceDialogOpen(true)}
+          >
+            <FileText className="w-4 h-4" />
+            <span className="font-bold text-xs uppercase">
+              {selectedSourceIds.length > 0
+                ? `${selectedSourceIds.length} 份文件`
+                : '選擇文件'}
+            </span>
+          </Button>
+        )}
+      </div>
 
       {/* 文件選擇對話框 */}
       {selectedProjectId && (

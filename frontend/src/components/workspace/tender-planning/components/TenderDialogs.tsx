@@ -12,6 +12,7 @@ import { SourceSelectionDialog } from "../../dialogs/SourceSelectionDialog";
 import { TaskGenerationDialog, TaskGenerationOptions } from "../../dialogs/TaskGenerationDialog";
 import { ImageGenerationDialog } from "../../dialogs/ImageGenerationDialog";
 import type { DialogContext, GenerationMode, Task } from "../types";
+import type { TaskImage } from "../../types";
 
 interface TenderDialogsProps {
     /** Project ID for dialogs */
@@ -65,7 +66,7 @@ interface TenderDialogsProps {
     /** Image generation confirmation handler */
     onImageGenConfirm: (options: any) => Promise<void>;
     /** Project-wide images for gallery selection */
-    projectImages?: Array<{ id: string, url: string }>;
+    projectImages?: TaskImage[];
 }
 
 /**

@@ -7,7 +7,7 @@ import { GenerateSubsectionDialog } from '@/components/workspace/dialogs/Generat
 import { ContentGenerationDialog } from '@/components/workspace/dialogs/ContentGenerationDialog';
 import { ImageGenerationDialog } from '@/components/workspace/dialogs/ImageGenerationDialog';
 import { ConflictConfirmationDialog } from '@/components/ui/ConflictConfirmationDialog';
-import type { Section, Source, Task, ImageGenerationOptions } from '../types';
+import type { Section, Source, Task, TaskImage, ImageGenerationOptions } from '../types';
 
 interface ProposalDialogsProps {
   // Dialog 狀態
@@ -96,7 +96,7 @@ interface ProposalDialogsProps {
   generating: boolean;
   editingTask: Task | null;
   editingSection: Section | null;
-  projectImages?: Array<{ id: string; url: string }>;
+  projectImages?: TaskImage[];
 }
 
 /**

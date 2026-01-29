@@ -406,14 +406,11 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         }
     };
 
-    // Project-wide Images for Gallery
+    // Project-wide Images for Gallery (return full TaskImage objects)
     const projectImages = outline.flatMap(chapter =>
         chapter.sections.flatMap(section =>
             (section.tasks || []).flatMap(task =>
-                (task.task_images || []).map(img => ({
-                    id: img.id,
-                    url: img.image_url
-                }))
+                (task.task_images || []).filter(img => img.image_url)
             )
         )
     );

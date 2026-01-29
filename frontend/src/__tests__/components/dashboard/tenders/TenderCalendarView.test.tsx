@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { TenderCalendarView } from '@/components/dashboard/tenders/TenderCalendarView';
+import { TenderCalendarView } from '@/components/dashboard/tenders/views/TenderCalendarView';
 
 describe('TenderCalendarView', () => {
     const mockTenders = [

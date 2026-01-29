@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Section, Task } from "../types";
+import { Section, Task, TaskImage } from "../types";
 
 /**
  * 提案编辑器的核心状态管理 Hook
@@ -143,19 +143,16 @@ export function useProposalState(initialSections: Section[] = []) {
     return result;
   }, [sections, expandedSections]);
 
-  // 获取所有项目图片
+  // 获取所有项目图片 (返回完整的 TaskImage 对象以满足类型要求)
   const allProjectImages = useMemo(() => {
-    const images: { id: string; url: string }[] = [];
+    const images: TaskImage[] = [];
     const traverse = (nodes: Section[]) => {
       nodes.forEach((node) => {
         node.tasks?.forEach((task) => {
           if (task.task_images && task.task_images.length > 0) {
-            task.task_images.forEach((img: any) => {
+            task.task_images.forEach((img) => {
               if (img.image_url) {
-                images.push({
-                  id: img.id,
-                  url: img.image_url,
-                });
+                images.push(img);
               }
             });
           }

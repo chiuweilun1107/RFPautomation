@@ -11,6 +11,7 @@ export interface Citation {
 
 export interface Section {
   id: string;
+  project_id?: string;
   title: string;
   order_index: number;
   parent_id?: string | null;
@@ -28,6 +29,7 @@ export interface Section {
 
 export interface Task {
   id: string;
+  project_id?: string;
   title?: string;
   requirement_text: string;
   status: string;
