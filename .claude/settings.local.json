@@ -184,7 +184,8 @@
       "WebFetch(domain:www.onlyoffice.com)",
       "Skill(senior-architect)",
       "Skill(senior-architect:*)",
-      "Bash(do)"
+      "Bash(do)",
+      "Bash(docker:*)"
     ]
   }
 }
