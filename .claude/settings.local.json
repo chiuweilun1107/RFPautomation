@@ -185,7 +185,9 @@
       "Skill(senior-architect)",
       "Skill(senior-architect:*)",
       "Bash(do)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(while read f)",
+      "Bash(npx next lint:*)"
     ]
   }
 }

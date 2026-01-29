@@ -68,7 +68,7 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
   const {
     position,
     isDragging,
-    handleMouseDown,
+    dragListeners, // Use new listeners
     dialogStyle,
   } = useDraggableDialog({
     initialPosition: { x: initialX, y: 20 },
@@ -96,8 +96,9 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
           left: position.x,
           top: position.y,
           transition: isDragging ? 'none' : 'none',
+          touchAction: 'none'
         }}
-        onMouseDown={handleMouseDown}
+        {...dragListeners}
         onClick={toggleCollapse}
         title="Click to expand AI Project Selector"
       >
@@ -122,7 +123,7 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
       {/* Red drag handle - Header */}
       <div
         className="cursor-move p-2 border-b-2 border-black dark:border-white bg-[#FA4028] text-white flex justify-between items-center shrink-0 select-none"
-        onMouseDown={handleMouseDown}
+        {...dragListeners}
       >
         <div className="flex items-center gap-2 pointer-events-none">
           <div className="flex gap-1">
@@ -139,6 +140,7 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
         <div
           className="cursor-pointer hover:bg-white/20 rounded p-0.5 transition-colors"
           onClick={toggleCollapse}
+          onPointerDown={(e) => e.stopPropagation()} // Stop pointer capture propagation
           onMouseDown={(e) => e.stopPropagation()}
           title="Collapse"
         >

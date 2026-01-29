@@ -51,7 +51,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
   // Draggable dialog for citation details
   const {
     isDragging,
-    handleMouseDown,
+    dragListeners,
     dialogStyle,
     setPosition,
   } = useDraggableDialog({
@@ -153,7 +153,7 @@ export function AssessmentTable({ projectId, onNextStage }: AssessmentTableProps
             <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-[580px] h-[80vh] flex flex-col shadow-xl">
               <div
                 className="bg-[#FA4028] h-4 cursor-move hover:h-6 transition-all flex items-center justify-center border-b-2 border-black dark:border-white shrink-0"
-                onMouseDown={handleMouseDown}
+                {...dragListeners}
               >
                 <div className="flex gap-1.5">
                   <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
@@ -292,11 +292,10 @@ function AssessmentHeader({
 
       {/* Collapsible Title Area */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isHeaderExpanded
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${isHeaderExpanded
             ? 'max-h-[200px] opacity-100 mb-8'
             : 'max-h-0 opacity-0 mb-0'
-        }`}
+          }`}
       >
         <div className="flex flex-col items-center">
           <div className="relative inline-flex items-center">
@@ -368,10 +367,9 @@ function AssessmentHeader({
                 onClick={() => setActiveTab(key)}
                 className={`
                   rounded-none border-b-2 px-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all bg-transparent shadow-none italic
-                  ${
-                    isActive
-                      ? 'border-[#FA4028] text-[#FA4028] opacity-100'
-                      : 'border-transparent text-foreground hover:text-[#FA4028] opacity-60'
+                  ${isActive
+                    ? 'border-[#FA4028] text-[#FA4028] opacity-100'
+                    : 'border-transparent text-foreground hover:text-[#FA4028] opacity-60'
                   }
                 `}
               >

@@ -501,7 +501,7 @@ export function SourceManager({ projectId, onSelectSource }: SourceManagerProps)
           <div className="pointer-events-auto border-2 border-black dark:border-white rounded-none bg-white dark:bg-black font-mono shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] dark:shadow-[24px_24px_0px_0px_rgba(255,255,255,0.2)] w-full sm:w-[580px] max-w-[95vw] h-[80vh] max-h-[90vh] flex flex-col shadow-xl">
             <div
               className="bg-[#FA4028] h-4 cursor-move hover:h-6 transition-all flex items-center justify-center border-b-2 border-black dark:border-white shrink-0"
-              onMouseDown={draggableDialog.handleMouseDown}
+              {...draggableDialog.dragListeners}
             >
               <div className="flex gap-1.5">
                 <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />

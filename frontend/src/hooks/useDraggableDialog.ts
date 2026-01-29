@@ -54,8 +54,16 @@ export interface UseDraggableDialogReturn {
   position: Position;
   /** Whether the dialog is currently being dragged */
   isDragging: boolean;
-  /** Mouse down handler to attach to the drag handle element */
+  /** @deprecated Use dragListeners instead */
   handleMouseDown: (e: React.MouseEvent) => void;
+  /** Handler for pointer down */
+  handlePointerDown: (e: React.PointerEvent) => void;
+  /** Pre-packaged event listeners to spread onto the drag handle */
+  dragListeners: {
+    onPointerDown: (e: React.PointerEvent) => void;
+    onPointerMove: (e: React.PointerEvent) => void;
+    onPointerUp: (e: React.PointerEvent) => void;
+  };
   /** Programmatically set the position */
   setPosition: (position: Position | ((prev: Position) => Position)) => void;
   /** Reset position to initial value */
@@ -178,14 +186,17 @@ export function useDraggableDialog(
   );
 
   /**
-   * Handler for mouse down event on the drag handle
+   * Handler for pointer down event on the drag handle
    */
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
       if (disabled) return;
 
       // Prevent text selection during drag
       e.preventDefault();
+
+      // Capture pointer to ensure we receive events even if moving outside or over iframes
+      e.currentTarget.setPointerCapture(e.pointerId);
 
       setIsDragging(true);
       setDragOffset({
@@ -199,41 +210,49 @@ export function useDraggableDialog(
   );
 
   /**
-   * Reset position to initial value
+   * Handler for pointer move event
    */
-  const resetPosition = useCallback(() => {
-    setPosition(initialPositionRef.current);
-  }, []);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging) return;
+      e.preventDefault();
 
-  /**
-   * Effect to handle mouse move and mouse up events during dragging
-   */
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
       const rawX = e.clientX - dragOffset.x;
       const rawY = e.clientY - dragOffset.y;
 
       const constrainedPosition = getConstrainedPosition(rawX, rawY);
       setPosition(constrainedPosition);
       onDrag?.(constrainedPosition);
-    };
+    },
+    [isDragging, dragOffset, getConstrainedPosition, onDrag]
+  );
 
-    const handleMouseUp = () => {
+  /**
+   * Handler for pointer up event
+   */
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging) return;
+
       setIsDragging(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) {
+        // Ignore errors if pointer was already released
+      }
       onDragEnd?.(position);
-    };
+    },
+    [isDragging, position, onDragEnd]
+  );
 
-    // Add event listeners to window for capturing mouse events outside the dialog
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+  /**
+   * Reset position to initial value
+   */
+  const resetPosition = useCallback(() => {
+    setPosition(initialPositionRef.current);
+  }, []);
 
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset, getConstrainedPosition, onDrag, onDragEnd, position]);
+  // Remove window event listeners logic since we use pointer capture now
 
   /**
    * Style object to apply to the dialog container
@@ -242,12 +261,24 @@ export function useDraggableDialog(
     left: `${position.x}px`,
     top: `${position.y}px`,
     transition: isDragging ? 'none' : 'all 0.2s ease-out',
+    touchAction: 'none', // Critical for pointer events on touch devices
+  };
+
+  /**
+   * Pre-packaged event listeners to spread onto the drag handle
+   */
+  const dragListeners = {
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
   };
 
   return {
     position,
     isDragging,
-    handleMouseDown,
+    handleMouseDown: () => { }, // Deprecated, keeping for type layout temporarily if needed but should not be used
+    handlePointerDown, // Explicit export
+    dragListeners, // Recommended usage
     setPosition,
     resetPosition,
     dialogStyle,
