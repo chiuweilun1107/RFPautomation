@@ -87,7 +87,7 @@ export function KnowledgeSidebar({
                 </TabsContent>
 
                 <TabsContent value="criteria" className="flex-1 overflow-hidden m-0 p-4 data-[state=inactive]:hidden">
-                    <CriteriaList />
+                    <CriteriaList projectId={projectId} />
                 </TabsContent>
             </Tabs>
         </aside>

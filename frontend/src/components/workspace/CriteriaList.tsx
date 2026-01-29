@@ -15,22 +15,29 @@ interface Criteria {
     description: string;
 }
 
-export function CriteriaList() {
+interface CriteriaListProps {
+    projectId: string;
+}
+
+export function CriteriaList({ projectId }: CriteriaListProps) {
     const [criteria, setCriteria] = useState<Criteria[]>([]);
     const supabase = createClient();
 
     useEffect(() => {
         const fetchCriteria = async () => {
+            if (!projectId) return;
+
             const { data } = await supabase
                 .from('criteria')
                 .select('*')
+                .eq('project_id', projectId)
                 .order('group_name', { ascending: true });
 
             if (data) setCriteria(data as any[]);
         };
 
         fetchCriteria();
-    }, []);
+    }, [projectId]);
 
     const grouped = criteria.reduce((acc, curr) => {
         const group = curr.group_name || 'General';

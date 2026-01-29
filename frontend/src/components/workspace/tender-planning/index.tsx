@@ -227,6 +227,11 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
         }
     };
 
+    const handleRegenerate = () => {
+        setMethodDialogContext('chapter');
+        setIsGenerationModeDialogOpen(true);
+    };
+
     const handleGenerationModeConfirm = async (mode: GenerationMode) => {
         setIsGenerationModeDialogOpen(false);
 
@@ -438,6 +443,7 @@ export function TenderPlanning({ projectId, onNextStage, onPrevStage }: TenderPl
                         onTemplateSelect={setSelectedTemplateId}
                         onPreview={handlePreview}
                         previewing={previewing}
+                        onRegenerate={handleRegenerate}
                     />
 
                     {/* Chapter List */}

@@ -1,11 +1,6 @@
-/**
- * TenderToolbar Component
- *
- * Action toolbar with template selection, preview, and save functionality.
- */
-
-import { Save, Loader2, Eye, FileText } from "lucide-react";
+import { Save, Loader2, Eye, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
     Select,
     SelectContent,
@@ -29,6 +24,8 @@ interface TenderToolbarProps {
     onPreview?: () => void;
     /** Whether preview is loading */
     previewing?: boolean;
+    /** Regenerate structure handler */
+    onRegenerate?: () => void;
 }
 
 /**
@@ -41,7 +38,8 @@ export function TenderToolbar({
     templates = [],
     onTemplateSelect,
     onPreview,
-    previewing = false
+    previewing = false,
+    onRegenerate
 }: TenderToolbarProps) {
     return (
         <div className="flex items-center justify-between mb-8 max-w-4xl mx-auto gap-4">
@@ -86,8 +84,22 @@ export function TenderToolbar({
                 </Button>
             </div>
 
-    // Removed Generate All Content logic
-
+            {/* Middle: Regenerate Button */}
+            {onRegenerate && (
+                <Button
+                    onClick={onRegenerate}
+                    disabled={saving}
+                    variant="outline"
+                    className="rounded-none border-2 border-black dark:border-white font-mono text-xs hover:bg-[#FA4028] hover:text-white hover:border-[#FA4028] uppercase tracking-wider"
+                >
+                    {saving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    Restructure_(AI)
+                </Button>
+            )}
 
             {/* Right: Save Button */}
             <Button
