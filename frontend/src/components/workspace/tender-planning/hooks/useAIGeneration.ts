@@ -49,11 +49,24 @@ export function useAIGeneration({
         logger.info('Starting AI Generation', 'TenderPlanning:WF04', { mode, projectId });
         try {
             if (mode === 'replace_all') {
-                const { error: deleteError } = await supabase
-                    .from('chapters')
+                // 1. Delete all tasks first (to avoid FK constraints if no CASCADE)
+                const { error: deleteTasksError } = await supabase
+                    .from('tasks')
                     .delete()
                     .eq('project_id', projectId);
-                if (deleteError) throw deleteError;
+                if (deleteTasksError) {
+                    console.error('Error deleting tasks:', deleteTasksError);
+                    // Don't throw here, try to clean sections anyway. 
+                    // If sections fail due to FK, it will be caught below.
+                }
+
+                // 2. Delete all sections
+                const { error: deleteSectionsError } = await supabase
+                    .from('sections')
+                    .delete()
+                    .eq('project_id', projectId);
+                if (deleteSectionsError) throw deleteSectionsError;
+
                 setOutline([]);
             }
 

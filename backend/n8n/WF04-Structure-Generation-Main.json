@@ -1,0 +1,345 @@
+{
+    "id": "QjIHN2I75HTPrXqj",
+    "active": true,
+    "name": "WF04-Structure-Generation-Main",
+    "nodes": [
+        {
+            "parameters": {
+                "path": "generate-structure-check",
+                "httpMethod": "POST",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "webhook-check",
+            "name": "Webhook: Check & Generate",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                200,
+                300
+            ],
+            "webhookId": "generate-structure-check"
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SUPABASE_URL + '/rest/v1/project_assessments?project_id=eq.' + $('Webhook: Check & Generate').first().json.body.projectId }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "supabase-get-assessment",
+            "name": "Supabase: Get Assessment",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                450,
+                300
+            ],
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "={{ $env.SUPABASE_URL }}/rest/v1/criteria?project_id=eq.{{ $('Webhook: Check & Generate').first().json.body.projectId }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "supabase-get-criteria",
+            "name": "Supabase: Get Criteria",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                700,
+                300
+            ],
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "jsCode": "const rawCriteria = $('Supabase: Get Criteria').all().map(i => i.json);\n// FILTER OUT EMPTY OBJECTS: Fix for [{}]\nconst criteria = rawCriteria.filter(c => c && Object.keys(c).length > 0 && c.title);\n\nconst assessment = $('Supabase: Get Assessment').first().json || {};\nconst outline = assessment.requirements?.proposal_outline || assessment.requirements?.content?.['必要章節'] || assessment.requirements?.content?.['目錄'];\n\nfunction getBodyText(data) {\n    if (!data) return '';\n    \n    // 1. Try JSON Parse\n    if (typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('['))) {\n        try {\n            data = JSON.parse(data);\n        } catch (e) {}\n    }\n\n    // 2. Extract Text from Object (Tiptap/ProseMirror)\n    if (typeof data === 'object' && data !== null) {\n        // Ignore Content inside Headings (treat them as template stubs)\n        if (data.type === 'heading') return ''; \n\n        if (Array.isArray(data)) return data.map(getBodyText).join('');\n        if (data.text) return data.text;\n        if (data.content) return getBodyText(data.content);\n        \n        // If generic object, return values\n        return Object.values(data).map(getBodyText).join('');\n    }\n\n    // 3. String: Strip HTML (Fallback if not JSON)\n    return String(data).replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ');\n}\n\nlet cleanText = getBodyText(outline).trim();\n\n// FILTER: Treat standard \"No Info\" phrases as empty/invalid\nconst negativePhrases = /未明確規定|尚無|無特別|暫無|不適用|沒有提到|未提及/;\nif (negativePhrases.test(cleanText)) {\n    cleanText = '';\n}\n\n// Threshold can be low (5) because we stripped all headers!\nconst isMeaningful = cleanText.length > 5;\n\nreturn {\n    json: {\n        isValid: (criteria.length > 0) || isMeaningful,\n        debug_clean_text_len: cleanText.length,\n        debug_clean_text: cleanText.substring(0, 50)\n    }\n};"
+            },
+            "id": "check-data-exists",
+            "name": "Analyze Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                950,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.isValid }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "verify-data-gate",
+            "name": "Gate: Valid Data?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "{\n  \"error\": \"MISSING_DATA\",\n  \"message\": \"No structure data found\"\n}",
+                "options": {
+                    "responseCode": 422
+                }
+            },
+            "id": "respond-missing",
+            "name": "Respond: Missing Data",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                450
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.AZURE_OPENAI_ENDPOINT }}openai/deployments/{{ $env.AZURE_OPENAI_DEPLOYMENT }}/chat/completions?api-version={{ $env.AZURE_OPENAI_API_VERSION }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "api-key",
+                            "value": "={{ $env.AZURE_OPENAI_API_KEY }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ messages: [{ role: 'user', content: \"You are a proposal architect. Your goal is to extract or derive a chapter structure STICKING STRICTLY to the provided context.\\n\\n**PRIORITY LOGIC:**\\n1. **REQUIRED CHAPTERS (Highest Priority)**: Scan 'Requirements'. If explicit chapters exist (e.g. '必要章節', '目錄'), EXTRACT THEM VERBATIM.\\n2. **GRADING CRITERIA (Secondary Priority)**: If no explicit chapters, use 'Criteria' data. Map each grading criterion directly to a chapter title.\\n\\n**FORMATTING RULE (CRITICAL):**\\nCheck each extracted title. If it does NOT start with a numbering (like 1., 一、, 壹、), YOU MUST PREPEND traditional Chinese numbering (壹、, 貳、, 參、...) in increasing order.\\nExample:\\n'企劃書可行性' -> '壹、企劃書可行性'\\n'專案管理' -> '貳、專案管理'\\n\\n**STRICT RULES:**\\n- DO NOT invent chapters not found in input.\\n- Output MUST be Traditional Chinese (繁體中文).\\n\\nCriteria Data: \" + JSON.stringify($('Supabase: Get Criteria').all().map(v => v.json)) + \"\\nRequirements Data: \" + JSON.stringify($node['Supabase: Get Assessment'].json.requirements) + \"\\n\\nReturn JSON: { \\\"chapters\\\": [{ \\\"title\\\": \\\"壹、章節名稱\\\", \\\"description\\\": \\\"...\\\" }] }\" }], response_format: { type: 'json_object' } }) }}",
+                "options": {}
+            },
+            "id": "openai-generate",
+            "name": "OpenAI: Generate Structure",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1300,
+                150
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const aiRes = $input.item.json;\nlet text = aiRes.choices?.[0]?.message?.content || '';\ntext = text.replace(/```json/g, '').replace(/```/g, '').trim();\n\ntry {\n    const parsed = JSON.parse(text);\n    // Handle if it returns { chapters: [...] } or just [...] (though json_object forces object)\n    const structure = Array.isArray(parsed) ? parsed : (parsed.chapters || parsed.sections || []);\n    \n    if (!Array.isArray(structure)) {\n        throw new Error('Parsed JSON is not an array and has no chapters/sections key: ' + text.substring(0, 100));\n    }\n\n    const webhookData = $('Webhook: Check & Generate').first().json;\n    const projectId = webhookData.body.projectId;\n    if (!projectId) throw new Error('Project ID not found in Webhook');\n\n    let startIndex = 1;\n    \n    // Create properly formatted items\n    const items = structure.map((item, index) => {\n        return {\n            \"project_id\": projectId,\n            \"title\": item.title || 'Untitled Chapter',\n            \"order_index\": startIndex + index,\n            \"content_draft\": item.description || ''\n        };\n    });\n\n    // Return as n8n items array\n    return items.map(item => ({ json: item }));\n} catch(e) {\n    throw new Error('Failed to parse OpenAI JSON or process data: ' + e.message);\n}"
+            },
+            "id": "parse-openai-response",
+            "name": "Parse OpenAI Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1450,
+                150
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SUPABASE_URL + '/rest/v1/sections' }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+                        },
+                        {
+                            "name": "Prefer",
+                            "value": "return=representation"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "project_id",
+                            "value": "={{ $json.project_id }}"
+                        },
+                        {
+                            "name": "title",
+                            "value": "={{ $json.title }}"
+                        },
+                        {
+                            "name": "order_index",
+                            "value": "={{ $json.order_index }}"
+                        },
+                        {
+                            "name": "content_draft",
+                            "value": "={{ $json.content_draft }}"
+                        },
+                        {
+                            "name": "generation_method",
+                            "value": "ai_gen"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "supabase-insert",
+            "name": "Supabase: Insert Sections",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1650,
+                150
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "{\n  \"success\": true,\n  \"message\": \"Structure generated successfully\"\n}",
+                "options": {}
+            },
+            "id": "respond-success",
+            "name": "Respond: Success",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1850,
+                150
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook: Check & Generate": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase: Get Assessment",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase: Get Assessment": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase: Get Criteria",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase: Get Criteria": {
+            "main": [
+                [
+                    {
+                        "node": "Analyze Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Analyze Data": {
+            "main": [
+                [
+                    {
+                        "node": "Gate: Valid Data?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Gate: Valid Data?": {
+            "main": [
+                [
+                    {
+                        "node": "OpenAI: Generate Structure",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond: Missing Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI: Generate Structure": {
+            "main": [
+                [
+                    {
+                        "node": "Parse OpenAI Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse OpenAI Response": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase: Insert Sections",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase: Insert Sections": {
+            "main": [
+                [
+                    {
+                        "node": "Respond: Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

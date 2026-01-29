@@ -695,7 +695,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
             // Gather all parent section titles (for context to avoid duplicates)
             const allParentSections = sections.map(s => s.title);
 
-            const response = await fetch('/webhook/generate-requirements', {
+            const response = await fetch('/api/webhook/generate-requirements', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
