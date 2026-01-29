@@ -1,7 +1,8 @@
 import { Evidence } from "./CitationBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, ExternalLink, Loader2, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { X, ExternalLink, Loader2, Search, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { TableOfContents } from "./TableOfContents";
 import { PageNavigation } from "./PageNavigation";
@@ -39,6 +40,7 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+    const [autoCorrectionInfo, setAutoCorrectionInfo] = useState<{ originalPage: number, foundPage: number } | null>(null);
 
 
 
@@ -167,12 +169,62 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         setCurrentMatchIndex((prev) => (prev - 1 + matchCount) % matchCount);
     };
 
-    // Initialize page to evidence.page when badge is clicked
+    // Initialize page with "Smart Seek" logic
     useEffect(() => {
-        if (evidence?.page && shouldShowPageNavigation) {
-            setCurrentPage(evidence.page);
+        if (!shouldShowPageNavigation || !source?.pages) return;
+
+        let targetPage = evidence?.page || 1;
+
+        // "Smart Seek": If evidence quote is provided, verify it exists on the target page.
+        // If not, search adjacent pages, then full document to find the best match.
+        if (evidence?.quote) {
+            const pages = source.pages;
+            const quote = evidence.quote;
+            const pageIndex = targetPage - 1;
+
+            // Helper to check if quote exists on a page (fuzzy match)
+            // We reuse findQuoteInContent indirectly or logic similar to it
+            // For performance, we'll do a simple normalized check first
+            const checkPage = (pIdx: number) => {
+                if (!pages[pIdx]?.content) return false;
+                const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase();
+                const nContent = normalize(pages[pIdx].content);
+                const nQuote = normalize(quote);
+                // Try removing ellipses from quote for better matching
+                const cleanQuote = nQuote.replace(/^\.+|\.+$/g, '');
+                return nContent.includes(cleanQuote) || nContent.includes(nQuote);
+            };
+
+            // 1. Check reported page
+            if (pages[pageIndex] && checkPage(pageIndex)) {
+                setCurrentPage(targetPage);
+                return;
+            }
+
+            // 2. Check adjacent pages (+/- 1 page) - Common OCR/Pagination off-by-one errors
+            const adjacentOffsets = [-1, 1];
+            for (const offset of adjacentOffsets) {
+                const checkIdx = pageIndex + offset;
+                if (checkIdx >= 0 && checkIdx < pages.length) {
+                    if (checkPage(checkIdx)) {
+                        console.log(`[Smart Seek] Found quote on page ${checkIdx + 1} instead of ${targetPage}`);
+                        setCurrentPage(checkIdx + 1);
+                        setAutoCorrectionInfo({
+                            originalPage: targetPage,
+                            foundPage: checkIdx + 1
+                        });
+                        return;
+                    }
+                }
+            }
+
+            // 3. (Optional) Expensive full text search if critical - skipped for performance for now
+            // or we could expand the search radius if needed.
         }
-    }, [evidence?.page, shouldShowPageNavigation]);
+
+        // Fallback to reported page if no better match found
+        setCurrentPage(targetPage);
+    }, [evidence?.page, evidence?.quote, shouldShowPageNavigation, source?.pages]);
 
     // Auto-scroll to highlighted quote
     useEffect(() => {
@@ -296,15 +348,35 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
                         </div>
                     )}
                 </div>
-            </CardHeader>
+
+
+                {/* Auto-correction Notice */}
+                {autoCorrectionInfo && (
+                    <div className="mx-4 mt-4 px-3 py-3 bg-[#FA4028] flex items-center justify-between animate-in fade-in slide-in-from-top-1 rounded-none border-none">
+                        <p className="text-[10px] uppercase font-bold font-mono tracking-wider text-white">
+                            Redirected from Page {autoCorrectionInfo.originalPage} to {autoCorrectionInfo.foundPage}
+                        </p>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 hover:bg-white/20 rounded-none text-white"
+                            onClick={() => setAutoCorrectionInfo(null)}
+                        >
+                            <X className="w-4 h-4" />
+                        </Button>
+                    </div>
+                )}
+            </CardHeader >
 
             {/* Table of Contents - 僅對完整內容顯示且沒有頁面導航時 */}
-            {!evidence && !shouldShowPageNavigation && source?.content && !showFullContentWithHighlight && (
-                <TableOfContents
-                    content={source.content}
-                    onNavigate={handleNavigate}
-                />
-            )}
+            {
+                !evidence && !shouldShowPageNavigation && source?.content && !showFullContentWithHighlight && (
+                    <TableOfContents
+                        content={source.content}
+                        onNavigate={handleNavigate}
+                    />
+                )
+            }
 
             <div
                 ref={contentContainerRef}
@@ -383,20 +455,22 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
             </div>
 
             {/* Footer containing the Open Source button - matching Part 2 of Image 1 */}
-            {hasOriginalSource && (
-                <div className="p-4 border-t-2 border-black dark:border-white bg-white dark:bg-black shrink-0">
-                    <Button
-                        variant="outline"
-                        className="w-full gap-3 py-6 rounded-none border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black font-bold tracking-wider transition-all"
-                        onClick={() => {
-                            if (previewUrl) window.open(previewUrl, '_blank');
-                        }}
-                    >
-                        <ExternalLink className="w-5 h-5 font-bold" />
-                        {actionText}
-                    </Button>
-                </div>
-            )}
-        </div>
+            {
+                hasOriginalSource && (
+                    <div className="p-4 border-t-2 border-black dark:border-white bg-white dark:bg-black shrink-0">
+                        <Button
+                            variant="outline"
+                            className="w-full gap-3 py-6 rounded-none border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black font-bold tracking-wider transition-all"
+                            onClick={() => {
+                                if (previewUrl) window.open(previewUrl, '_blank');
+                            }}
+                        >
+                            <ExternalLink className="w-5 h-5 font-bold" />
+                            {actionText}
+                        </Button>
+                    </div>
+                )
+            }
+        </div >
     );
 }

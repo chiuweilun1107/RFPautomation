@@ -131,7 +131,16 @@ export function findQuoteInContent(
 ): TextMatchResult | null {
   const { exactFallback = true, skipPattern = TEXT_SKIP_CHARS_PATTERN } = options;
 
-  const trimmedQuote = quote.trim();
+  let trimmedQuote = quote.trim();
+
+  // Strip leading and trailing ellipsis or dots (sequence of 2 or more dots) to avoid matching issues
+  // often AI generates "..." at the end to indicate continuation
+  // We handle both standard "..." and the unicode ellipsis "…"
+  const ellipsisRegex = /^(\.{2,}|…)\s*|\s*(\.{2,}|…)$/g;
+  while (ellipsisRegex.test(trimmedQuote)) {
+    trimmedQuote = trimmedQuote.replace(ellipsisRegex, '');
+  }
+  trimmedQuote = trimmedQuote.trim();
   const normalizedContent = normalizeForMatching(content);
 
   // Handle ellipsis in quotes - find start and end positions
