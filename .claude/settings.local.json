@@ -177,7 +177,11 @@
       "Bash(\"/Users/chiuyongren/Desktop/AI dev/install-cron.sh\")",
       "Bash(/Users/chiuyongren/Desktop/AI dev/cron-update-tender.sh)",
       "WebFetch(domain:acebidx.com)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(tar:*)",
+      "WebFetch(domain:api.onlyoffice.com)",
+      "WebFetch(domain:helpcenter.onlyoffice.com)",
+      "WebFetch(domain:www.onlyoffice.com)"
     ]
   }
 }

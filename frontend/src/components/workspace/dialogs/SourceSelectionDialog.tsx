@@ -105,10 +105,7 @@ export function SourceSelectionDialog({
     }
 
     const handleConfirm = () => {
-        if (selectedIds.size === 0) {
-            toast.error("Please select at least one source")
-            return
-        }
+        // 允許不選擇任何文件（空陣列）
         onConfirm(Array.from(selectedIds))
         onOpenChange(false)
     }
@@ -195,10 +192,10 @@ export function SourceSelectionDialog({
                         </Button>
                         <Button
                             onClick={handleConfirm}
-                            disabled={loading || sources.length === 0 || selectedIds.size === 0}
+                            disabled={loading || sources.length === 0}
                             className="rounded-none bg-[#FA4028] hover:bg-black text-white font-bold uppercase tracking-wider px-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all h-10 text-xs"
                         >
-                            Confirm_Link
+                            {selectedIds.size === 0 ? 'SKIP_SOURCES' : 'CONFIRM_LINK'}
                         </Button>
                     </div>
                 </div>

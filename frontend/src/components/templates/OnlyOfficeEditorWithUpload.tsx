@@ -12,6 +12,8 @@ import { OnlyOfficeEditorSkeleton } from '@/components/ui/skeletons/OnlyOfficeEd
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { logger } from '@/lib/errors/logger';
 import { logAIConfig, getAIProxyUrl } from '@/lib/onlyoffice-ai-config';
+import { scheduleAIConfiguration } from '@/lib/onlyoffice-ai-helper';
+import { AIProjectSelector } from '@/components/ai/AIProjectSelector';
 
 interface OnlyOfficeEditorWithUploadProps {
   template: Template;
@@ -40,6 +42,7 @@ export function OnlyOfficeEditorWithUpload({
   const [showUpload, setShowUpload] = useState(false);
   const [isAutoLoading, setIsAutoLoading] = useState(false);
   const [scriptLoadTimeout, setScriptLoadTimeout] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const editorInstanceRef = useRef<any>(null);
   const scriptCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -179,6 +182,9 @@ export function OnlyOfficeEditorWithUpload({
 
               // 輸出 AI 配置信息（方便用戶配置 AI 插件）
               logAIConfig();
+
+              // 自動配置 AI 提供商（延遲 2 秒執行，確保插件已加載）
+              scheduleAIConfiguration(2000);
 
               setEditorReady(true);
               setIsAutoLoading(false);
@@ -354,6 +360,14 @@ export function OnlyOfficeEditorWithUpload({
 
   return (
     <>
+      {/* AI 專案選擇器 */}
+      <AIProjectSelector
+        onProjectChange={(projectId) => {
+          setSelectedProjectId(projectId);
+          console.log('[Editor] AI 參考專案已變更:', projectId);
+        }}
+      />
+
       <Script
         src={getOnlyOfficeApiScriptUrl()}
         strategy="afterInteractive"
@@ -374,6 +388,18 @@ export function OnlyOfficeEditorWithUpload({
         }}
         onReady={() => {
           console.log('[Script] ONLYOFFICE Script ready');
+        }}
+      />
+
+      {/* AI 自動配置腳本 */}
+      <Script
+        src="/onlyoffice-ai-auto-config.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          console.log('[AI Auto-Config] 配置腳本已載入');
+        }}
+        onError={(e) => {
+          console.warn('[AI Auto-Config] 配置腳本載入失敗:', e);
         }}
       />
 

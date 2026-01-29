@@ -1,3 +1,4 @@
+import { UserNav } from '@/components/landing/UserNav';
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
 import Link from "next/link";
@@ -91,29 +92,22 @@ async function AuthButtons() {
 
   return (
     <div className="flex items-center gap-4">
-      {/* Show Dashboard link if logged in, but KEEP the auth buttons visible for design verification */}
-      {user && (
-        <Link
-          href="/dashboard"
-          className="text-sm font-medium hover:underline underline-offset-4 decoration-1 font-mono hidden md:block"
-        >
-          [ DASHBOARD ]
-        </Link>
+      {user ? (
+        <UserNav user={user} />
+      ) : (
+        <div className="flex items-center gap-4">
+          <Link href="/login">
+            <Button variant="ghost" size="sm" className="rounded-none h-9 px-4 font-mono text-xs hover:bg-muted text-muted-foreground hover:text-foreground">
+              [ LOGIN ]
+            </Button>
+          </Link>
+          <Link href="/register">
+            <Button size="sm" className="rounded-none h-9 px-4 font-mono text-xs bg-foreground text-background hover:bg-muted-foreground hover:text-white">
+              [ REGISTER ]
+            </Button>
+          </Link>
+        </div>
       )}
-
-      {/* Always show these buttons for now so the user can see them */}
-      <div className="flex items-center gap-4">
-        <Link href="/login">
-          <Button variant="ghost" size="sm" className="rounded-none h-9 px-4 font-mono text-xs hover:bg-muted text-muted-foreground hover:text-foreground">
-            [ LOGIN ]
-          </Button>
-        </Link>
-        <Link href="/register">
-          <Button size="sm" className="rounded-none h-9 px-4 font-mono text-xs bg-foreground text-background hover:bg-muted-foreground hover:text-white">
-            [ REGISTER ]
-          </Button>
-        </Link>
-      </div>
     </div>
   )
 }
