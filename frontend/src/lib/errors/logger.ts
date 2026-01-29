@@ -1,6 +1,9 @@
 /**
  * Structured Logger System
  * Centralized logging with context and metadata
+ *
+ * Note: INFO and DEBUG logs are suppressed by default.
+ * Only ERROR and WARN are output to console.
  */
 
 export enum LogLevel {
@@ -30,9 +33,11 @@ export interface LogEntry {
 
 class Logger {
   private isDevelopment: boolean;
+  private isProduction: boolean;
 
   constructor() {
     this.isDevelopment = process.env.NODE_ENV === 'development';
+    this.isProduction = process.env.NODE_ENV === 'production';
   }
 
   /**
@@ -42,7 +47,6 @@ class Logger {
     const { level, message, timestamp, context, metadata, error } = entry;
 
     if (this.isDevelopment) {
-      // Structured format for development
       const parts = [
         `[${timestamp}]`,
         `[${level.toUpperCase()}]`,
@@ -65,13 +69,13 @@ class Logger {
 
       return output;
     } else {
-      // JSON format for production (easier for log aggregation)
       return JSON.stringify(entry);
     }
   }
 
   /**
    * Log an entry
+   * Only ERROR and WARN are output; INFO and DEBUG are suppressed
    */
   private log(level: LogLevel, message: string, context?: string, metadata?: LogMetadata) {
     const entry: LogEntry = {
@@ -92,14 +96,22 @@ class Logger {
         console.warn(formatted);
         break;
       case LogLevel.INFO:
-        console.warn(formatted);
-        break;
       case LogLevel.DEBUG:
-        if (this.isDevelopment) {
-          console.warn(formatted);
+        // Suppressed - no console output
+        // In production, send to external logging service if needed
+        if (this.isProduction) {
+          this.sendToExternalService(entry);
         }
         break;
     }
+  }
+
+  /**
+   * Send log entry to external service (placeholder)
+   */
+  private sendToExternalService(_entry: LogEntry) {
+    // Placeholder for external logging service integration
+    // e.g., Sentry, LogRocket, Datadog, etc.
   }
 
   /**
@@ -139,28 +151,28 @@ class Logger {
   }
 
   /**
-   * Log info
+   * Log info (suppressed in console, but collected)
    */
   info(message: string, context?: string, metadata?: LogMetadata) {
     this.log(LogLevel.INFO, message, context, metadata);
   }
 
   /**
-   * Log debug (only in development)
+   * Log debug (suppressed in console, only in development)
    */
   debug(message: string, context?: string, metadata?: LogMetadata) {
     this.log(LogLevel.DEBUG, message, context, metadata);
   }
 
   /**
-   * Log API request
+   * Log API request (suppressed)
    */
   apiRequest(method: string, path: string, metadata?: LogMetadata) {
     this.info(`API Request: ${method} ${path}`, 'API', metadata);
   }
 
   /**
-   * Log API response
+   * Log API response (suppressed)
    */
   apiResponse(method: string, path: string, statusCode: number, duration?: number) {
     const metadata: LogMetadata = {
@@ -171,21 +183,21 @@ class Logger {
   }
 
   /**
-   * Log database query
+   * Log database query (suppressed)
    */
   dbQuery(operation: string, table: string, metadata?: LogMetadata) {
     this.debug(`DB Query: ${operation} on ${table}`, 'Database', metadata);
   }
 
   /**
-   * Log external API call
+   * Log external API call (suppressed)
    */
   externalApi(service: string, operation: string, metadata?: LogMetadata) {
     this.debug(`External API: ${service} - ${operation}`, 'External', metadata);
   }
 
   /**
-   * Log workflow execution
+   * Log workflow execution (suppressed)
    */
   workflow(workflowName: string, status: string, metadata?: LogMetadata) {
     this.info(`Workflow: ${workflowName} - ${status}`, 'Workflow', metadata);

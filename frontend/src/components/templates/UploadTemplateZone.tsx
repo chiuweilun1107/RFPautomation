@@ -61,8 +61,6 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
             if (!user) throw new Error("Not authenticated")
 
             // 1. 使用字體處理 API 上傳並處理文件
-            console.log('[上傳] 開始處理文件:', file.name)
-
             const formData = new FormData()
             formData.append('file', file)
 
@@ -77,7 +75,6 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
             }
 
             const result = await response.json()
-            console.log('[上傳] 處理完成:', result.url, result.processedPath)
 
             // 2. Create template record with processed file path
             const { data: templateData, error: insertError } = await supabase
@@ -116,8 +113,6 @@ export function UploadTemplateZone({ folders, selectedFolderId, onFolderChange, 
                 if (parseResponse.ok) {
                     toast.success("結構解析完成！")
                 } else {
-                    console.warn("Auto-parsing triggered but returned status:", parseResponse.status)
-                    // We don't block the user, just warn
                     toast.warning("結構解析仍在後台進行中")
                 }
             } catch (parseError) {

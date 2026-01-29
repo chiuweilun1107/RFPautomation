@@ -163,14 +163,6 @@ export function HeaderSection({ headerData, pageNumber = 1, isFirstPage = false,
                                 alignment === 'center' ? 'center' :
                                 'flex-start'
 
-                              // 調試信息
-                              console.log('Header 圖片對齊:', {
-                                alignment,
-                                justifyContent,
-                                img_format: img.format,
-                                img_url: img.url?.slice(-40)
-                              })
-
                               return (
                                 <div
                                   key={imgIdx}

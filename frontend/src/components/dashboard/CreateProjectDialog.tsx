@@ -74,7 +74,6 @@ export function CreateProjectDialog({
                 project = data
             } catch (err: any) {
                 // Fallback: If columns don't exist, try without them
-                console.warn("Extended columns might be missing, retrying with basic fields...", err)
                 if (err.message?.includes('column') || err.code === '42703') { // 42703: undefined_column
                     const { data, error: retryError } = await supabase
                         .from('projects')

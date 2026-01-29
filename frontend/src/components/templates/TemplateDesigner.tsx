@@ -172,8 +172,6 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
         lastHighlightedElementRef.current = element
         // 滾動到元素位置
         element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      } else {
-        console.warn('Element not found:', componentId)
       }
     }, 100)
 
@@ -242,11 +240,7 @@ export function TemplateDesigner({ template: initialTemplate }: TemplateDesigner
         <div className="flex-1 relative overflow-hidden bg-white">
           <OnlyOfficeEditorWithUpload
             template={template}
-            onDocumentReady={() => {
-              console.log('ONLYOFFICE 文檔已就緒');
-            }}
             onError={(error) => {
-              console.error('ONLYOFFICE 錯誤:', error);
               toast.error(error);
             }}
           />

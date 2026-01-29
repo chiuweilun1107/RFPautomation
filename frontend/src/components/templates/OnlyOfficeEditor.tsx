@@ -187,7 +187,6 @@ export function OnlyOfficeEditor({
       <Script
         src={getOnlyOfficeApiScriptUrl()}
         onLoad={() => {
-          console.log('[編輯器] ONLYOFFICE API 已載入');
           setIsScriptLoaded(true);
         }}
         onError={() => {

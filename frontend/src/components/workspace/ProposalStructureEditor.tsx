@@ -355,9 +355,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
                 // .eq('project_id', projectId) // Removed to show orphans
                 .order('created_at', { ascending: false });
 
-            if (imagesError) {
-                console.warn("Error fetching task images:", imagesError);
-            } else {
+            if (!imagesError) {
                 setAllProjectImages(imagesData || []);
             }
 
@@ -893,8 +891,7 @@ export function ProposalStructureEditor({ projectId }: ProposalStructureEditorPr
             const resultText = data.integratedContent || data.content;
 
             if (!resultText) {
-                console.warn("[Integration] No content returned:", data);
-                throw new Error(`API未返回整合內容 (key: integratedContent/content missing). Data: ${JSON.stringify(data)}`);
+                throw new Error(`API未返回整合內容 (key: integratedContent/content missing)`);
             }
 
             // 2. Auto-save to Database

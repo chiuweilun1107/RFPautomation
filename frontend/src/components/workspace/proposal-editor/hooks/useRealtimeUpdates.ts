@@ -344,7 +344,6 @@ export function useRealtimeUpdates(
   // 主要 effect - 設置和清理訂閱
   useEffect(() => {
     if (!projectId) {
-      console.warn('[Realtime] No project ID provided, skipping subscriptions');
       return;
     }
 

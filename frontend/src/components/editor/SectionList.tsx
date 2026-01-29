@@ -182,7 +182,6 @@ export function SectionList({ sections, projectId }: SectionListProps) {
                 toast.success('草稿生成完成！（無匹配的知識來源，使用 AI 通用知識生成）')
             }
 
-            console.log('[RAG] Generated with sources:', data.sources)
             router.refresh()
         } catch (error: any) {
             console.error('Generate draft failed:', error)
@@ -349,7 +348,6 @@ function SectionCard({ section, isExpanded, isGenerating, onToggle, onGenerate, 
             }
 
             const result = await response.json()
-            console.log('[上傳] 字體處理完成:', result.url)
 
             // 2. 將處理後的文件 URL 保存到 section
             const supabase = createClient()

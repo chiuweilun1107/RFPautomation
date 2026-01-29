@@ -160,10 +160,8 @@ export function AddSourceDialog({ open, onOpenChange, projectId, onSourceAdded }
     };
 
     const handleOpenChange = (newOpen: boolean) => {
-        console.log('[AddSourceDialog] handleOpenChange called, newOpen:', newOpen);
         if (!newOpen) resetToMain();
         onOpenChange(newOpen);
-        console.log('[AddSourceDialog] onOpenChange called with:', newOpen);
     };
 
     return (

@@ -235,11 +235,7 @@ export function UploadZone({
                     className="rounded-none border-2 border-black dark:border-white font-mono font-bold uppercase text-[10px] tracking-wide hover:bg-black hover:text-white transition-all"
                     onClick={(e) => {
                         e.stopPropagation()
-                        console.log('[UploadZone] Google Drive clicked, closing dialog...')
-                        // Close dialog immediately (animation is now only 75ms)
                         onCloseDialog?.()
-                        console.log('[UploadZone] Dialog close triggered, opening picker...')
-                        // Open picker immediately
                         openPicker()
                     }}
                     disabled={isUploading || isConnecting || isImporting}

@@ -335,7 +335,6 @@ export function SourceDetailPanel({ evidence, source, onClose, onGenerateSummary
         }
 
         if (startIndex === -1 || endIndex === -1) {
-            console.warn('[SourceDetailPanel] Quote not found in content. Quote:', quote.substring(0, 100));
             return null;
         }
 

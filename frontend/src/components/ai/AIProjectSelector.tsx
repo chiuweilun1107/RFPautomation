@@ -16,7 +16,7 @@ import { SourceSelectionDialog } from '@/components/workspace/dialogs/SourceSele
 
 interface Project {
   id: string;
-  [key: string]: any; // 允許任意欄位，自動適應
+  [key: string]: any;
 }
 
 interface AIProjectSelectorProps {
@@ -72,13 +72,8 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
 
         if (data.selectedProjectId && data.selectedProjectId !== 'null') {
           setSelectedProjectId(data.selectedProjectId);
-          console.log('[AI Project Selector] Loaded project from database:', data.selectedProjectId);
-
-          // 同步到 localStorage（供 OnlyOffice 配置腳本使用）
           localStorage.setItem('ai_selected_project_id', data.selectedProjectId);
         } else {
-          // 如果資料庫中沒有專案，確保 localStorage 也是清空的
-          console.log('[AI Project Selector] No project in database, clearing localStorage');
           localStorage.removeItem('ai_selected_project_id');
           localStorage.removeItem('ai_selected_source_ids');
           setSelectedProjectId(null);
@@ -88,20 +83,13 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
 
         if (data.selectedProjectId && data.selectedSourceIds && Array.isArray(data.selectedSourceIds)) {
           setSelectedSourceIds(data.selectedSourceIds);
-          console.log('[AI Project Selector] Loaded sources from database:', data.selectedSourceIds.length);
-
-          // 同步到 localStorage
           localStorage.setItem('ai_selected_source_ids', JSON.stringify(data.selectedSourceIds));
         }
 
-        // **關鍵**：保存 user_id 到 localStorage，供 OnlyOffice AI 配置使用
         if (data.userId) {
           localStorage.setItem('ai_user_id', data.userId);
-          console.log('[AI Project Selector] Saved user ID for OnlyOffice AI:', data.userId);
         }
-      } catch (error) {
-        console.warn('[AI Project Selector] Failed to load preferences from database:', error);
-
+      } catch {
         // 降級到 localStorage
         const savedProjectId = localStorage.getItem('ai_selected_project_id');
         if (savedProjectId && savedProjectId !== 'null') {
@@ -115,8 +103,8 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
             if (Array.isArray(sourceIds)) {
               setSelectedSourceIds(sourceIds);
             }
-          } catch (e) {
-            console.warn('[AI Project Selector] Failed to parse saved source IDs:', e);
+          } catch {
+            // 靜默處理
           }
         }
       }
@@ -129,30 +117,23 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
   useEffect(() => {
     async function fetchProjects() {
       try {
-        console.log('[AI Project Selector] Fetching projects...');
-
-        // 使用伺服器端 API 獲取專案（繞過 RLS）
         const response = await fetch('/api/projects/list');
         const result = await response.json();
 
         if (!response.ok) {
-          console.error('[AI Project Selector] API error:', result.error);
           return;
         }
 
-        console.log('[AI Project Selector] Fetched projects:', result.projects?.length || 0);
         setProjects(result.projects || []);
 
-        // 如果有選中的專案，找出完整資訊
         if (selectedProjectId && result.projects) {
           const project = result.projects.find((p: Project) => p.id === selectedProjectId);
           if (project) {
             setSelectedProject(project);
-            console.log('[AI Project Selector] Restored selected project:', project.name);
           }
         }
-      } catch (error) {
-        console.error('[AI Project Selector] Unexpected error:', error);
+      } catch {
+        // 靜默處理
       } finally {
         setLoading(false);
       }
@@ -166,7 +147,6 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
     const projectId = project?.id || null;
 
     if (!projectId) {
-      // 如果取消選擇專案，清除所有設置
       setSelectedProjectId(null);
       setSelectedProject(null);
       setSelectedSourceIds([]);
@@ -177,7 +157,6 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
       document.cookie = 'ai_project_id=; path=/; max-age=0';
       document.cookie = 'ai_source_ids=; path=/; max-age=0';
 
-      // **關鍵**：通知後端清除資料庫中的偏好設置
       try {
         await fetch('/api/user/ai-preferences', {
           method: 'POST',
@@ -187,18 +166,15 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
             sourceIds: []
           }),
         });
-        console.log('[AI Project Selector] ✅ 已清除資料庫中的偏好設置');
-      } catch (error) {
-        console.warn('[AI Project Selector] 清除偏好設置失敗:', error);
+      } catch {
+        // 靜默處理
       }
 
-      // 觸發重新配置
       window.dispatchEvent(new CustomEvent('ai-project-changed', {
         detail: { projectId: null, sourceIds: [] }
       }));
 
       onProjectChange?.(null);
-      console.log('[AI Project Selector] 已清除所有專案選擇');
       return;
     }
 
@@ -206,35 +182,25 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
     setSelectedProject(project);
     setOpen(false);
 
-    console.log('[AI Project Selector] Selected project:', projectId, project ? getProjectField(project, 'name') : 'null');
-
-    // 打開文件選擇對話框
     setIsSourceDialogOpen(true);
   };
 
   // 確認選擇的文件
   const handleConfirmSources = async (sourceIds: string[]) => {
-    console.log('[AI Project Selector] Selected sources:', sourceIds.length > 0 ? sourceIds : '無（僅使用專案基本資訊）');
-
     setSelectedSourceIds(sourceIds);
 
-    // 儲存到 localStorage 和 cookie
     if (selectedProjectId) {
       localStorage.setItem('ai_selected_project_id', selectedProjectId);
       localStorage.setItem('ai_selected_source_ids', JSON.stringify(sourceIds));
 
-      // 設置 cookie（支援跨域傳遞）
       const isSecure = window.location.protocol === 'https:';
       const projectCookie = `ai_project_id=${selectedProjectId}; path=/; max-age=2592000; ${isSecure ? 'Secure; SameSite=None' : 'SameSite=Lax'}`;
       const sourcesCookie = `ai_source_ids=${encodeURIComponent(JSON.stringify(sourceIds))}; path=/; max-age=2592000; ${isSecure ? 'Secure; SameSite=None' : 'SameSite=Lax'}`;
 
       document.cookie = projectCookie;
       document.cookie = sourcesCookie;
-
-      console.log('[AI Project Selector] Cookies set');
     }
 
-    // 通知後端（儲存用戶偏好）
     try {
       await fetch('/api/user/ai-preferences', {
         method: 'POST',
@@ -244,31 +210,19 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
           sourceIds
         }),
       });
-    } catch (error) {
-      console.warn('[AI Project Selector] Failed to save preference:', error);
+    } catch {
+      // 靜默處理
     }
 
-    // 觸發 OnlyOffice AI 重新配置
     try {
       window.dispatchEvent(new CustomEvent('ai-project-changed', {
         detail: { projectId: selectedProjectId, sourceIds }
       }));
-      console.log('[AI Project Selector] 已觸發 AI 重新配置事件');
-    } catch (error) {
-      console.warn('[AI Project Selector] 無法觸發重新配置:', error);
+    } catch {
+      // 靜默處理
     }
 
-    // 通知父組件
     onProjectChange?.(selectedProjectId);
-
-    // 調試：驗證設置已保存
-    setTimeout(() => {
-      const savedProjectId = localStorage.getItem('ai_selected_project_id');
-      const savedSourceIds = localStorage.getItem('ai_selected_source_ids');
-      console.log('[AI Project Selector] ✅ 驗證設置已保存:');
-      console.log('  - Project ID:', savedProjectId);
-      console.log('  - Source IDs:', savedSourceIds);
-    }, 100);
   };
 
   // 格式化日期
@@ -284,17 +238,13 @@ export function AIProjectSelector({ onProjectChange }: AIProjectSelectorProps) {
   // 初始化客戶端掛載狀態
   useEffect(() => {
     setIsMounted(true);
-    // 設置初始位置（右上角）
     setDefaultPos({ x: window.innerWidth - 420, y: 20 });
-    console.log('[AI Project Selector] Component mounted, window width:', window.innerWidth, 'defaultPos:', { x: window.innerWidth - 420, y: 20 });
   }, []);
 
   // 等待客戶端掛載
   if (!isMounted) {
     return null;
   }
-
-  console.log('[AI Project Selector] Rendering at position:', defaultPos);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
