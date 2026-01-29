@@ -11,11 +11,12 @@ export async function POST(request: Request) {
 
         const supabase = await createClient();
 
-        console.log(`[Evaluate API] Fetching sources for project: ${projectId}`);
-        // 1. Fetch all source IDs for this project
-        const { data: sources, error: sourcesError } = await supabase
-            .from('sources')
-            .select('id')
+        console.log(`[Evaluate API] Fetching LINKED sources for project: ${projectId}`);
+        // 1. Fetch only source IDs that are LINKED to this project (in project_sources)
+        // This respects the user's selection in the UI (checkboxes)
+        const { data: projectSources, error: sourcesError } = await supabase
+            .from('project_sources')
+            .select('source_id')
             .eq('project_id', projectId);
 
         if (sourcesError) {
@@ -23,11 +24,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Failed to fetch sources" }, { status: 500 });
         }
 
-        if (!sources || sources.length === 0) {
-            return NextResponse.json({ error: "No sources found for this project" }, { status: 404 });
+        if (!projectSources || projectSources.length === 0) {
+            return NextResponse.json({ error: "No sources selected for this project" }, { status: 404 });
         }
 
-        const sourceIds = sources.map(s => s.id);
+        const sourceIds = projectSources.map(ps => ps.source_id);
         console.log(`[Evaluate API] Found ${sourceIds.length} sources:`, sourceIds);
 
         const targetUrl = process.env.N8N_EVALUATE_WEBHOOK || `${process.env.N8N_BASE_URL || 'http://localhost:5679'}/webhook/evaluate-project`;
