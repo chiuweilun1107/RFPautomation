@@ -146,7 +146,7 @@
                 },
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={{ JSON.stringify({ messages: [{ role: 'user', content: \"You are a proposal architect. Your goal is to extract or derive a chapter structure STICKING STRICTLY to the provided context.\\n\\n**PRIORITY LOGIC:**\\n1. **REQUIRED CHAPTERS (Highest Priority)**: Scan 'Requirements'. If explicit chapters exist (e.g. '必要章節', '目錄'), EXTRACT THEM VERBATIM.\\n2. **GRADING CRITERIA (Secondary Priority)**: If no explicit chapters, use 'Criteria' data. Map each grading criterion directly to a chapter title.\\n\\n**FORMATTING RULE (CRITICAL):**\\nCheck each extracted title. If it does NOT start with a numbering (like 1., 一、, 壹、), YOU MUST PREPEND traditional Chinese numbering (壹、, 貳、, 參、...) in increasing order.\\nExample:\\n'企劃書可行性' -> '壹、企劃書可行性'\\n'專案管理' -> '貳、專案管理'\\n\\n**STRICT RULES:**\\n- DO NOT invent chapters not found in input.\\n- Output MUST be Traditional Chinese (繁體中文).\\n\\nCriteria Data: \" + JSON.stringify($('Supabase: Get Criteria').all().map(v => v.json)) + \"\\nRequirements Data: \" + JSON.stringify($node['Supabase: Get Assessment'].json.requirements) + \"\\n\\nReturn JSON: { \\\"chapters\\\": [{ \\\"title\\\": \\\"壹、章節名稱\\\", \\\"description\\\": \\\"...\\\" }] }\" }], response_format: { type: 'json_object' } }) }}",
+                "jsonBody": "={{ JSON.stringify({ messages: [{ role: 'user', content: \"You are a proposal architect. Your task is to generate a comprehensive nested chapter structure by merging two data sources: 'Requirements' (The Skeleton) and 'Criteria' (The Details).\\n\\n**DATA MERGE STRATEGY (CRITICAL):**\\n1. **THE SKELETON (Level 1 Chapters)**:\\n   - You MUST use the 'Requirements' data (specifically '必要章節' or '目錄') to define the **Main Chapter Titles** and **Order**.\\n   - DO NOT add main chapters from 'Criteria' if they are not in 'Requirements'.\\n   - DO NOT miss any main chapters from 'Requirements'.\\n\\n2. **THE DETAILS (Level 2 Sub-chapters)**:\\n   - For EACH Main Chapter, look for a matching item in the 'Criteria' list.\\n   - **IF MATCH FOUND**: Analyze the description content.\\n\\n**INTELLIGENT PARSING RULES (STRICT):**\\n1. **CONDITIONAL TITLING (Hybrid Strategy)**:\\n   - **CASE A (< 20 chars): STRICT VERBATIM**:\\n     - IF the sub-item text is under **20 characters**, **COPY IT EXACTLY**.\\n     - **CRITICAL**: Do NOT remove words like '及執行方式', '機制', '規劃'. Keep it ALL.\\n     - Example: '1. 資安管理規劃及執行方式' -> '1.1 資安管理規劃及執行方式' (MUST BE IDENTICAL)\\n\\n   - **CASE B (> 20 chars): CONCISE EXTRACTION (Max 25 chars)**:\\n     - **De-Labeling**: Remove labels like '2.經驗：', '3.信譽：'. Use the **CONTENT**.\\n     - **Metric Extraction**: Focus on **Numbers + Core Noun**.\\n     - **Constraint**: **ABSOLUTE MAX 25 CHARACTERS**.\\n     - Example: '2.經驗：3年內1,000萬以上大型軟體系統建置案實績...' (45 chars)\\n       -> '1.2 3年內1,000萬以上大型軟體系統建置案實績' (22 chars) [ALLOWED]\\n     - Example: '... (containing user research analysis)...' -> REMOVE (Too detailed / Fluff).\\n\\n2. **INFER MISSING ITEMS**: \\n   - IF the description starts with '2.' or '(2)', it implies Item 1 is missing.\\n   - YOU MUST GENERATE Item 1 based on the **Chapter Title** itself.\\n   - Example: If Chapter is 'Company Info' and text starts at '2. Experience', generate '1.1 公司基本資料' first.\\n\\n3. **DENSE TEXT SPLITTING**:\\n   - IF text is a block with embedded numbers (e.g., '1. ... 2. ...'), FORCE SPLIT into separate sub-chapters.\\n   - IF text has no numbers but covers distinct concepts (e.g. 'Manpower, Certifications, Tools'), SPLIT them logically.\\n\\n**FORMATTING RULES:**\\n- **Main Chapters**: Check title. If it lacks numbering (1., 一、, 壹、), PREPEND traditional Chinese numbering (壹、, 貳、, 參、...) based on the order in 'Requirements'.\\n- **Sub-Chapters**: Use Arabic numbering (e.g., 1.1, 1.2).\\n- **Language**: Output MUST be Traditional Chinese (繁體中文).\\n\\nCriteria Data: \" + JSON.stringify($('Supabase: Get Criteria').all().map(v => v.json)) + \"\\nRequirements Data: \" + JSON.stringify($node['Supabase: Get Assessment'].json.requirements) + \"\\n\\nReturn JSON: { \\\"chapters\\\": [{ \\\"title\\\": \\\"壹、章節名稱\\\", \\\"description\\\": \\\"...\\\", \\\"subsections\\\": [{ \\\"title\\\": \\\"1.1 短標題\\\", \\\"description\\\": \\\"...\\\" }] }] }\" }], response_format: { type: 'json_object' } }) }}",
                 "options": {}
             },
             "id": "openai-generate",
@@ -160,7 +160,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const aiRes = $input.item.json;\nlet text = aiRes.choices?.[0]?.message?.content || '';\ntext = text.replace(/```json/g, '').replace(/```/g, '').trim();\n\ntry {\n    const parsed = JSON.parse(text);\n    // Handle if it returns { chapters: [...] } or just [...] (though json_object forces object)\n    const structure = Array.isArray(parsed) ? parsed : (parsed.chapters || parsed.sections || []);\n    \n    if (!Array.isArray(structure)) {\n        throw new Error('Parsed JSON is not an array and has no chapters/sections key: ' + text.substring(0, 100));\n    }\n\n    const webhookData = $('Webhook: Check & Generate').first().json;\n    const projectId = webhookData.body.projectId;\n    if (!projectId) throw new Error('Project ID not found in Webhook');\n\n    let startIndex = 1;\n    \n    // Create properly formatted items\n    const items = structure.map((item, index) => {\n        return {\n            \"project_id\": projectId,\n            \"title\": item.title || 'Untitled Chapter',\n            \"order_index\": startIndex + index,\n            \"content_draft\": item.description || ''\n        };\n    });\n\n    // Return as n8n items array\n    return items.map(item => ({ json: item }));\n} catch(e) {\n    throw new Error('Failed to parse OpenAI JSON or process data: ' + e.message);\n}"
+                "jsCode": "const aiRes = $input.item.json;\nlet text = aiRes.choices?.[0]?.message?.content || '';\ntext = text.replace(/```json/g, '').replace(/```/g, '').trim();\n\nfunction generateUUID() {\n    // Simple UUID v4 generator for n8n code node compatibility\n    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);\n        return v.toString(16);\n    });\n}\n\ntry {\n    const parsed = JSON.parse(text);\n    const structure = Array.isArray(parsed) ? parsed : (parsed.chapters || parsed.sections || []);\n    \n    if (!Array.isArray(structure)) {\n        throw new Error('Parsed JSON is not an array: ' + text.substring(0, 100));\n    }\n\n    const webhookData = $('Webhook: Check & Generate').first().json;\n    const projectId = webhookData.body.projectId;\n    if (!projectId) throw new Error('Project ID not found in Webhook');\n\n    let allParents = [];\n    let allChildren = [];\n    let startIndex = 1;\n    \n    structure.forEach((chapter, index) => {\n        const chapterId = generateUUID();\n        const parentOrder = startIndex + index;\n        \n        // Parent\n        allParents.push({\n            id: chapterId,\n            project_id: projectId,\n            title: chapter.title || 'Untitled Chapter',\n            content_draft: chapter.description || '',\n            order_index: parentOrder * 100,\n            generation_method: 'ai_gen',\n            parent_id: null\n        });\n\n        // Children\n        if (chapter.subsections && Array.isArray(chapter.subsections)) {\n            chapter.subsections.forEach((sub, subIndex) => {\n                allChildren.push({\n                    id: generateUUID(),\n                    project_id: projectId,\n                    title: sub.title || 'Untitled Subsection',\n                    content_draft: sub.description || '',\n                    order_index: (parentOrder * 100) + (subIndex + 1),\n                    generation_method: 'ai_gen',\n                    parent_id: chapterId\n                });\n            });\n        }\n    });\n\n    // Return single item containing both arrays to be used by downstream nodes\n    return {\n        json: {\n            parents: allParents,\n            children: allChildren\n        }\n    };\n} catch(e) {\n    throw new Error('Failed to parse OpenAI JSON or process data: ' + e.message);\n}"
             },
             "id": "parse-openai-response",
             "name": "Parse OpenAI Response",
@@ -189,39 +189,17 @@
                         },
                         {
                             "name": "Prefer",
-                            "value": "return=representation"
+                            "value": "return=minimal"
                         }
                     ]
                 },
                 "sendBody": true,
-                "bodyParameters": {
-                    "parameters": [
-                        {
-                            "name": "project_id",
-                            "value": "={{ $json.project_id }}"
-                        },
-                        {
-                            "name": "title",
-                            "value": "={{ $json.title }}"
-                        },
-                        {
-                            "name": "order_index",
-                            "value": "={{ $json.order_index }}"
-                        },
-                        {
-                            "name": "content_draft",
-                            "value": "={{ $json.content_draft }}"
-                        },
-                        {
-                            "name": "generation_method",
-                            "value": "ai_gen"
-                        }
-                    ]
-                },
+                "specifyBody": "json",
+                "jsonBody": "={{ $json.parents }}",
                 "options": {}
             },
-            "id": "supabase-insert",
-            "name": "Supabase: Insert Sections",
+            "id": "supabase-insert-parents",
+            "name": "Supabase: Insert Parents",
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.1,
             "position": [
@@ -231,8 +209,44 @@
         },
         {
             "parameters": {
+                "method": "POST",
+                "url": "={{ $env.SUPABASE_URL + '/rest/v1/sections' }}",
+                "authentication": "none",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $env.SUPABASE_ANON_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_KEY }}"
+                        },
+                        {
+                            "name": "Prefer",
+                            "value": "return=minimal"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ $('Parse OpenAI Response').first().json.children }}",
+                "options": {}
+            },
+            "id": "supabase-insert-children",
+            "name": "Supabase: Insert Children",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1850,
+                150
+            ]
+        },
+        {
+            "parameters": {
                 "respondWith": "json",
-                "responseBody": "{\n  \"success\": true,\n  \"message\": \"Structure generated successfully\"\n}",
+                "responseBody": "{\n  \"success\": true,\n  \"message\": \"Structure generated successfully (Including Sub-sections)\"\n}",
                 "options": {}
             },
             "id": "respond-success",
@@ -240,7 +254,7 @@
             "type": "n8n-nodes-base.respondToWebhook",
             "typeVersion": 1,
             "position": [
-                1850,
+                2050,
                 150
             ]
         }
@@ -323,14 +337,25 @@
             "main": [
                 [
                     {
-                        "node": "Supabase: Insert Sections",
+                        "node": "Supabase: Insert Parents",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Supabase: Insert Sections": {
+        "Supabase: Insert Parents": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase: Insert Children",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Supabase: Insert Children": {
             "main": [
                 [
                     {
